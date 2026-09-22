@@ -169,6 +169,19 @@ You can open the workbook in Excel at any time. If you edit it by hand, restart
 the server so the changes are re-read. Balances and student details changed in
 the dashboard are written straight back to this file.
 
+On a host, the workbook must be written to that host's **persistent storage** —
+a volume or disk — or every change is lost when the service restarts. The server
+finds that folder in this order:
+
+1. `DB_DIR` — if you set it explicitly
+2. `RAILWAY_VOLUME_MOUNT_PATH` — set by Railway automatically; mount the volume
+   at `/app/data` and nothing else is needed (see `RAILWAY.md`)
+3. otherwise, next to `server.js` — correct for a local run via `start.bat`
+
+The startup log prints the path it used as `Data : ...`, and warns loudly if a
+host is running with no volume. **Check that line after deploying** — it is the
+difference between a working school and one that forgets every payment.
+
 The workbook is **never** downloadable from the website — the server refuses to
 serve it.
 
@@ -252,7 +265,8 @@ cannot satisfy. The restore runs on every exit path, including a crash.
 | `features.html` | The "Portal Services" guide page. |
 | `database.xlsx` | The database. **Not in the repo** — see below. |
 | `LAUNCH.md` | Checklist to go live: passwords, sample data, hosting. |
-| `UPLOAD.md` | Step-by-step: putting the site on the internet. |
+| `UPLOAD.md` | Step-by-step: putting the site on the internet (tunnels, other hosts). |
+| `RAILWAY.md` | Step-by-step: deploying to Railway (**recommended**). |
 | `_e2e.js` | End-to-end tests (86 checks). |
 | `_launch_check.cjs` | Public-launch safety guards (5 checks). |
 | `index.test.mjs` | Page-level tests (4 checks). |

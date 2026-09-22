@@ -29,7 +29,23 @@ const crypto = require("crypto");
 const XLSX = require("xlsx");
 
 const ROOT = __dirname;
-const DB_FILE = path.join(ROOT, "database.xlsx");
+
+// Where the workbook lives. The code and the data are separate concerns: on a
+// host the repo is overwritten on every deploy, while a mounted volume/disk
+// survives. Pointing DB_DIR at that mount keeps students, payments and
+// approvals across restarts. Locally nothing is set, so the file stays next to
+// server.js exactly as start.bat expects.
+//
+// The order matters:
+//   DB_DIR                    — explicit choice, used on Render and locally
+//   RAILWAY_VOLUME_MOUNT_PATH — set by Railway itself when a volume is attached,
+//                               so the folder can never drift out of step with
+//                               where the volume is actually mounted
+//   ROOT                      — no host, no volume: plain local run
+const DB_DIR = path.resolve(
+  process.env.DB_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH || ROOT
+);
+const DB_FILE = path.join(DB_DIR, "database.xlsx");
 const PORT = process.env.PORT || 3000;
 
 const SHEETS = {
@@ -293,6 +309,20 @@ function loadDb() {
   if (!fs.existsSync(DB_FILE)) {
     return createSeedDb();
   }
+  // A workbook on a mounting disk can be briefly unreadable at boot (Excel
+  // holding the file locally, or a half-written copy). Say so plainly instead
+  // of throwing a bare spread-sheet error.
+  try {
+    return readWorkbook();
+  } catch (err) {
+    throw new Error(
+      "Could not read " + DB_FILE + " — " + err.message +
+        "\nCheck that the folder exists and the file is not open in Excel."
+    );
+  }
+}
+
+function readWorkbook() {
   const db = XLSX.readFile(DB_FILE);
   // Bring an older workbook up to date: adds the Payments sheet and the
   // tuition columns (totalFee, amountPaid, dueDate, lastPaymentDate).
@@ -301,6 +331,8 @@ function loadDb() {
 }
 
 function saveDb(db) {
+  // DB_DIR is a mounted volume on Render, so create it if the mount is late.
+  if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
   XLSX.writeFile(db, DB_FILE);
 }
 
@@ -1672,6 +1704,21 @@ function serveStatic(req, res, pathname) {
 const server = http.createServer((req, res) => {
   const pathname = decodeURIComponent(req.url.split("?")[0]);
 
+  // Liveness probe for the host (Render and Railway health checks point here).
+  // It only reports whether the workbook is readable, so a broken database fails
+  // the check loudly instead of serving pages that cannot save.
+  if (pathname === "/healthz") {
+    try {
+      loadDb();
+      res.writeHead(200, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ ok: true }));
+    } catch (err) {
+      console.error("Health check failed:", err.message);
+      res.writeHead(503, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ ok: false, error: "database unreadable" }));
+    }
+  }
+
   if (pathname.startsWith("/api/")) {
     handleApi(req, res, pathname).catch((err) => {
       console.error("API error:", err);
@@ -1686,6 +1733,7 @@ const server = http.createServer((req, res) => {
 if (!fs.existsSync(DB_FILE)) {
   loadDb();
   console.log("Created database.xlsx with starter data.");
+  console.log("  Workbook: " + DB_FILE);
   console.log("Seed admin logins — change these before exposing this to the internet:");
   console.log("  admin     / " + (process.env.SPA_ADMIN_PASSWORD || "ChangeMe!Admin2025"));
   console.log("  registrar / " + (process.env.SPA_REGISTRAR_PASSWORD || "ChangeMe!Records2025"));
@@ -1699,6 +1747,22 @@ server.listen(PORT, () => {
   console.log("Saint Patrick's Academy portal running at " + base);
   console.log("  Portal : " + base + "/");
   console.log("  Admin  : " + base + "/admin.html");
+  // Print where the data came from. If this path is inside the repo instead of
+  // on the mounted volume, every change is lost on the next restart — the
+  // single most common way to get this deployment wrong.
+  console.log("  Data   : " + DB_FILE);
+  // Compare resolved paths, never raw strings: __dirname and path.resolve() can
+  // disagree on Windows (trailing separator, drive/folder casing), and a false
+  // "same path" comparison here would either hide the warning or print it when
+  // a volume IS in use.
+  const onVolume = DB_DIR !== path.resolve(ROOT);
+  if (!onVolume && (process.env.PORT || process.env.SPA_PUBLIC_URL)) {
+    console.log("");
+    console.log("  !! WARNING: no volume is mounted, so data is on the host's temporary");
+    console.log("     filesystem and will be lost on the next restart or deploy.");
+    console.log("     Attach a volume and set DB_DIR (or let Railway set");
+    console.log("     RAILWAY_VOLUME_MOUNT_PATH) to a path on it.");
+  }
 
   // Say plainly, at every start, whether the seeded passwords are still in use.
   try {

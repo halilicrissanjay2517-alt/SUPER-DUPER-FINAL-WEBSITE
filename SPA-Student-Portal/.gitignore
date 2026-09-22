@@ -16,12 +16,18 @@ database.xlsx
 # never push them back into a commit.
 *.xlsx
 !node_modules/**/*.xlsx
+
+# Backup copies of the live workbook. These hold the same real student records
+# and password hashes as database.xlsx, so they must never be committed either.
+# The pattern is deliberately broad (database.backup-*.xlsx and friends) because
+# a backup tool naming its own copies is exactly how one gets committed by
+# accident.
+database.*.xlsx
+_dbtools_*.xlsx
 _db_*.xlsx
 _backup_*.xlsx
-_guardtest.xlsx
-_inspect_db.cjs
+*.xlsx.bak
 _snap.xlsx
-_guardtest.xlsx
 
 # One-off browser/QA probes and repair scripts
 _qa_*.mjs
@@ -42,12 +48,16 @@ _srv_out.log
 _srv_err.log
 _srv2_out.log
 _srv2_err.log
-_t_out.log
-_t_err.log
 
 # Local environment / secrets
 .env
 .env.local
+
+# Runtime data folder. On a host DB_DIR points at the mounted disk; if you also
+# run it locally with DB_DIR set, the workbook may land in this folder. Either
+# way it must never be committed — it holds every student record and password
+# hash.
+data/
 
 # OS / editor noise
 Thumbs.db
