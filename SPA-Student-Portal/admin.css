@@ -1,0 +1,1045 @@
+/* Admin-dashboard-only styles. Layers on top of styles.css (shared tokens). */
+
+.admin-body {
+  background: #eef3ef;
+}
+
+/* ---------------- Login gate ---------------- */
+.admin-login {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background-image:
+    linear-gradient(135deg, rgba(6, 42, 26, 0.94), rgba(11, 92, 52, 0.88)),
+    url("bg.jpg");
+  background-size: cover;
+  background-position: center;
+}
+
+/* `display: grid` above outranks the hidden attribute, so state the closed
+   case explicitly — otherwise the sign-in card stays on screen after login. */
+.admin-login[hidden] {
+  display: none;
+}
+
+.login-card {
+  width: min(420px, 100%);
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 36px 32px;
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+}
+
+.login-logo {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 16px;
+  object-fit: contain;
+  border-radius: 50%;
+  padding: 4px;
+  background: #fff;
+  border: 1px solid var(--line);
+}
+
+.login-card h1 {
+  margin: 0 0 6px;
+  font-size: 22px;
+  color: var(--green-800);
+}
+
+.login-card .muted {
+  margin: 0 0 24px;
+  font-size: 14px;
+}
+
+.login-card .field {
+  text-align: left;
+}
+
+.login-hint {
+  margin: 22px 0 0;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+/* ---------------- Shell ---------------- */
+.admin-shell {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  min-height: 100vh;
+}
+
+.admin-sidebar {
+  background: var(--green-900);
+  color: #cfe6da;
+  display: flex;
+  flex-direction: column;
+  padding: 22px 16px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 8px 22px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  margin-bottom: 18px;
+}
+
+.sidebar-brand img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  border-radius: 50%;
+  background: #fff;
+  padding: 2px;
+}
+
+.sidebar-brand strong {
+  display: block;
+  color: #fff;
+  font-size: 15px;
+}
+
+.sidebar-brand small {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #8fb8a2;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.side-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 14px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: #cfe6da;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.18s var(--ease), color 0.18s var(--ease);
+}
+
+.side-link:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.side-link.is-active {
+  background: var(--green-600);
+  color: #fff;
+}
+
+.sidebar-foot {
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding-top: 16px;
+}
+
+.who {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-bottom: 12px;
+}
+
+.avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--green-600);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  flex: none;
+}
+
+.who strong {
+  display: block;
+  color: #fff;
+  font-size: 14px;
+}
+
+.who small {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #8fb8a2;
+}
+
+.sidebar-foot .btn-ghost {
+  color: #cfe6da;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.sidebar-foot .btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+/* ---------------- Main ---------------- */
+.admin-main {
+  padding: 0 0 60px;
+  min-width: 0;
+}
+
+.admin-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 26px 32px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.admin-topbar h1 {
+  margin: 0;
+  font-size: 24px;
+  color: var(--green-800);
+}
+
+.admin-topbar .muted {
+  margin: 2px 0 0;
+  font-size: 14px;
+}
+
+.topbar-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.admin-view {
+  padding: 26px 20px 0;
+}
+
+.admin-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.admin-toolbar .muted {
+  margin: 0;
+  font-size: 14px;
+}
+
+.inline-field {
+  flex: 1 1 320px;
+  margin: 0;
+}
+
+.inline-field input {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 15px;
+  background: #fff;
+}
+
+.inline-field input:focus {
+  outline: none;
+  border-color: var(--green-600);
+  box-shadow: var(--ring);
+}
+
+.toolbar-stats {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pill {
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--green-50);
+  color: var(--green-700);
+  font-size: 13px;
+}
+
+.pill-amber {
+  background: #fdf4e3;
+  color: var(--amber);
+}
+
+.pill-blue {
+  background: #e8f1fd;
+  color: var(--blue);
+}
+
+.pill-green {
+  background: #e3f6ea;
+  color: #158a54;
+}
+
+/* Overdue accounts are the one thing an office must not miss on this screen. */
+.pill-red {
+  background: #fdeaea;
+  color: #c0392b;
+}
+
+.pill-red strong {
+  color: #c0392b;
+}
+
+/* ---------------- Table ---------------- */
+/* The wrapper is what makes a wide table usable on a phone. Nine columns
+   cannot honestly fit 390px — squeezing them turns headers into a wall of
+   letters — so the table keeps a readable minimum width and the wrapper
+   scrolls sideways instead. `-webkit-overflow-scrolling: touch` keeps that
+   scroll smooth on iOS. */
+.admin-view .table-wrap {
+  max-width: none;
+  margin: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+/* Thirteen columns in roughly 1,000px: the table is allowed to wrap its text
+   rather than force the Guardian, Contact and Actions columns off-screen.
+   Money and date columns are kept wider because 13 columns of "₱31,000" on a
+   narrow screen wrap badly, and a wrapped figure is easy to misread. */
+.admin-table {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+}
+
+/* The students table is the widest on the sheet. A pixel floor keeps its
+   thirteen columns legible at every size; when the viewport is narrower than
+   the floor the wrapper scrolls to reach the rest instead of crushing columns. */
+.table-students {
+  min-width: 1100px;
+}
+
+/* Below the tablet breakpoint the fixed percentage columns stop being legible,
+   so the table takes a pixel floor and the wrapper scrolls to reach the rest. */
+@media (max-width: 900px) {
+  .admin-table {
+    min-width: 880px;
+  }
+
+  .table-students {
+    min-width: 1100px;
+  }
+
+  .table-admins {
+    min-width: 620px;
+  }
+
+  .payment-table {
+    min-width: 760px;
+  }
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 12px 10px;
+  /* "break-word" split real words into single letters on a narrow column
+     ("GUARDIA / N", "Gra..."). Long tokens still need to break somewhere, but
+     ordinary words must stay whole. */
+  overflow-wrap: anywhere;
+}
+
+/* A cell clips its content rather than letting it spill over the neighbour.
+   This is what stopped a wide "₱31,000" from overlapping the Paid column.
+   Text cells ellipsize so a shortened value reads as "Gra…", not "Gra". */
+.admin-table td {
+  vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Fixed column budgets, one per table, each summing to 100%. Every column
+   MUST have a width: under `table-layout: fixed` an unlisted column collapses
+   to zero and its cells wrap into a column of single letters, dragging every
+   row to ~200px tall. Three tables share the .admin-table look but have
+   different column counts, so the budget is scoped by the modifier class
+   on each table. */
+
+/* Students — 13 columns. Money and date columns need room for "₱31,000" and
+   "Sep 20, 2025" on one line; the text columns can ellipsize instead. */
+.table-students th:nth-child(1)  { width: 8%; }   /* ID */
+.table-students th:nth-child(2)  { width: 9%; }   /* Name */
+.table-students th:nth-child(3)  { width: 8%; }   /* Grade */
+.table-students th:nth-child(4)  { width: 7%; }   /* Section */
+.table-students th:nth-child(5)  { width: 8%; }   /* Status */
+.table-students th:nth-child(6)  { width: 8%; }   /* Tuition Fee */
+.table-students th:nth-child(7)  { width: 6%; }   /* Paid */
+.table-students th:nth-child(8)  { width: 8%; }   /* Balance */
+.table-students th:nth-child(9)  { width: 8%; }   /* Due Date */
+.table-students th:nth-child(10) { width: 7%; }   /* Last Payment */
+.table-students th:nth-child(11) { width: 8%; }   /* Guardian */
+.table-students th:nth-child(12) { width: 8%; }   /* Contact */
+.table-students th:nth-child(13) { width: 7%; }   /* Actions */
+
+/* Numbers and dates must never split across a line — a wrapped "₱31,000" reads
+   as two different figures. */
+.table-students td.money-cell,
+.table-students td.balance-cell,
+.table-students td.date-cell,
+.table-students td.due-cell {
+  white-space: nowrap;
+  word-break: normal;
+}
+
+.table-students td.date-cell,
+.table-students td.due-cell {
+  font-size: 12.5px;
+}
+
+/* Approvals — 7 columns. */
+.table-approvals th:nth-child(1) { width: 14%; }  /* Student ID */
+.table-approvals th:nth-child(2) { width: 18%; }  /* Registered as */
+.table-approvals th:nth-child(3) { width: 22%; }  /* Email */
+.table-approvals th:nth-child(4) { width: 12%; }  /* On roster */
+.table-approvals th:nth-child(5) { width: 12%; }  /* Requested */
+.table-approvals th:nth-child(6) { width: 10%; }  /* Status */
+.table-approvals th:nth-child(7) { width: 12%; }  /* Actions */
+
+/* Administrators — 5 columns. */
+.table-admins th:nth-child(1) { width: 22%; }     /* Username */
+.table-admins th:nth-child(2) { width: 28%; }     /* Name */
+.table-admins th:nth-child(3) { width: 18%; }     /* Role */
+.table-admins th:nth-child(4) { width: 14%; }     /* Status */
+.table-admins th:nth-child(5) { width: 18%; }     /* Actions */
+
+/* Short single-word headers stay on one line; the students table has several
+   two-word headers ("Tuition Fee", "Last Payment") whose columns are too narrow
+   for that, so there they are allowed to wrap instead of overlapping the
+   neighbouring header. */
+.admin-table th {
+  white-space: nowrap;
+}
+
+.table-students th {
+  white-space: normal;
+  font-size: 11.5px;
+  line-height: 1.25;
+}
+
+.admin-table td:nth-child(1) {
+  white-space: nowrap;
+}
+
+.admin-table input.cell-input {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13.5px;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The status dropdown keeps its colour bar but needs breathing room so the
+   label is not jammed against the border. */
+.admin-table select.cell-input {
+  min-width: 0;
+  padding: 8px 22px 8px 10px;
+  border-left-width: 4px;
+}
+
+.admin-table .balance-cell input.cell-input {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.admin-table input.cell-input:hover {
+  border-color: var(--line);
+  background: #fbfdfb;
+}
+
+.admin-table input.cell-input:focus {
+  outline: none;
+  border-color: var(--green-600);
+  background: #fff;
+  box-shadow: var(--ring);
+}
+
+.balance-cell {
+  font-variant-numeric: tabular-nums;
+}
+
+.row-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.icon-btn {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.18s var(--ease);
+}
+
+.icon-btn:hover {
+  border-color: var(--green-600);
+  color: var(--green-700);
+  background: var(--green-50);
+}
+
+.icon-btn.danger:hover {
+  border-color: #d64545;
+  color: #d64545;
+  background: #fdeaea;
+}
+
+.table-empty {
+  text-align: center;
+  color: var(--muted);
+  padding: 34px 0 !important;
+}
+
+/* ---------------- Payments ---------------- */
+.payment-table {
+  min-width: 0;
+  table-layout: fixed;
+  width: 100%;
+}
+
+.payment-table th,
+.payment-table td {
+  padding: 12px 10px;
+  overflow-wrap: anywhere;
+}
+
+.payment-table th:nth-child(1) { width: 11%; }  /* Date */
+.payment-table th:nth-child(2) { width: 10%; }  /* Receipt */
+.payment-table th:nth-child(3) { width: 22%; }  /* Student */
+.payment-table th:nth-child(4) { width: 12%; }  /* Amount */
+.payment-table th:nth-child(5) { width: 13%; }  /* Method */
+.payment-table th:nth-child(6) { width: 12%; }  /* Received by */
+.payment-table th:nth-child(7) { width: 14%; }  /* Note */
+.payment-table th:nth-child(8) { width: 6%; }   /* Actions */
+
+.payment-table th {
+  white-space: nowrap;
+}
+
+.amount-cell {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--green-800);
+}
+
+/* ---------------- Tuition columns ---------------- */
+.admin-table th.num {
+  text-align: right;
+}
+
+.money-cell {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--green-800);
+}
+
+.balance-cell {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.balance-cell.owes {
+  color: #c0392b;
+}
+
+.balance-cell.settled {
+  color: #158a54;
+}
+
+/* Paid, Balance and Last Payment are computed from the ledger, so they are
+   shown as plain values rather than as fields waiting to be typed into. */
+.is-readonly {
+  color: var(--muted);
+}
+
+.admin-table td.date-cell {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.admin-table td.due-cell {
+  font-size: 12px;
+}
+
+.admin-table td.due-cell .badge {
+  display: inline-block;
+  margin-right: 6px;
+  font-size: 11px;
+  padding: 3px 8px;
+}
+
+/* Only shown alongside a badge, so the exact date is never lost. */
+.due-date {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.badge-red {
+  background: #fdeaea;
+  color: #c0392b;
+}
+
+/* ---------------- Tuition form section ---------------- */
+.form-section-title {
+  margin: 22px 0 4px;
+  padding-top: 18px;
+  border-top: 1px solid #e6ebe8;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.form-note {
+  margin: 0 0 14px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.field-readonly input {
+  background: #f4f6f5;
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+/* Current-balance reminder inside the record-payment form. */
+.balance-preview {
+  margin: 0 0 18px;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  background: var(--green-50);
+  color: var(--green-800);
+  font-size: 14px;
+}
+
+.balance-preview.is-clear {
+  background: #fdf4e3;
+  color: var(--amber);
+}
+
+.balance-preview.is-overdue {
+  background: #fdeaea;
+  color: #c0392b;
+}
+
+/* The payment form now shows the whole tuition breakdown, so the preview is a
+   small stacked statement rather than one line of prose. */
+.balance-preview .preview-name {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: inherit;
+}
+
+.balance-preview .preview-line {
+  display: inline-block;
+  margin-right: 16px;
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.balance-preview .preview-line.is-strong {
+  opacity: 1;
+  font-weight: 700;
+}
+
+.history-total {
+  margin: 16px 0 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* ---------------- Logs ---------------- */
+.log-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.log-item {
+  display: grid;
+  grid-template-columns: 160px 150px 1fr;
+  gap: 16px;
+  align-items: baseline;
+  padding: 15px 20px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--green-600);
+  border-radius: var(--radius);
+  font-size: 14px;
+}
+
+.log-when {
+  color: var(--muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.log-who {
+  font-weight: 700;
+  color: var(--green-800);
+}
+
+.log-what {
+  color: var(--ink);
+}
+
+.log-action {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--green-50);
+  color: var(--green-700);
+  margin-right: 8px;
+}
+
+.log-action.danger {
+  background: #fdeaea;
+  color: #b03030;
+}
+
+/* ---------------- Modals ---------------- */
+.modal-wide {
+  width: min(660px, 100%);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 18px;
+}
+
+.form-grid .full {
+  grid-column: 1 / -1;
+}
+
+.field select {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 15px;
+  background: #fbfdfb;
+  color: var(--ink);
+}
+
+.field select:focus {
+  outline: none;
+  border-color: var(--green-600);
+  box-shadow: var(--ring);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+/* ---------------- Toast ---------------- */
+.toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 200;
+  padding: 14px 20px;
+  border-radius: var(--radius);
+  background: var(--green-800);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  box-shadow: var(--shadow-lg);
+  opacity: 0;
+  transform: translateY(14px);
+  pointer-events: none;
+  transition: opacity 0.25s var(--ease), transform 0.25s var(--ease);
+}
+
+.toast.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.toast.is-error {
+  background: #b03030;
+}
+
+/* ---------------- Responsive ---------------- */
+@media (max-width: 900px) {
+  .admin-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-sidebar {
+    position: static;
+    height: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .sidebar-brand {
+    border: 0;
+    padding: 0;
+    margin: 0;
+  }
+
+  .sidebar-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    flex: 1 1 100%;
+  }
+
+  .sidebar-foot {
+    border: 0;
+    padding: 0;
+    margin-left: auto;
+  }
+
+  .who {
+    display: none;
+  }
+
+  .admin-view,
+  .admin-topbar {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .log-item {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Phone: the topbar's action buttons wrap into a half-width pair that overflows
+   its card, so give them the full row and let them stack. */
+@media (max-width: 640px) {
+  .admin-topbar {
+    gap: 14px;
+    padding: 18px;
+  }
+
+  .admin-topbar h1 {
+    font-size: 20px;
+  }
+
+  .topbar-actions {
+    width: 100%;
+  }
+
+  .topbar-actions .btn {
+    flex: 1 1 100%;
+    width: 100%;
+    text-align: center;
+  }
+
+  .admin-toolbar {
+    align-items: stretch;
+  }
+
+  .inline-field {
+    flex: 1 1 100%;
+  }
+}
+
+/* ================= Student account approvals =================
+   Added with the student sign-up workflow: a badge on the nav item, and the
+   approval queue table in the Approvals view. */
+
+/* The badge is the office's cue that a student is blocked until somebody acts,
+   so it is loud on purpose and pulses while anything is waiting. */
+.side-badge {
+  margin-left: auto;
+  min-width: 22px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #d64545;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.side-badge.is-pulsing {
+  animation: side-badge-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes side-badge-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(214, 69, 69, 0.6); }
+  50%      { box-shadow: 0 0 0 6px rgba(214, 69, 69, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .side-badge.is-pulsing { animation: none; }
+}
+
+/* The soft "waiting" state on a row that nobody has actioned yet. */
+.admin-table tr.is-awaiting {
+  background: #fffdf6;
+}
+
+.admin-table tr.is-awaiting td:first-child {
+  box-shadow: inset 3px 0 0 #b7791f;
+}
+
+/* Compact buttons for the approve / reject pair on each row. Full-size buttons
+   would push the actions column far wider than the rest of the table. */
+.btn-mini {
+  width: auto;
+  padding: 6px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.btn-mini:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* The roster cross-check: shows which real student an account belongs to. */
+.roster-name {
+  display: block;
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+/* ---------------- Approval review panel ----------------
+   Opened by "Review" on a pending row. The office compares the student's own
+   answers with what the school already holds for that ID, so a name or
+   birthdate that does not match is visible before the account is approved. */
+tr.review-row > td {
+  padding: 0;
+  background: #f7faf7;
+  border-bottom: 1px solid var(--line);
+}
+
+.review-panel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
+  padding: 18px 20px 20px;
+}
+
+@media (max-width: 900px) {
+  .review-panel {
+    grid-template-columns: 1fr;
+  }
+}
+
+.review-col h4 {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--green-700, #2f6b46);
+}
+
+.review-col-file h4 {
+  color: #64748b;
+}
+
+.review-line {
+  display: grid;
+  grid-template-columns: 42% 58%;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px dashed #e2e8e4;
+  font-size: 13px;
+}
+
+.review-line:last-child {
+  border-bottom: 0;
+}
+
+.review-key {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.review-val {
+  color: var(--ink, #1f2937);
+  overflow-wrap: anywhere;
+}
+
+.review-empty {
+  color: #b45309;
+  font-style: italic;
+}
+
+.review-note {
+  margin: 12px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.review-ok {
+  color: #2f6b46;
+}
+
+.review-bad {
+  color: #b42318;
+}

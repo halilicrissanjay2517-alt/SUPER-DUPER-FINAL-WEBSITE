@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard — Saint Patrick's Academy, Inc.</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin-body">
+    <!-- ================= LOGIN GATE ================= -->
+    <div class="admin-login" id="adminLogin">
+        <form class="login-card" id="loginForm">
+            <img src="logo.png" alt="" class="login-logo">
+            <h1>Administrator Sign In</h1>
+            <p class="muted">Saint Patrick's Academy, Inc. — Portal Management</p>
+
+            <label class="field">
+                <span>Username</span>
+                <input type="text" name="username" required autocomplete="username" placeholder="admin">
+            </label>
+            <label class="field">
+                <span>Password</span>
+                <input type="password" name="password" required autocomplete="current-password" placeholder="••">
+            </label>
+
+            <button type="submit" class="btn btn-primary btn-block">Sign In</button>
+            <p class="form-status" id="loginStatus" role="status" aria-live="polite"></p>
+
+            <p class="login-hint">
+                First run seeds two accounts: <strong>admin</strong> (superadmin) and
+                <strong>registrar</strong> (registrar). Their passwords are printed when
+                the server starts — change them before this site is on a public network.
+            </p>
+        </form>
+    </div>
+
+    <!-- ================= DASHBOARD ================= -->
+    <div class="admin-shell" id="adminShell" hidden>
+        <aside class="admin-sidebar">
+            <div class="sidebar-brand">
+                <img src="logo.png" alt="">
+                <div>
+                    <strong>SPA Admin</strong>
+                    <small>Control Panel</small>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <button type="button" class="side-link is-active" data-view="students">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-4 0-8 2-8 5v3h16v-3c0-3-4-5-8-5Z"/></svg>
+                    Students
+                </button>
+                <button type="button" class="side-link" data-view="approvals">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2Z"/></svg>
+                    Approvals
+                    <span class="side-badge" id="pendingBadge" hidden>0</span>
+                </button>
+                <button type="button" class="side-link" data-view="payments">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M3 6h18v12H3V6Zm2 3v2h14V9H5Zm0 4v3h6v-3H5Z"/></svg>
+                    Payments
+                </button>
+                <button type="button" class="side-link" data-view="admins" data-super-only>
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M12 2 3 6v6c0 5 3.8 9.4 9 10 5.2-.6 9-5 9-10V6l-9-4Z"/></svg>
+                    Administrators
+                </button>
+                <button type="button" class="side-link" data-view="logs">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M4 4h16v2H4V4Zm0 5h16v2H4V9Zm0 5h10v2H4v-2Z"/></svg>
+                    Activity Log
+                </button>
+            </nav>
+
+            <div class="sidebar-foot">
+                <div class="who">
+                    <span class="avatar" id="userInitial">A</span>
+                    <div>
+                        <strong id="userName">—</strong>
+                        <small id="userRole">—</small>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-ghost btn-block" id="logoutBtn">Sign out</button>
+            </div>
+        </aside>
+
+        <main class="admin-main">
+            <header class="admin-topbar">
+                <div>
+                    <h1 id="viewTitle">Students</h1>
+                    <p class="muted" id="viewSubtitle">Manage student records and balances.</p>
+                </div>
+                <div class="topbar-actions">
+                    <a class="btn btn-secondary" href="studentportal.html" target="_blank" rel="noopener">View site</a>
+                    <button type="button" class="btn btn-secondary" id="addPaymentBtn">+ Record payment</button>
+                    <button type="button" class="btn btn-primary" id="addStudentBtn">+ Add student</button>
+                </div>
+            </header>
+
+            <!-- ---- Students view ---- -->
+            <section class="admin-view" id="viewStudents">
+                <div class="admin-toolbar">
+                    <label class="field inline-field">
+                        <span class="sr-only">Search</span>
+                        <input type="search" id="adminSearch" placeholder="Search by ID, name, grade, or section…">
+                    </label>
+                    <div class="toolbar-stats">
+                        <span class="pill"><strong id="statTotal">0</strong> students</span>
+                        <span class="pill pill-green"><strong id="statPaid">₱0</strong> collected</span>
+                        <span class="pill pill-amber"><strong id="statBalance">₱0</strong> outstanding</span>
+                        <span class="pill pill-blue"><strong id="statPending">0</strong> unpaid</span>
+                        <span class="pill pill-red"><strong id="statOverdue">0</strong> overdue</span>
+                    </div>
+                </div>
+
+                <div class="table-wrap">
+                    <table class="data-table admin-table table-students">
+                        <thead>
+                            <tr>
+                                <th scope="col">ID</th>
+                                <th scope="col">Name</th>
+                                <th scope="col">Grade</th>
+                                <th scope="col">Section</th>
+                                <th scope="col">Status</th>
+                                <th scope="col" class="num">Tuition Fee</th>
+                                <th scope="col" class="num">Paid</th>
+                                <th scope="col" class="num">Balance</th>
+                                <th scope="col">Due Date</th>
+                                <th scope="col">Last Payment</th>
+                                <th scope="col">Guardian</th>
+                                <th scope="col">Contact</th>
+                                <th scope="col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminRows">
+                            <tr><td colspan="13" class="table-empty">Loading…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="empty-state" id="adminEmpty" hidden>No students match your search.</p>
+            </section>
+
+            <!-- ---- Approvals view ----
+                 Students sign up themselves, and every account lands here as
+                 "pending" until an administrator makes it usable. -->
+            <section class="admin-view" id="viewApprovals" hidden>
+                <div class="admin-toolbar">
+                    <p class="muted">
+                        Student accounts waiting for approval. A student cannot sign in to the
+                        portal until their account is approved here.
+                    </p>
+                    <div class="toolbar-stats">
+                        <span class="pill pill-amber">
+                            <strong id="approvalPendingCount">0</strong> awaiting approval
+                        </span>
+                        <span class="pill"><strong id="approvalActiveCount">0</strong> active</span>
+                        <span class="pill pill-red">
+                            <strong id="approvalRejectedCount">0</strong> rejected
+                        </span>
+                    </div>
+                </div>
+
+                <div class="filter-bar" role="group" aria-label="Filter student accounts">
+                    <button type="button" class="chip is-active" data-account-filter="pending">Pending</button>
+                    <button type="button" class="chip" data-account-filter="active">Active</button>
+                    <button type="button" class="chip" data-account-filter="rejected">Rejected</button>
+                    <button type="button" class="chip" data-account-filter="all">All accounts</button>
+                </div>
+
+                <div class="table-wrap">
+                    <table class="data-table admin-table table-approvals">
+                        <thead>
+                            <tr>
+                                <th scope="col">Student ID</th>
+                                <th scope="col">Registered as</th>
+                                <th scope="col">Email</th>
+                                <th scope="col">On roster</th>
+                                <th scope="col">Requested</th>
+                                <th scope="col">Status</th>
+                                <th scope="col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="approvalRows">
+                            <tr><td colspan="7" class="table-empty">Loading…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="empty-state" id="approvalEmpty" hidden>
+                    Nothing here. Student account requests appear the moment a student registers.
+                </p>
+            </section>
+
+            <!-- ---- Payments view ---- -->
+            <section class="admin-view" id="viewPayments" hidden>
+                <div class="admin-toolbar">
+                    <label class="field inline-field">
+                        <span class="sr-only">Search payments</span>
+                        <input type="search" id="paymentSearch" placeholder="Search by receipt no, student, or method…">
+                    </label>
+                    <div class="toolbar-stats">
+                        <span class="pill"><strong id="payCount">0</strong> payments</span>
+                        <span class="pill pill-amber"><strong id="payTotal">₱0</strong> collected</span>
+                        <span class="pill pill-blue">
+                            Next receipt <strong id="nextReceipt">R-1001</strong>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="table-wrap">
+                    <table class="data-table payment-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Date</th>
+                                <th scope="col">Receipt</th>
+                                <th scope="col">Student</th>
+                                <th scope="col">Amount</th>
+                                <th scope="col">Method</th>
+                                <th scope="col">Received by</th>
+                                <th scope="col">Note</th>
+                                <th scope="col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="paymentRows">
+                            <tr><td colspan="8" class="table-empty">Loading…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="empty-state" id="paymentEmpty" hidden>
+                    No payments recorded yet. Use <strong>+ Record payment</strong> to add the first one.
+                </p>
+            </section>
+
+            <!-- ---- Administrators view ---- -->
+            <section class="admin-view" id="viewAdmins" hidden>
+                <div class="admin-toolbar">
+                    <p class="muted">Add or disable administrators. Only superadmins can manage accounts.</p>
+                    <button type="button" class="btn btn-primary" id="addAdminBtn">+ Add administrator</button>
+                </div>
+                <div class="table-wrap">
+                    <table class="data-table admin-table table-admins">
+                        <thead>
+                            <tr>
+                                <th scope="col">Username</th>
+                                <th scope="col">Name</th>
+                                <th scope="col">Role</th>
+                                <th scope="col">Status</th>
+                                <th scope="col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminList">
+                            <tr><td colspan="5" class="table-empty">Loading…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ---- Logs view ---- -->
+            <section class="admin-view" id="viewLogs" hidden>
+                <div class="admin-toolbar">
+                    <p class="muted">Every change made by every administrator, newest first.</p>
+                </div>
+                <ul class="log-list" id="logList">
+                    <li class="table-empty">Loading…</li>
+                </ul>
+            </section>
+        </main>
+    </div>
+
+    <!-- ================= EDIT STUDENT MODAL ================= -->
+    <div class="modal" id="studentModal" hidden>
+        <div class="modal-backdrop" data-close-modal></div>
+        <div class="modal-card modal-wide" role="dialog" aria-modal="true" aria-labelledby="studentModalTitle">
+            <button type="button" class="modal-close" data-close-modal aria-label="Close">&times;</button>
+            <h2 id="studentModalTitle">Edit student</h2>
+            <p class="muted">Update any field and save. Changes are written to the Excel database.</p>
+
+            <form id="studentForm">
+                <div class="form-grid">
+                    <label class="field"><span>Student ID</span><input name="id" required></label>
+                    <label class="field"><span>Full name</span><input name="name" required></label>
+                    <label class="field"><span>Grade</span><input name="grade" placeholder="Grade 10" id="studentGrade"></label>
+                    <label class="field"><span>Section</span><input name="section" placeholder="St. Patrick"></label>
+                    <label class="field">
+                        <span>Status</span>
+                        <select name="status">
+                            <option>Enrolled</option>
+                            <option>Pending</option>
+                            <option>Partial</option>
+                            <option>Paid</option>
+                            <option>Dropped</option>
+                            <option>Graduated</option>
+                        </select>
+                    </label>
+                    <label class="field"><span>Guardian</span><input name="guardian"></label>
+                    <label class="field"><span>Contact</span><input name="contact"></label>
+                    <label class="field"><span>Email</span><input name="email" type="email"></label>
+                </div>
+
+                <h3 class="form-section-title">Tuition</h3>
+                <p class="muted form-note">
+                    The balance is calculated as <strong>Tuition Fee − Total Paid</strong>, so it always
+                    matches the payment history. Record payments in <strong>Record payment</strong>;
+                    they cannot be typed in here.
+                </p>
+                <div class="form-grid">
+                    <label class="field">
+                        <span>Tuition Fee (₱)</span>
+                        <input name="totalFee" type="number" min="0" step="1" placeholder="0" id="studentFee">
+                    </label>
+                    <label class="field">
+                        <span>Payment Due Date</span>
+                        <input name="dueDate" type="date" id="studentDue">
+                    </label>
+                    <label class="field"><span>Total Paid (₱)</span><input name="amountPaid" readonly class="field-readonly"></label>
+                    <label class="field"><span>Remaining Balance (₱)</span><input name="balance" readonly class="field-readonly"></label>
+                    <label class="field full"><span>Last Payment Date</span><input name="lastPaymentDate" readonly class="field-readonly"></label>
+                </div>
+                <p class="balance-preview" id="studentBillingPreview" hidden></p>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save changes</button>
+                </div>
+                <p class="form-status" id="studentStatus" role="status" aria-live="polite"></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= RECORD PAYMENT MODAL ================= -->
+    <div class="modal" id="paymentModal" hidden>
+        <div class="modal-backdrop" data-close-modal></div>
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="paymentModalTitle">
+            <button type="button" class="modal-close" data-close-modal aria-label="Close">&times;</button>
+            <h2 id="paymentModalTitle">Record a payment</h2>
+            <p class="muted">The amount is deducted from the student's balance automatically, and today's date is saved as their last payment date.</p>
+
+            <form id="paymentForm">
+                <label class="field">
+                    <span>Student</span>
+                    <select name="studentId" required id="paymentStudent">
+                        <option value="">Select a student…</option>
+                    </select>
+                </label>
+
+                <p class="balance-preview" id="balancePreview" hidden></p>
+
+                <div class="form-grid">
+                    <label class="field">
+                        <span>Amount (₱)</span>
+                        <input name="amount" type="number" min="1" step="1" required placeholder="0">
+                    </label>
+                    <label class="field">
+                        <span>Date paid</span>
+                        <input name="date" type="date" required>
+                    </label>
+                    <label class="field">
+                        <span>Method</span>
+                        <select name="method">
+                            <option>Cash</option>
+                            <option>Bank deposit</option>
+                            <option>Online transfer</option>
+                            <option>GCash</option>
+                            <option>Check</option>
+                        </select>
+                    </label>
+                    <label class="field">
+                        <span>Receipt no</span>
+                        <input name="receiptNo" id="paymentReceipt" readonly>
+                    </label>
+                    <label class="field full">
+                        <span>Note (optional)</span>
+                        <input name="note" placeholder="e.g. 2nd quarter partial payment">
+                    </label>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save payment</button>
+                </div>
+                <p class="form-status" id="paymentStatus" role="status" aria-live="polite"></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= PAYMENT HISTORY MODAL ================= -->
+    <div class="modal" id="historyModal" hidden>
+        <div class="modal-backdrop" data-close-modal></div>
+        <div class="modal-card modal-wide" role="dialog" aria-modal="true" aria-labelledby="historyModalTitle">
+            <button type="button" class="modal-close" data-close-modal aria-label="Close">&times;</button>
+            <h2 id="historyModalTitle">Payment history</h2>
+            <p class="muted" id="historySubtitle"></p>
+            <div id="historyBody"></div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" data-close-modal>Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= ADD ADMIN MODAL ================= -->
+    <div class="modal" id="adminModal" hidden>
+        <div class="modal-backdrop" data-close-modal></div>
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="adminModalTitle">
+            <button type="button" class="modal-close" data-close-modal aria-label="Close">&times;</button>
+            <h2 id="adminModalTitle">Add administrator</h2>
+            <p class="muted">They can sign in immediately with these credentials.</p>
+
+            <form id="adminForm">
+                <label class="field"><span>Username</span><input name="username" required></label>
+                <label class="field"><span>Display name</span><input name="name" placeholder="Records Officer"></label>
+                <label class="field">
+                    <span>Role</span>
+                    <select name="role">
+                        <option value="staff">Staff — edit students only</option>
+                        <option value="registrar">Registrar — edit students</option>
+                        <option value="superadmin">Superadmin — full control</option>
+                    </select>
+                </label>
+                <label class="field"><span>Password</span><input name="password" type="password" required minlength="6"></label>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create account</button>
+                </div>
+                <p class="form-status" id="adminStatus" role="status" aria-live="polite"></p>
+            </form>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,2557 @@
+:root {
+  /* ---------- Academy palette ----------
+     A deeper, richer emerald for identity, warmed by antique gold. The greens
+     are desaturated slightly and the neutrals warmed so the page reads like
+     printed institutional stationery rather than flat web defaults. */
+  --green-900: #04231a;
+  --green-800: #0a4a30;
+  --green-700: #0d5f3d;
+  --green-600: #12794c;
+  --green-500: #1a8f5c;
+  --green-50: #e8f3ec;
+  --green-100: #d3e8dc;
+
+  /* Warm off-white neutrals — pure #fff/#f4f7f2 reads blue and sterile. */
+  --ink: #14261d;
+  --ink-soft: #2d4438;
+  --muted: #5a6d62;
+  --line: #dbe6de;
+  --line-strong: #c3d5c9;
+  --surface: #ffffff;
+  --canvas: #f6f4ee;
+  --canvas-2: #f1eee6;
+
+  /* Antique gold — the second accent that stops the site looking single-tone. */
+  --gold-600: #9a7418;
+  --gold-500: #b8891f;
+  --gold-400: #d4a72c;
+  --gold-100: #f7ecd2;
+  --gold-50: #fbf6e9;
+
+  --amber: #b8891f;
+  --blue: #1c62b8;
+  --purple: #6b46c1;
+
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 18px;
+
+  /* Layered, tinted shadows — a single soft shadow looks flat and fake.
+     Two stacked shadows (tight contact + wide ambient) read as real depth. */
+  --shadow-sm: 0 1px 2px rgba(6, 35, 26, 0.07), 0 2px 6px rgba(6, 35, 26, 0.05);
+  --shadow: 0 2px 4px rgba(6, 35, 26, 0.06), 0 10px 24px rgba(6, 35, 26, 0.09);
+  --shadow-lg: 0 4px 10px rgba(6, 35, 26, 0.09), 0 22px 48px rgba(6, 35, 26, 0.16);
+
+  --ring: 0 0 0 3px rgba(18, 121, 76, 0.35);
+  --ring-gold: 0 0 0 3px rgba(212, 167, 44, 0.4);
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* A hairline gold rule used for headers and dividers. */
+  --gold-rule: linear-gradient(90deg, transparent, var(--gold-400) 18%, var(--gold-400) 82%, transparent);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
+  color: var(--ink);
+  background: var(--canvas);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+ h2,
+ h3 {
+  line-height: 1.2;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  left: -999px;
+  top: 0;
+  z-index: 100;
+  background: var(--surface);
+  color: var(--green-800);
+  padding: 12px 18px;
+  border-radius: 0 0 var(--radius-sm) 0;
+  font-weight: 700;
+}
+
+.skip-link:focus {
+  left: 0;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+  border-radius: var(--radius-sm);
+}
+
+.icon {
+  width: 1.15em;
+  height: 1.15em;
+  fill: currentColor;
+  flex: none;
+}
+
+/* ---------- Utility bar ---------- */
+.utility-bar {
+  background: var(--green-900);
+  color: #cfe6da;
+  font-size: 13px;
+}
+
+.utility-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 9px 24px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  align-items: center;
+}
+
+.utility-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.utility-note {
+  margin-left: auto;
+  opacity: 0.85;
+}
+
+/* ---------- Header ---------- */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(12px) saturate(1.2);
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 6px 20px rgba(6, 35, 26, 0.05);
+}
+
+/* A fine gold rule beneath the header — the kind of detail printed letterheads
+   carry, and the cheapest way to make a page feel considered. */
+.site-header::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--gold-rule);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.nav {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-decoration: none;
+  color: var(--ink);
+}
+
+.brand img {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  border-radius: 50%;
+  padding: 3px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.brand-text strong {
+  font-size: 15px;
+}
+
+.brand-text small {
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.nav-links > a {
+  position: relative;
+  padding: 9px 14px;
+  color: var(--ink);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+  border-radius: var(--radius-sm);
+  transition: background 0.2s var(--ease), color 0.2s var(--ease);
+}
+
+/* An underline that grows from the centre on hover and stays put when active. */
+.nav-links > a::after {
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 4px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--green-600);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.25s var(--ease);
+}
+
+.nav-links > a:hover::after,
+.nav-links > a.is-current::after {
+  transform: scaleX(1);
+}
+
+.nav-links > a:hover {
+  background: var(--green-50);
+  color: var(--green-800);
+}
+
+.nav-admin {
+  border: 1px solid var(--green-600) !important;
+  color: var(--green-700) !important;
+}
+
+.nav-admin:hover {
+  background: var(--green-600) !important;
+  color: #fff !important;
+}
+
+.nav-toggle {
+  display: none;
+}
+
+.mobile-menu {
+  display: none;
+  flex-direction: column;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  padding: 8px 24px 16px;
+}
+
+.mobile-menu a {
+  padding: 12px 4px;
+  text-decoration: none;
+  color: var(--ink);
+  font-weight: 600;
+  border-bottom: 1px solid var(--line);
+}
+
+/* ---------- Buttons ---------- */
+.btn {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 13px 22px;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 0.2s var(--ease), box-shadow 0.25s var(--ease), background 0.2s var(--ease);
+}
+
+/* A light sweeps across the button as the pointer lands on it. */
+.btn::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.32), transparent);
+  transform: translateX(-140%) skewX(-18deg);
+  transition: transform 0.6s var(--ease);
+  pointer-events: none;
+}
+
+.btn:hover::after {
+  transform: translateX(240%) skewX(-18deg);
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+}
+
+.btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.btn-primary {
+  background: var(--green-800);
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(11, 92, 52, 0.28);
+}
+
+.btn-primary:hover {
+  background: var(--green-700);
+  box-shadow: 0 16px 34px rgba(11, 92, 52, 0.36);
+}
+
+.btn-secondary {
+  background: var(--surface);
+  color: var(--green-800);
+  border-color: var(--line);
+}
+
+.btn-secondary:hover {
+  background: var(--green-50);
+  border-color: var(--green-600);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--ink);
+  padding: 9px 12px;
+}
+
+.btn-block {
+  width: 100%;
+}
+
+/* ---------- Hero ---------- */
+.hero {
+  position: relative;
+  overflow: hidden;
+  color: #fff;
+  background: var(--green-900);
+
+  /* Fill the first screen so the campus photo reads as a full-screen
+     backdrop, with a floor so the text always has room on short screens. */
+  min-height: clamp(560px, 88svh, 900px);
+  display: flex;
+  align-items: center;
+}
+
+/* The campus photo lives in its own layer so it can drift on scroll (parallax)
+   without dragging the text along with it.
+   `cover` fills the whole area edge to edge — no letterbox strips. Pair it with
+   a slightly larger inset so the parallax drift never exposes an edge. */
+.hero-bg {
+  position: absolute;
+  inset: -6% 0;
+  background: url("bg.jpg") center/cover no-repeat;
+  will-change: transform;
+}
+
+/* The dark wash sits above the photo and stays put. Kept light enough that the
+   campus photo reads clearly as the hero, while still giving white text
+   something to sit on. Heavier on the left where the copy is. */
+.hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(100deg, rgba(4, 28, 19, 0.82), rgba(6, 48, 32, 0.58), rgba(6, 48, 32, 0.22)),
+    linear-gradient(180deg, transparent 60%, rgba(4, 28, 19, 0.42));
+  pointer-events: none;
+}
+
+/* Fine film grain over the hero. Flat gradients look like plastic; a little
+   noise gives the photo the tooth of a printed prospectus. */
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.5;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.32'/%3E%3C/svg%3E");
+}
+
+/* A soft light that follows the pointer, so the hero feels alive on hover. */
+.hero-spotlight {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s var(--ease);
+  background: radial-gradient(
+    340px circle at var(--spot-x, 50%) var(--spot-y, 50%),
+    rgba(212, 167, 44, 0.13),
+    rgba(126, 226, 168, 0.1) 40%,
+    transparent 70%
+  );
+}
+
+.hero:hover .hero-spotlight {
+  opacity: 1;
+}
+
+.hero-inner {
+  position: relative;
+  z-index: 2;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 84px 24px 96px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  align-items: center;
+  gap: 56px;
+}
+
+.eyebrow {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #a9e6c6;
+  margin-bottom: 14px;
+}
+
+.eyebrow-dark {
+  color: var(--green-600);
+}
+
+.intro h1 {
+  margin: 0 0 18px;
+  font-size: clamp(34px, 5vw, 58px);
+  letter-spacing: -0.02em;
+  text-shadow: 0 5px 22px rgba(0, 0, 0, 0.35);
+}
+
+.lead {
+  max-width: 620px;
+  margin: 0 0 28px;
+  color: #e6f4eb;
+  font-size: 18px;
+  text-shadow: 0 3px 14px rgba(0, 0, 0, 0.35);
+}
+
+.hero-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 32px;
+  padding: 22px 0;
+  margin-bottom: 28px;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.stat strong {
+  display: block;
+  font-size: 28px;
+  line-height: 1.1;
+}
+
+.stat span {
+  font-size: 13px;
+  color: #b9d9c8;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.hero-panel {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-lg);
+  padding: 22px;
+  backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-lg);
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.panel-head h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #7ee2a8;
+  box-shadow: 0 0 0 4px rgba(126, 226, 168, 0.25);
+}
+
+.update-list {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.update-list p {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: #dbeadf;
+}
+
+.panel-link {
+  color: #a9e6c6;
+  font-weight: 700;
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.panel-link:hover {
+  text-decoration: underline;
+}
+
+/* ---------- Tags / badges ---------- */
+.tag {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tag-green { background: var(--green-50); color: var(--green-700); }
+.tag-blue { background: #e8f1fd; color: var(--blue); }
+.tag-amber { background: #fdf4e3; color: var(--amber); }
+.tag-purple { background: #f0ebfa; color: var(--purple); }
+
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.badge-green { background: var(--green-50); color: var(--green-700); }
+.badge-blue { background: #e8f1fd; color: var(--blue); }
+.badge-amber { background: #fdf4e3; color: var(--amber); }
+.badge-red { background: #fdeaea; color: #c0392b; }
+
+/* ---------- Reading progress bar ---------- */
+.reading-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 60;
+  background: transparent;
+  pointer-events: none;
+}
+
+.reading-progress span {
+  display: block;
+  height: 100%;
+  width: 100%;
+  transform: scaleX(0);
+  transform-origin: left center;
+  background: linear-gradient(90deg, var(--green-600), var(--green-800));
+  transition: transform 0.1s linear;
+}
+
+/* ---------- Sections ---------- */
+section {
+  padding: 76px 24px;
+}
+
+/* Sections rise into view as they are scrolled to. The .reveal class is added
+   by script.js only when motion is welcome, so without JS (or with reduced
+   motion) every section simply renders normally. */
+.reveal {
+  opacity: 0;
+  transform: translateY(26px);
+  transition: opacity 0.6s var(--ease), transform 0.6s var(--ease);
+  will-change: opacity, transform;
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+.section-head {
+  max-width: 1200px;
+  margin: 0 auto 34px;
+}
+
+/* The active section lights up in the header as it comes into view. */
+.nav-links > a.is-current {
+  color: var(--green-800);
+  background: var(--green-50);
+}
+
+.section-title {
+  margin: 0 0 10px;
+  font-size: clamp(24px, 3vw, 34px);
+  color: var(--green-800);
+  letter-spacing: -0.01em;
+}
+
+.section-text {
+  max-width: 680px;
+  margin: 0;
+  color: var(--muted);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+/* ---------- Features ---------- */
+.features {
+  background: var(--canvas);
+}
+
+.feature-grid {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+}
+
+.feature-card {
+  padding: 28px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.28s var(--ease), box-shadow 0.28s var(--ease), border-color 0.28s var(--ease);
+  scroll-margin-top: 90px;
+}
+
+.feature-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 22px 44px rgba(15, 56, 35, 0.16);
+  border-color: #b9d6c4;
+}
+
+.feature-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: var(--radius);
+  background: var(--green-50);
+  color: var(--green-800);
+  font-size: 22px;
+  margin-bottom: 16px;
+  transition: transform 0.28s var(--ease), background 0.28s var(--ease), color 0.28s var(--ease);
+}
+
+.feature-card:hover .feature-icon {
+  transform: translateY(-2px) scale(1.08) rotate(-4deg);
+  background: var(--green-800);
+  color: #fff;
+}
+
+.feature-card .card-link::after {
+  content: " \2192";
+  display: inline-block;
+  transition: transform 0.25s var(--ease);
+}
+
+.feature-card:hover .card-link::after {
+  transform: translateX(4px);
+}
+
+.feature-card h3 {
+  margin: 0 0 10px;
+  color: var(--green-800);
+}
+
+.feature-card p {
+  margin: 0 0 18px;
+  color: var(--muted);
+}
+
+.card-link {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--green-700);
+  text-decoration: none;
+}
+
+.card-link:hover {
+  text-decoration: underline;
+}
+
+/* ---------- Patron & heritage ---------- */
+.patron {
+  background: linear-gradient(180deg, var(--green-50), var(--surface));
+  border-bottom: 1px solid var(--line);
+}
+
+.patron-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 52px;
+  align-items: start;
+}
+
+.patron-portrait {
+  margin: 0;
+  text-align: center;
+}
+
+/* A framed, softly glowing portrait, so the patron reads as a focal point. */
+.patron-frame {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--green-900);
+  box-shadow: var(--shadow-lg);
+  border: 6px solid var(--surface);
+  aspect-ratio: 3 / 4;
+}
+
+.patron-frame img {
+  width: 100%;
+  height: 100%;
+
+  /* The artwork is a framed painting with a shamrock border, so show all of it
+     rather than cropping the halo and the snake off the top and bottom.
+     `contain` letterboxes it inside the 3/4 frame instead of trimming it. */
+  object-fit: contain;
+  display: block;
+}
+
+/* Until patron.png exists, show a labelled slot instead of a broken image. */
+.patron-placeholder-text {
+  display: none;
+}
+
+.patron-frame.is-placeholder {
+  background:
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.03) 0 12px, transparent 12px 24px),
+    linear-gradient(160deg, var(--green-800), var(--green-900));
+  display: grid;
+  place-items: center;
+}
+
+.patron-frame.is-placeholder img {
+  display: none;
+}
+
+.patron-frame.is-placeholder .patron-placeholder-text {
+  display: block;
+  color: #a9d3bd;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.6;
+  padding: 0 18px;
+}
+
+.patron-frame.is-placeholder .patron-placeholder-text small {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.patron-portrait figcaption {
+  margin-top: 14px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--green-700);
+}
+
+.patron-lead {
+  font-size: 17px;
+  color: var(--ink);
+  margin: 0 0 18px;
+}
+
+.patron-disclaimer {
+  font-size: 13px;
+  background: #fff8e6;
+  border-left: 4px solid var(--amber);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  margin: 0 0 24px;
+}
+
+.patron-history h3 {
+  margin: 0 0 10px;
+  color: var(--green-800);
+  font-size: 18px;
+}
+
+.patron-history p {
+  margin: 0 0 14px;
+  color: var(--muted);
+}
+
+.patron-values {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 16px;
+  margin-top: 26px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+
+.patron-value {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.28s var(--ease), box-shadow 0.28s var(--ease);
+}
+
+.patron-value:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow);
+}
+
+.patron-value strong {
+  display: block;
+  font-size: 20px;
+  color: var(--green-800);
+  line-height: 1.2;
+}
+
+.patron-value span {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* ---------- Announcements board ---------- */
+.board {
+  background: #fff;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.filter-bar {
+  max-width: 1200px;
+  margin: 0 auto 22px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.chip {
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+}
+
+.chip:hover {
+  border-color: var(--green-600);
+  color: var(--green-800);
+}
+
+.chip.is-active {
+  background: var(--green-800);
+  border-color: var(--green-800);
+  color: #fff;
+}
+
+.announcement-list {
+  max-width: 1200px;
+  margin: 0 auto;
+  list-style: none;
+  display: grid;
+  gap: 14px;
+}
+
+.announcement {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: 18px;
+  padding: 20px 22px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--green-600);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+
+.announcement h3 {
+  margin: 0 0 6px;
+  font-size: 17px;
+  color: var(--ink);
+}
+
+.announcement p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.announcement time {
+  font-size: 13px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.announcement.is-hidden {
+  display: none;
+}
+
+.empty-state {
+  max-width: 1200px;
+  margin: 18px auto 0;
+  padding: 22px;
+  text-align: center;
+  color: var(--muted);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+}
+
+/* ---------- Records table ---------- */
+.records {
+  background: var(--canvas);
+}
+
+.records-toolbar {
+  max-width: 1200px;
+  margin: 0 auto 18px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+
+.records-toolbar .field {
+  flex: 1 1 320px;
+  margin: 0;
+}
+
+.result-count {
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.table-wrap {
+  width: 100%;
+  margin: 0 auto;
+  /* The table keeps a readable minimum width and scrolls sideways inside this
+     box on a phone. `min(1200px, 100%)` keeps the box inside its parent so the
+     table can never push the whole page sideways. */
+  max-width: min(1200px, 100%);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+/* A small, self-explanatory hint so a visitor knows the table scrolls rather
+   than the columns simply being missing. Only shown while it actually
+   overflows (toggled by script.js), and only on narrow screens. */
+.table-wrap.has-scroll {
+  background-image: linear-gradient(to left, rgba(20, 38, 29, 0.10), rgba(20, 38, 29, 0));
+  background-position: right center;
+  background-repeat: no-repeat;
+  background-size: 22px 100%;
+}
+
+.table-scroll-hint {
+  display: none;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 560px;
+}
+
+.data-table th,
+.data-table td {
+  padding: 15px 20px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  font-size: 15px;
+}
+
+.data-table th {
+  background: #f7faf8;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.data-table tbody tr:hover {
+  background: var(--green-50);
+}
+
+.data-table tr.is-hidden {
+  display: none;
+}
+
+/* ---------- Tuition figures in the records table ---------- */
+/* Seven columns including three money values, so the numeric cells are
+   right-aligned on tabular figures and kept from wrapping mid-number. */
+.data-table td:nth-child(4),
+.data-table td:nth-child(5),
+.data-table td:nth-child(6),
+.data-table th:nth-child(4),
+.data-table th:nth-child(5),
+.data-table th:nth-child(6) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.data-table .balance-cell {
+  font-weight: 700;
+}
+
+.data-table .balance-cell.owes {
+  color: #c0392b;
+}
+
+.data-table .balance-cell.settled {
+  color: var(--green-700);
+}
+
+.data-table td.due-cell {
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+/* ---------- Steps ---------- */
+.steps {
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.step-list {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 20px;
+}
+
+.step-list li {
+  position: relative;
+  padding: 26px 22px;
+  background: var(--canvas);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+}
+
+.step-no {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--green-800);
+  color: #fff;
+  font-weight: 800;
+  margin-bottom: 14px;
+}
+
+.step-list h3 {
+  margin: 0 0 8px;
+  font-size: 17px;
+  color: var(--green-800);
+}
+
+.step-list p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+/* ---------- FAQ / accordion ---------- */
+.faq {
+  background: var(--canvas);
+}
+
+.faq-grid {
+  max-width: 900px;
+  margin: 0 auto;
+  display: grid;
+  gap: 12px;
+}
+
+.accordion {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.accordion-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 22px;
+  background: transparent;
+  border: 0;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.accordion-head:hover {
+  background: var(--green-50);
+}
+
+.accordion-head .icon {
+  transition: transform 0.25s var(--ease);
+  color: var(--green-700);
+}
+
+.accordion.is-open .accordion-head .icon {
+  transform: rotate(180deg);
+}
+
+.accordion-body {
+  padding: 0 22px 20px;
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+
+.accordion-body p {
+  margin: 0;
+}
+
+/* ---------- Directory ---------- */
+.directory {
+  background: var(--surface);
+}
+
+.directory-grid {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 18px;
+}
+
+.office {
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--canvas);
+  transition: box-shadow 0.2s var(--ease), transform 0.2s var(--ease);
+}
+
+.office:hover {
+  box-shadow: var(--shadow);
+  transform: translateY(-3px);
+}
+
+.office h3 {
+  margin: 0 0 8px;
+  color: var(--green-800);
+  font-size: 17px;
+}
+
+.office p {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+
+.office .muted {
+  font-size: 13px;
+}
+
+/* ---------- Contact ---------- */
+.contact {
+  background: linear-gradient(135deg, var(--green-900), var(--green-800));
+  color: #fff;
+}
+
+.contact-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+  align-items: start;
+}
+
+.contact-title,
+.contact-text {
+  color: #fff;
+}
+
+.contact-text {
+  color: #cfe6da;
+  margin: 0 0 8px;
+}
+
+.contact-form {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  box-shadow: var(--shadow-lg);
+}
+
+.contact-form .field span {
+  color: var(--ink);
+}
+
+/* ---------- Form fields ---------- */
+.field {
+  display: block;
+  margin-bottom: 16px;
+}
+
+.field span {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.field input,
+.field textarea,
+.field select {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 15px;
+  color: var(--ink);
+  background: #fbfdfb;
+  transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+}
+
+.field select {
+  appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23566b5e'><path d='M7 10l5 5 5-5z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 20px;
+  padding-right: 36px;
+}
+
+.field input:focus,
+.field textarea:focus,
+.field select:focus {
+  outline: none;
+  border-color: var(--green-600);
+  box-shadow: var(--ring);
+}
+
+.field input.is-invalid,
+.field textarea.is-invalid,
+.field select.is-invalid {
+  border-color: #d64545;
+  box-shadow: 0 0 0 3px rgba(214, 69, 69, 0.18);
+}
+
+.field-hint {
+  display: block;
+  margin-top: 5px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Two short fields side by side, stacked again on a narrow screen. */
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+@media (max-width: 560px) {
+  .field-row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}
+
+/* A small heading that groups the sign-up fields into readable sections. */
+.signup-group {
+  margin: 18px 0 10px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--green-700);
+}
+
+#studentSignupForm .signup-group:first-child {
+  margin-top: 0;
+}
+
+/* The sign-up modal carries a long form, so let it scroll on short screens
+   rather than run off the bottom of the window. */
+#signupModal .modal-card {
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.form-status {
+  margin: 12px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  min-height: 20px;
+}
+
+.form-status.is-success {
+  color: var(--green-700);
+}
+
+.form-status.is-error {
+  color: #d64545;
+}
+
+/* ---------- Footer ---------- */
+.site-footer {
+  background: var(--green-900);
+  color: #cfe6da;
+  padding: 44px 24px 28px;
+}
+
+.footer-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 28px;
+}
+
+.footer-inner strong {
+  color: #fff;
+  font-size: 17px;
+}
+
+.footer-inner .muted {
+  color: #9fc0ae;
+  margin: 6px 0 0;
+  font-size: 14px;
+}
+
+.footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: center;
+}
+
+.footer-links a {
+  color: #cfe6da;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.footer-links a:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
+.copyright {
+  max-width: 1200px;
+  margin: 28px auto 0;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  font-size: 13px;
+  color: #9fc0ae;
+}
+
+/* ---------- Back to top ---------- */
+.back-to-top {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 40;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--green-800);
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+  transition: opacity 0.25s var(--ease), transform 0.25s var(--ease);
+}
+
+.back-to-top.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.back-to-top:hover {
+  background: var(--green-700);
+}
+
+/* ---------- Modal ---------- */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+/* A modal carries [hidden] when closed. Without this rule the `display: grid`
+   above wins over the hidden attribute, leaving an invisible backdrop that
+   swallows every click on the page underneath. */
+.modal[hidden] {
+  display: none;
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 42, 26, 0.55);
+  backdrop-filter: blur(3px);
+}
+
+.modal-card {
+  position: relative;
+  width: min(440px, 100%);
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 30px;
+  box-shadow: var(--shadow-lg);
+  animation: pop 0.22s var(--ease);
+}
+
+@keyframes pop {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ---------- Intro splash (professional opening animation) ---------- */
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 42%, var(--green-800), var(--green-900) 68%);
+  color: #fff;
+  /* Never trap a visitor: fade out even if script.js never runs. */
+  animation: splash-lift 0.6s var(--ease) 2.4s forwards;
+}
+
+/* A large, slowly drifting light behind the seal, so the backdrop is alive. */
+.splash-glow {
+  position: absolute;
+  width: 620px;
+  height: 620px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(21, 138, 84, 0.55), transparent 62%);
+  filter: blur(6px);
+  animation: splash-breathe 3.4s var(--ease) infinite;
+  pointer-events: none;
+}
+
+/* Soft motes drifting upward, giving the screen depth. */
+.splash-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.splash-particles span {
+  position: absolute;
+  bottom: -12px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(207, 230, 218, 0.55);
+  animation: splash-float 6s linear infinite;
+}
+
+.splash-particles span:nth-child(1) { left: 8%;  animation-delay: 0s;    animation-duration: 5.4s; }
+.splash-particles span:nth-child(2) { left: 18%; animation-delay: 0.9s;  animation-duration: 6.6s; }
+.splash-particles span:nth-child(3) { left: 29%; animation-delay: 1.7s;  animation-duration: 5.9s; }
+.splash-particles span:nth-child(4) { left: 38%; animation-delay: 0.4s;  animation-duration: 7.1s; }
+.splash-particles span:nth-child(5) { left: 47%; animation-delay: 2.3s;  animation-duration: 6.2s; }
+.splash-particles span:nth-child(6) { left: 57%; animation-delay: 1.2s;  animation-duration: 5.6s; }
+.splash-particles span:nth-child(7) { left: 66%; animation-delay: 2.9s;  animation-duration: 6.8s; }
+.splash-particles span:nth-child(8) { left: 74%; animation-delay: 0.6s;  animation-duration: 5.2s; }
+.splash-particles span:nth-child(9) { left: 84%; animation-delay: 1.9s;  animation-duration: 7.4s; }
+.splash-particles span:nth-child(10){ left: 92%; animation-delay: 3.3s;  animation-duration: 6.4s; }
+
+.splash-inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 24px;
+  text-align: center;
+  animation: splash-inner-in 0.8s var(--ease) both;
+}
+
+.splash-mark {
+  position: relative;
+  width: 116px;
+  height: 116px;
+  display: grid;
+  place-items: center;
+}
+
+/* Pulsing halo that gives the seal a sense of light. */
+.splash-halo {
+  position: absolute;
+  inset: -30px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(126, 226, 168, 0.28), transparent 66%);
+  animation: splash-halo 2.2s var(--ease) infinite;
+}
+
+.splash-logo {
+  position: relative;
+  width: 116px;
+  height: 116px;
+  object-fit: contain;
+  border-radius: 50%;
+  background: #fff;
+  padding: 8px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.35);
+  animation: splash-logo-in 0.9s var(--ease) both;
+}
+
+/* Three rings: a still halo, a sweeping arc, and a slowly turning dashed one. */
+.splash-ring {
+  position: absolute;
+  inset: -14px;
+  border-radius: 50%;
+  border: 2px solid rgba(207, 230, 218, 0.28);
+  animation: splash-halo 2.2s var(--ease) 0.3s infinite reverse;
+}
+
+.splash-ring-2 {
+  inset: -14px;
+  border-color: transparent;
+  border-top-color: #cfe6da;
+  border-right-color: rgba(207, 230, 218, 0.55);
+  animation: splash-spin 1.2s linear infinite;
+}
+
+.splash-ring-dashed {
+  position: absolute;
+  inset: -26px;
+  border-radius: 50%;
+  border: 1px dashed rgba(169, 211, 189, 0.5);
+  animation: splash-spin 9s linear infinite reverse;
+}
+
+.splash-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* The wordmark washes in letter by letter, then a sheen sweeps across it. */
+.splash-word {
+  position: relative;
+  font-size: 20px;
+  letter-spacing: 0.01em;
+  background: linear-gradient(100deg, #fff 0%, #fff 40%, #a9e6c6 50%, #fff 60%, #fff 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: splash-word-shine 2.6s var(--ease) 0.5s infinite;
+}
+
+.splash-sub {
+  font-size: 12px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: #a9d3bd;
+  animation: splash-rise 0.7s var(--ease) 0.4s both;
+}
+
+.splash-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: splash-rise 0.7s var(--ease) 0.5s both;
+}
+
+.splash-bar {
+  position: relative;
+  width: 180px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(207, 230, 218, 0.2);
+  overflow: hidden;
+}
+
+.splash-bar-fill {
+  position: relative;
+  display: block;
+  height: 100%;
+  width: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--green-600), #cfe6da);
+  transform-origin: left center;
+  animation: splash-fill 1.9s var(--ease) 0.2s both;
+}
+
+/* A bright sheen that keeps travelling along the filling bar. */
+.splash-bar-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.75), transparent);
+  transform: translateX(-100%);
+  animation: splash-sheen 1.3s var(--ease) 0.4s infinite;
+}
+
+.splash-percent {
+  min-width: 38px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #a9d3bd;
+  font-variant-numeric: tabular-nums;
+}
+
+/* While the document is booting, keep the page behind the splash quiet.
+   The lock is released by script.js, and — critically — also by a pure-CSS
+   safety animation below. If the script never runs (blocked, 404, or a phone
+   that drops the request), the page must still unlock itself and scroll. */
+html.is-booting,
+html.is-booting body {
+  overflow: hidden;
+  animation: boot-unlock 0s linear 4s forwards;
+}
+
+@keyframes boot-unlock {
+  to { overflow: auto; }
+}
+
+.splash.is-leaving {
+  animation: splash-leave 0.7s var(--ease) forwards;
+}
+
+.splash.is-leaving .splash-inner {
+  animation: splash-inner-out 0.5s var(--ease) forwards;
+}
+
+/* Staggered reveal for the hero once the splash has lifted. */
+html.is-ready .hero .intro > * {
+  animation: splash-rise 0.7s var(--ease) both;
+}
+
+html.is-ready .hero .intro > *:nth-child(2) { animation-delay: 0.08s; }
+html.is-ready .hero .intro > *:nth-child(3) { animation-delay: 0.16s; }
+html.is-ready .hero .intro > *:nth-child(4) { animation-delay: 0.24s; }
+html.is-ready .hero .intro > *:nth-child(5) { animation-delay: 0.32s; }
+
+/* The header settles down from the top, and the side panel floats gently. */
+html.is-ready .site-header {
+  animation: header-drop 0.6s var(--ease) both;
+}
+
+html.is-ready .hero-panel {
+  animation: panel-in 0.8s var(--ease) 0.3s both, panel-float 6s ease-in-out 1.2s infinite;
+}
+
+@keyframes splash-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes splash-breathe {
+  0%, 100% { transform: scale(0.92); opacity: 0.7; }
+  50% { transform: scale(1.06); opacity: 1; }
+}
+
+@keyframes splash-halo {
+  0%, 100% { transform: scale(0.94); opacity: 0.55; }
+  50% { transform: scale(1.05); opacity: 1; }
+}
+
+@keyframes splash-float {
+  from { transform: translateY(0) scale(0.8); opacity: 0; }
+  15% { opacity: 0.85; }
+  85% { opacity: 0.85; }
+  to { transform: translateY(-105vh) scale(1.2); opacity: 0; }
+}
+
+@keyframes splash-inner-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes splash-inner-out {
+  to { opacity: 0; transform: translateY(-18px) scale(1.04); }
+}
+
+@keyframes splash-logo-in {
+  from { opacity: 0; transform: scale(0.6) rotate(-8deg); }
+  60% { opacity: 1; transform: scale(1.08) rotate(3deg); }
+  80% { transform: scale(0.98) rotate(-1deg); }
+  to { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
+@keyframes splash-rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes splash-word-shine {
+  0% { background-position: 200% 50%; }
+  60%, 100% { background-position: -60% 50%; }
+}
+
+@keyframes splash-fill {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes splash-sheen {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+
+@keyframes splash-lift {
+  to { opacity: 0; visibility: hidden; }
+}
+
+@keyframes splash-leave {
+  0% { opacity: 1; }
+  100% { opacity: 0; visibility: hidden; transform: scale(1.04); }
+}
+
+/* ---------- Whole-UI motion ---------- */
+
+@keyframes header-drop {
+  from { opacity: 0; transform: translateY(-18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes panel-in {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes panel-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+/* Items inside a section rise in one after another as the section appears.
+   Scoped to .reveal sections on purpose: script.js only adds .reveal when it
+   is going to reveal them, so with JS off (or reduced motion) the items are
+   simply visible and nothing is ever left hidden. */
+.reveal .stagger {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 0.55s var(--ease), transform 0.55s var(--ease);
+}
+
+.reveal.is-visible .stagger {
+  opacity: 1;
+  transform: none;
+}
+
+.reveal.is-visible .stagger:nth-child(1) { transition-delay: 0.05s; }
+.reveal.is-visible .stagger:nth-child(2) { transition-delay: 0.15s; }
+.reveal.is-visible .stagger:nth-child(3) { transition-delay: 0.25s; }
+.reveal.is-visible .stagger:nth-child(4) { transition-delay: 0.35s; }
+.reveal.is-visible .stagger:nth-child(5) { transition-delay: 0.45s; }
+.reveal.is-visible .stagger:nth-child(6) { transition-delay: 0.55s; }
+
+/* Counters show their final value by default, so with JS off the real numbers
+   are always on screen — script.js only rewinds them to animate. */
+.hero-stats .stat strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.modal-card h2 {
+  margin: 0 0 6px;
+  color: var(--green-800);
+}
+
+.modal-card .muted {
+  margin: 0 0 20px;
+  font-size: 14px;
+}
+
+.modal-close {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  border: 0;
+  background: transparent;
+  font-size: 26px;
+  line-height: 1;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.modal-close:hover {
+  color: var(--ink);
+}
+
+body.no-scroll {
+  overflow: hidden;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 900px) {
+  .hero-inner {
+    grid-template-columns: 1fr;
+    gap: 32px;
+    padding: 60px 24px 70px;
+  }
+
+  .patron-inner {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+
+  .patron-portrait {
+    max-width: 280px;
+    margin: 0 auto;
+  }
+
+  .contact-inner {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+
+  .nav-links > a {
+    display: none;
+  }
+
+  .nav-toggle {
+    display: inline-flex;
+  }
+
+  .mobile-menu:not([hidden]) {
+    display: flex;
+  }
+}
+
+@media (max-width: 640px) {
+  section {
+    padding: 56px 20px;
+  }
+
+  .utility-note {
+    display: none;
+  }
+
+  .hero-actions .btn {
+    width: 100%;
+  }
+
+  .announcement {
+    grid-template-columns: 1fr;
+  }
+
+  .announcement time {
+    order: -1;
+  }
+
+  /* On a phone a data table cannot fit, so it scrolls sideways inside its
+     wrapper. Tighter cells keep more of it on screen at once, and the
+     shadow added by script.js makes the sideways scroll obvious. */
+  .data-table th,
+  .data-table td {
+    padding: 11px 14px;
+    font-size: 14px;
+  }
+
+  .table-wrap {
+    border-radius: var(--radius-sm);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* A visitor who asked for less motion should not be made to wait through
+     an intro: hide the splash outright and reveal the page immediately. */
+  .splash {
+    display: none !important;
+  }
+
+  html.is-booting,
+  html.is-booting body {
+    overflow: auto;
+  }
+
+  /* Scroll reveals are motion, so show everything at rest instead. */
+  .reveal,
+  .reveal .stagger {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+
+/* ============================================================
+   Portal Services page (features.html)
+   Reuses the shared palette and type scale; adds the sub-page
+   hero, the jump nav, and the numbered service blocks.
+   ============================================================ */
+
+.section-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* Stacked sections with generous rhythm down the sub-page. */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 34px;
+  padding-top: 48px;
+  padding-bottom: 72px;
+}
+
+/* ---------- Sub-page hero ---------- */
+.sub-hero {
+  position: relative;
+  overflow: hidden;
+  color: #fff;
+  background: var(--green-900);
+  padding: 62px 0 58px;
+  /* Establish a stacking context so the decorative pseudo-elements below can
+     be pushed behind the text with a negative z-index. */
+  isolation: isolate;
+  z-index: 0;
+}
+
+.sub-hero-bg {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background: url("bg.jpg") center 30%/cover no-repeat;
+  transform: scale(1.05);
+}
+
+/* Same warm wash + grain treatment as the home hero, so the two
+   pages read as one site rather than two themes. */
+.sub-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(100deg, rgba(4, 28, 19, 0.95), rgba(6, 48, 32, 0.78), rgba(6, 48, 32, 0.42)),
+    linear-gradient(180deg, transparent 50%, rgba(4, 28, 19, 0.55));
+  pointer-events: none;
+}
+
+.sub-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.45;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.32'/%3E%3C/svg%3E");
+}
+
+.sub-hero-inner {
+  position: relative;
+  z-index: 2;
+}
+
+.crumbs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 18px;
+}
+
+.crumbs a {
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(212, 167, 44, 0.5);
+}
+
+.crumbs a:hover {
+  color: #fff;
+  border-bottom-color: var(--gold-400);
+}
+
+.sub-hero h1 {
+  margin: 12px 0 14px;
+  font-size: clamp(30px, 4.4vw, 47px);
+  letter-spacing: -0.02em;
+  max-width: 20ch;
+}
+
+.sub-hero .lead {
+  max-width: 62ch;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 17px;
+}
+
+.sub-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 26px;
+}
+
+.eyebrow-light {
+  color: var(--gold-400);
+}
+
+/* Gold button — the accent action, used once per page so it stays special. */
+.btn-gold {
+  background: linear-gradient(180deg, var(--gold-400), var(--gold-500));
+  color: #3a2c05;
+  border-color: var(--gold-600);
+  font-weight: 700;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-gold:hover {
+  background: linear-gradient(180deg, #e0b437, var(--gold-400));
+  transform: translateY(-1px);
+}
+
+.btn-ghost-light {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.btn-ghost-light:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: var(--gold-400);
+}
+
+/* ---------- Jump nav ---------- */
+.sub-nav {
+  position: sticky;
+  top: 76px;
+  z-index: 40;
+  background: rgba(246, 244, 238, 0.92);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+
+.sub-nav-inner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.sub-nav a {
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  text-decoration: none;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  transition: background 0.2s var(--ease), color 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+
+.sub-nav a:hover {
+  background: var(--green-800);
+  border-color: var(--green-800);
+  color: #fff;
+}
+
+/* ---------- Numbered service blocks ---------- */
+.detail {
+  scroll-margin-top: 140px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 34px;
+  box-shadow: var(--shadow-sm);
+}
+
+.detail-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  padding-bottom: 20px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--line);
+}
+
+/* A large ghosted numeral — a printed-index touch that costs nothing. */
+.detail-num {
+  flex: none;
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--green-100);
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.detail-head h2 {
+  margin: 4px 0 6px;
+}
+
+.detail-head .muted {
+  margin: 0;
+}
+
+.detail-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  gap: 40px;
+  align-items: start;
+}
+
+.detail-copy h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--green-700);
+}
+
+.detail-copy h3:not(:first-child) {
+  margin-top: 26px;
+}
+
+.detail-copy p {
+  margin: 0 0 12px;
+  color: var(--ink-soft);
+}
+
+/* Numbered how-to list, with gold counters. */
+.steps-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.steps-list li {
+  position: relative;
+  counter-increment: step;
+  padding: 0 0 14px 44px;
+  color: var(--ink-soft);
+}
+
+.steps-list li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: -2px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #3a2c05;
+  background: linear-gradient(180deg, var(--gold-400), var(--gold-500));
+  box-shadow: var(--shadow-sm);
+}
+
+.callout {
+  margin-top: 20px !important;
+  padding: 14px 16px;
+  border-left: 3px solid var(--green-600);
+  background: var(--green-50);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: 14px;
+}
+
+.callout-warn {
+  border-left-color: var(--gold-500);
+  background: var(--gold-50);
+}
+
+.detail-side {
+  background: var(--canvas);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 22px;
+}
+
+.detail-side h3 {
+  margin: 0 0 14px;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.fact-list {
+  margin: 0;
+}
+
+.fact-list > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px dashed var(--line-strong);
+}
+
+.fact-list > div:last-child {
+  border-bottom: 0;
+}
+
+.fact-list dt {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.fact-list dd {
+  margin: 0;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+/* Checklist with a small gold tick. */
+.check-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.check-list li {
+  position: relative;
+  padding: 0 0 10px 24px;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+.check-list li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, var(--gold-400), var(--gold-500));
+}
+
+/* ---------- Closing call to action ---------- */
+.cta-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  padding: 30px 34px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--green-800), var(--green-900));
+  color: #fff;
+  box-shadow: var(--shadow);
+}
+
+.cta-strip h2 {
+  margin: 0 0 6px;
+  font-size: 24px;
+}
+
+.cta-strip .muted {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.cta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* Centred route through to the full services page. */
+.features-more {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 34px;
+  padding-top: 26px;
+  border-top: 1px solid var(--line);
+}
+
+.features-more .muted {
+  font-size: 14px;
+}
+
+@media (max-width: 900px) {
+  .detail-body {
+    grid-template-columns: 1fr;
+    gap: 26px;
+  }
+
+  .sub-nav {
+    position: static;
+  }
+}
+
+@media (max-width: 620px) {
+  .detail {
+    padding: 24px 20px;
+  }
+
+  .detail-num {
+    font-size: 30px;
+  }
+
+  .cta-strip {
+    padding: 24px 20px;
+  }
+}
+
+/* ================= Student account panel =================
+   Added with student sign-in. Personal fee and balance figures appear here and
+   nowhere else on the public page. */
+
+.hero-account-note {
+  margin: 12px 0 0;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 14px;
+}
+
+/* A real inline button that reads as a link — used for "Create one" inside the
+   login modal and for the sign-in prompt in the public lookup table. */
+.link-button {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--green-700);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.link-button:hover {
+  color: var(--green-600);
+}
+
+.link-button:focus-visible {
+  outline: 2px solid var(--green-600);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+.modal-footnote {
+  margin: 14px 0 0;
+  font-size: 13.5px;
+  text-align: center;
+}
+
+/* ---- My Account panel ---- */
+.account {
+  /* Keep the horizontal inset the other sections get from `section` — without
+     it the payment-history table runs edge to edge on a phone. */
+  padding: 72px 24px;
+  background: var(--cream, #faf7f2);
+}
+
+.account-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0 0 22px;
+}
+
+.account-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px 22px;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.account-card-label {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.account-card-value {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+/* The balance is the number a student actually came for, so it is the only
+   card that changes colour to say how things stand. */
+.account-card.is-emphasis.is-owed {
+  border-color: #f0d3d3;
+  background: #fdf7f7;
+}
+
+.account-card.is-emphasis.is-owed .account-card-value {
+  color: #c0392b;
+}
+
+.account-card.is-emphasis.is-clear {
+  border-color: #cfe9d9;
+  background: #f6fdf9;
+}
+
+.account-card.is-emphasis.is-clear .account-card-value {
+  color: var(--green-700);
+}
+
+.account-card-value.is-warning {
+  color: #b7791f;
+}
+
+.account-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 0 0 30px;
+}
+
+.account-subtitle {
+  margin: 0 0 14px;
+  font-size: 20px;
+}
+
+/* ---- Sign-up confirmation ---- */
+.signup-done {
+  padding: 8px 0 0;
+  text-align: center;
+}
+
+.signup-done h3 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+@media (max-width: 900px) {
+  .account-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .account-cards {
+    grid-template-columns: 1fr;
+  }
+}

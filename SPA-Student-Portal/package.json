@@ -1,0 +1,14 @@
+{
+  "name": "spa-student-portal",
+  "version": "1.0.0",
+  "description": "Saint Patrick's Academy, Inc. student portal with an Excel-backed admin dashboard.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node _e2e.js",
+    "test:page": "node --test"
+  },
+  "dependencies": {
+    "xlsx": "^0.18.5"
+  }
+}

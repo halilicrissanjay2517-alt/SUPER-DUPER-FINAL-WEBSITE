@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Saint Patrick's Academy, Inc. — student portal for announcements, enrollment, records, and payments.">
+    <title>Saint Patrick's Academy, Inc. — Student Portal</title>
+    <link rel="stylesheet" href="styles.css">
+    <script>
+        /* Mark the document as "booting" before the first paint, so the intro
+           splash covers the page from the very first frame instead of the raw
+           content flashing in. Removed by script.js once the site is ready. */
+        document.documentElement.classList.add("is-booting");
+    </script>
+</head>
+<body>
+    <!-- ================= INTRO SPLASH =================
+         A brief, professional opening animation: the school seal scales in,
+         a ring sweeps around it, the wordmark rises, and a loading bar fills.
+         script.js lifts it after the site is ready (or reduced-motion users
+         skip it entirely via the stylesheet). -->
+    <div class="splash" id="splash" role="status" aria-label="Loading Saint Patrick's Academy portal">
+        <div class="splash-glow" aria-hidden="true"></div>
+        <div class="splash-particles" aria-hidden="true">
+            <span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <div class="splash-inner">
+            <div class="splash-mark">
+                <span class="splash-halo" aria-hidden="true"></span>
+                <span class="splash-ring" aria-hidden="true"></span>
+                <span class="splash-ring splash-ring-2" aria-hidden="true"></span>
+                <span class="splash-ring-dashed" aria-hidden="true"></span>
+                <img class="splash-logo" src="logo.png" alt="Saint Patrick's Academy, Inc." width="116" height="116">
+            </div>
+            <div class="splash-text">
+                <strong class="splash-word">Saint Patrick's Academy, Inc.</strong>
+                <small class="splash-sub">Student Portal</small>
+            </div>
+            <div class="splash-progress">
+                <span class="splash-bar" aria-hidden="true"><span class="splash-bar-fill"></span></span>
+                <span class="splash-percent" aria-hidden="true">0%</span>
+            </div>
+        </div>
+    </div>
+
+    <a class="skip-link" href="#main">Skip to main content</a>
+
+    <!-- Thin bar under the header showing how far down the page you have read. -->
+    <div class="reading-progress" aria-hidden="true"><span id="readingProgress"></span></div>
+
+    <div class="utility-bar">
+        <div class="utility-inner">
+            <span class="utility-item">
+                <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z"/></svg>
+                Yakal 1, Paltic, Dingalan, Aurora, Philippines
+            </span>
+            <span class="utility-item">
+                <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2Z"/></svg>
+                (042) 555-0168
+            </span>
+            <span class="utility-item utility-note">Office hours: Mon–Fri, 8:00 AM – 5:00 PM</span>
+        </div>
+    </div>
+
+    <header class="site-header" id="top">
+        <nav class="nav" aria-label="Primary">
+            <a class="brand" href="#top">
+                <img src="logo.png" alt="Saint Patrick's Academy, Inc. logo">
+                <span class="brand-text">
+                    <strong>Saint Patrick's Academy, Inc.</strong>
+                    <small>Student Portal</small>
+                </span>
+            </a>
+            <div class="nav-links">
+                <a href="#patron">Our Patron</a>
+                <a href="#features">Features</a>
+                <a href="features.html">Services</a>
+                <a href="#announcements-list">Announcements</a>
+                <a href="#directory">Directory</a>
+                <a href="#contact">Contact</a>
+                <a href="admin.html" class="nav-admin">Admin</a>
+                <button type="button" class="btn btn-ghost nav-toggle" data-menu-toggle aria-expanded="false" aria-controls="mobileMenu">
+                    <span class="sr-only">Toggle menu</span>
+                    <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6Zm0 5h18v2H3v-2Zm0 5h18v2H3v-2Z"/></svg>
+                </button>
+            </div>
+        </nav>
+    </header>
+
+    <div class="mobile-menu" id="mobileMenu" hidden>
+        <a href="#patron">Our Patron</a>
+        <a href="#features">Features</a>
+        <a href="features.html">Portal Services</a>
+        <a href="#announcements-list">Announcements</a>
+        <a href="#directory">Directory</a>
+        <a href="#contact">Contact</a>
+        <a href="admin.html">Admin Dashboard</a>
+    </div>
+
+    <main id="main">
+        <section class="hero">
+            <div class="hero-bg" aria-hidden="true"></div>
+            <div class="hero-spotlight" aria-hidden="true"></div>
+            <div class="hero-inner">
+                <div class="intro">
+                    <span class="eyebrow">Established 1968 &middot; Non-stock, non-profit Catholic institution</span>
+                    <h1>Saint Patrick's Academy, Inc.</h1>
+                    <p class="lead">One secure place for students and parents to follow announcements, complete enrollment, review records, and settle payments.</p>
+
+                    <div class="hero-stats">
+                        <div class="stat"><strong>56+</strong><span>Years of service</span></div>
+                        <div class="stat"><strong>4</strong><span>Core portals</span></div>
+                        <div class="stat"><strong>24/7</strong><span>Account access</span></div>
+                    </div>
+
+                    <div class="hero-actions">
+                        <button type="button" class="btn btn-primary" id="heroLoginBtn" data-modal-open="loginModal">Log In</button>
+                        <button type="button" class="btn btn-secondary" id="heroSignupBtn" data-modal-open="signupModal">Create Account</button>
+                        <button type="button" class="btn btn-secondary" id="heroAccountBtn" hidden>My Account</button>
+                        <button type="button" class="btn btn-ghost" id="heroLogoutBtn" hidden>Sign out</button>
+                    </div>
+                    <p class="hero-account-note" id="heroAccountNote" hidden></p>
+                </div>
+
+                <aside class="hero-panel" aria-label="Latest announcement">
+                    <div class="panel-head">
+                        <span class="dot"></span>
+                        <h2>Latest Updates</h2>
+                    </div>
+                    <ul class="update-list">
+                        <li><span class="tag tag-green">Enrollment</span><p>Second-semester enrollment opens on the 15th.</p></li>
+                        <li><span class="tag tag-blue">Payment</span><p>Online payment reference codes are now issued per student.</p></li>
+                        <li><span class="tag tag-amber">Records</span><p>Request a copy of your Form 137 from the Records office.</p></li>
+                    </ul>
+                    <a class="panel-link" href="#announcements-list">View all announcements &rarr;</a>
+                </aside>
+            </div>
+        </section>
+
+        <section class="patron" id="patron">
+            <div class="patron-inner">
+                <figure class="patron-portrait">
+                    <!-- Swap OIP.jpg for a higher-resolution portrait when one is available.
+                         If the file is ever missing, the onerror handler falls back to a
+                         labelled placeholder instead of showing a broken image. -->
+                    <div class="patron-frame">
+                        <img src="OIP.jpg" alt="Saint Patrick, patron saint of Saint Patrick's Academy, Inc."
+                             onerror="this.closest('.patron-frame').classList.add('is-placeholder')">
+                        <span class="patron-placeholder-text">
+                            Saint Patrick &middot; Patron of the Academy
+                        </span>
+                    </div>
+                    <figcaption>Saint Patrick &middot; Patron of the Academy</figcaption>
+                </figure>
+
+                <div class="patron-copy">
+                    <span class="eyebrow eyebrow-dark">Our Patron &amp; Heritage</span>
+                    <h2 class="section-title">Guided by Saint Patrick</h2>
+
+                    <p class="patron-lead">
+                        Saint Patrick's Academy, Inc. is named for the missionary bishop who
+                        brought the Christian faith to Ireland. Captured as a young man and held
+                        in slavery, he escaped and later returned to the land of his captivity to
+                        serve the people who had enslaved him — a life that stands, above all,
+                        for perseverance, service, and forgiveness.
+                    </p>
+
+                    <div class="patron-history">
+                        <h3>Our history</h3>
+                        <p>
+                            Founded in 1968 as a non-stock, non-profit Catholic institution, Saint
+                            Patrick's Academy has served the families of Dingalan and the wider
+                            province of Aurora for more than half a century. What began as a small
+                            parish school grew, class by class, into the academy it is today —
+                            formed by the parishes, teachers, and parents who gave it their time.
+                        </p>
+                        <p>
+                            Under the patronage of Saint Patrick, the school carries forward a simple
+                            mission: to form students who are competent in their studies, grounded in
+                            their faith, and generous in service to their community.
+                        </p>
+                    </div>
+
+                    <div class="patron-values">
+                        <div class="patron-value stagger">
+                            <strong>1968</strong>
+                            <span>Year founded</span>
+                        </div>
+                        <div class="patron-value stagger">
+                            <strong>Catholic</strong>
+                            <span>Non-stock, non-profit</span>
+                        </div>
+                        <div class="patron-value stagger">
+                            <strong>Aurora</strong>
+                            <span>Yakal 1, Paltic, Dingalan</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="features" id="features">
+            <div class="section-head">
+                <span class="eyebrow eyebrow-dark">Portal modules</span>
+                <h2 class="section-title">School Features</h2>
+                <p class="section-text">Simple access points for common school information and student services.</p>
+            </div>
+
+            <div class="feature-grid">
+                <article class="feature-card stagger" id="announcements">
+                    <span class="feature-icon" aria-hidden="true">
+                        <svg class="icon" viewBox="0 0 24 24"><path d="M3 10v4h4l5 4V6l-5 4H3Zm13.5 2a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4Z"/></svg>
+                    </span>
+                    <h3>Announcements</h3>
+                    <p>View school updates, reminders, and important notices as soon as they are posted.</p>
+                    <a class="card-link" href="features.html#announcements">Read announcements &rarr;</a>
+                </article>
+
+                <article class="feature-card stagger" id="enrollment">
+                    <span class="feature-icon" aria-hidden="true">
+                        <svg class="icon" viewBox="0 0 24 24"><path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Zm10 1.5V10h4.5L14 5.5ZM7 13h10v2H7v-2Zm0 4h10v2H7v-2Z"/></svg>
+                    </span>
+                    <h3>Enrollment</h3>
+                    <p>Find enrollment steps, requirements, and deadlines for every grade level.</p>
+                    <a class="card-link" href="features.html#enrollment">Start enrollment &rarr;</a>
+                </article>
+
+                <article class="feature-card stagger" id="student-records">
+                    <span class="feature-icon" aria-hidden="true">
+                        <svg class="icon" viewBox="0 0 24 24"><path d="M12 2 3 6v6c0 5 3.8 9.4 9 10 5.2-.6 9-5 9-10V6l-9-4Zm0 4.5A3.5 3.5 0 1 1 12 13a3.5 3.5 0 0 1 0-6.5ZM5.5 18.4A8.3 8.3 0 0 0 12 21a8.3 8.3 0 0 0 6.5-2.6A7.4 7.4 0 0 0 12 15a7.4 7.4 0 0 0-6.5 3.4Z"/></svg>
+                    </span>
+                    <h3>Student Records</h3>
+                    <p>Access basic student information, grades, and current account status.</p>
+                    <a class="card-link" href="features.html#records">View records &rarr;</a>
+                </article>
+
+                <article class="feature-card stagger" id="payment-guide">
+                    <span class="feature-icon" aria-hidden="true">
+                        <svg class="icon" viewBox="0 0 24 24"><path d="M3 6h18v12H3V6Zm2 3v2h14V9H5Zm0 4v3h6v-3H5Z"/></svg>
+                    </span>
+                    <h3>Payment Guide</h3>
+                    <p>Check payment instructions, channels, and balance-related reminders.</p>
+                    <a class="card-link" href="features.html#payments">See payment steps &rarr;</a>
+                </article>
+            </div>
+
+            <!-- One obvious route into the full services page. -->
+            <div class="features-more">
+                <a class="btn btn-primary" href="features.html">Explore all portal services &rarr;</a>
+                <span class="muted">A detailed guide to each of the four portals.</span>
+            </div>
+        </section>
+
+        <section class="board" id="announcements-list">
+            <div class="section-head">
+                <span class="eyebrow eyebrow-dark">Newsboard</span>
+                <h2 class="section-title">Announcements</h2>
+                <p class="section-text">Filter the latest notices published by the school office.</p>
+            </div>
+
+            <div class="filter-bar" role="group" aria-label="Filter announcements">
+                <button type="button" class="chip is-active" data-filter="all">All</button>
+                <button type="button" class="chip" data-filter="enrollment">Enrollment</button>
+                <button type="button" class="chip" data-filter="payment">Payment</button>
+                <button type="button" class="chip" data-filter="records">Records</button>
+                <button type="button" class="chip" data-filter="events">Events</button>
+            </div>
+
+            <div class="announcement-list" id="announcementList">
+                <article class="announcement" data-category="enrollment">
+                    <span class="tag tag-green">Enrollment</span>
+                    <div>
+                        <h3>Second-semester enrollment opens on the 15th</h3>
+                        <p>Bring your latest report card and a 2x2 photo. Enrollment runs until the end of the month.</p>
+                    </div>
+                    <time datetime="2025-01-15">Jan 15</time>
+                </article>
+                <article class="announcement" data-category="payment">
+                    <span class="tag tag-blue">Payment</span>
+                    <div>
+                        <h3>Online payment reference codes now issued</h3>
+                        <p>Each student receives a unique reference code for over-the-counter and online payments.</p>
+                    </div>
+                    <time datetime="2025-01-12">Jan 12</time>
+                </article>
+                <article class="announcement" data-category="records">
+                    <span class="tag tag-amber">Records</span>
+                    <div>
+                        <h3>Form 137 requests processed within 3 days</h3>
+                        <p>File your request at the Records office or through your student account.</p>
+                    </div>
+                    <time datetime="2025-01-09">Jan 9</time>
+                </article>
+                <article class="announcement" data-category="events">
+                    <span class="tag tag-purple">Events</span>
+                    <div>
+                        <h3>Foundation Day celebration set for February</h3>
+                        <p>Join the parade, field demonstration, and alumni homecoming.</p>
+                    </div>
+                    <time datetime="2025-01-05">Jan 5</time>
+                </article>
+            </div>
+            <p class="empty-state" id="announcementEmpty" hidden>No announcements in this category yet.</p>
+        </section>
+
+        <!-- ================= MY ACCOUNT (signed-in students) =================
+             Personal financial details appear here and nowhere else. Before
+             signing in this section is simply hidden. -->
+        <section class="account" id="account-panel" hidden>
+            <div class="section-head">
+                <span class="eyebrow eyebrow-dark">Your records</span>
+                <h2 class="section-title">My Account</h2>
+                <p class="section-text" id="accountGreeting"></p>
+            </div>
+
+            <div class="account-cards">
+                <div class="account-card">
+                    <span class="account-card-label">Tuition Fee</span>
+                    <strong class="account-card-value" id="myTotalFee">₱0</strong>
+                </div>
+                <div class="account-card">
+                    <span class="account-card-label">Paid so far</span>
+                    <strong class="account-card-value" id="myPaid">₱0</strong>
+                </div>
+                <div class="account-card is-emphasis" id="myBalanceCard">
+                    <span class="account-card-label">Remaining balance</span>
+                    <strong class="account-card-value" id="myBalance">₱0</strong>
+                </div>
+                <div class="account-card">
+                    <span class="account-card-label">Payment due</span>
+                    <strong class="account-card-value" id="myDue">—</strong>
+                </div>
+            </div>
+
+            <div class="account-meta">
+                <span class="badge" id="myStatus">—</span>
+                <span class="muted" id="myIdentity"></span>
+            </div>
+
+            <h3 class="account-subtitle">Payment history</h3>
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Date</th>
+                            <th scope="col">Receipt</th>
+                            <th scope="col">Amount</th>
+                            <th scope="col">Method</th>
+                            <th scope="col">Note</th>
+                        </tr>
+                    </thead>
+                    <tbody id="myPayments">
+                        <tr><td colspan="5" class="table-empty">Loading…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ================= FIND MY RECORD (public, no money) =================
+             Anyone may confirm that a Student ID is on file and see its class
+             details. Fees, payments and balances are behind the login. -->
+        <section class="records" id="records-panel">
+            <div class="section-head">
+                <span class="eyebrow eyebrow-dark">Records</span>
+                <h2 class="section-title">Find My Record</h2>
+                <p class="section-text">
+                    Enter your Student ID to confirm it is on file. Fee, payment and balance
+                    details are private and appear only after you sign in.
+                </p>
+            </div>
+
+            <div class="records-toolbar">
+                <label class="field">
+                    <span class="sr-only">Student ID</span>
+                    <input type="search" id="studentSearch" placeholder="Enter your Student ID, e.g. 2024-001…" autocomplete="off">
+                </label>
+                <button type="button" class="btn btn-primary" id="studentLookupBtn">Look up</button>
+                <span class="result-count" id="resultCount"></span>
+            </div>
+
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Student</th>
+                            <th scope="col">Grade</th>
+                            <th scope="col">Section</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Sign in to view</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentRows">
+                        <tr><td colspan="5" class="table-empty">Enter your Student ID above.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="empty-state" id="studentEmpty" hidden>No student found with that ID.</p>
+        </section>
+
+        <section class="steps" id="enrollment-steps">
+            <div class="section-head">
+                <span class="eyebrow eyebrow-dark">Enrollment</span>
+                <h2 class="section-title">How to Enroll</h2>
+                <p class="section-text">Four steps from application to official enrollment.</p>
+            </div>
+
+            <ol class="step-list">
+                <li class="stagger"><span class="step-no">1</span><div><h3>Create your account</h3><p>Sign up with your Student ID and details, then wait for the school office to approve it.</p></div></li>
+                <li class="stagger"><span class="step-no">2</span><div><h3>Submit requirements</h3><p>Upload your report card, photo, and good moral certificate.</p></div></li>
+                <li class="stagger"><span class="step-no">3</span><div><h3>Pay the reservation fee</h3><p>Settle online or at the cashier and keep your reference code.</p></div></li>
+                <li class="stagger"><span class="step-no">4</span><div><h3>Confirm your schedule</h3><p>Check your class section and subject load in the portal.</p></div></li>
+            </ol>
+        </section>
+
+        <section class="faq" id="payment-table">
+            <div class="section-head">
+                <span class="eyebrow eyebrow-dark">Help desk</span>
+                <h2 class="section-title">Payment Guide &amp; FAQ</h2>
+                <p class="section-text">Common questions about fees, channels, and deadlines.</p>
+            </div>
+
+            <div class="faq-grid">
+                <div class="accordion" data-accordion>
+                    <button type="button" class="accordion-head" aria-expanded="false">
+                        <span>What payment channels are accepted?</span>
+                        <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 8l6 6H6l6-6Z"/></svg>
+                    </button>
+                    <div class="accordion-body" hidden>
+                        <p>Over-the-counter at the cashier, bank deposit, and online transfer. Always include the student's reference code.</p>
+                    </div>
+                </div>
+                <div class="accordion" data-accordion>
+                    <button type="button" class="accordion-head" aria-expanded="false">
+                        <span>When is the payment deadline?</span>
+                        <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 8l6 6H6l6-6Z"/></svg>
+                    </button>
+                    <div class="accordion-body" hidden>
+                        <p>Full payment is due two weeks before the semester starts. Partial payment requires a signed agreement.</p>
+                    </div>
+                </div>
+                <div class="accordion" data-accordion>
+                    <button type="button" class="accordion-head" aria-expanded="false">
+                        <span>How do I get a receipt?</span>
+                        <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 8l6 6H6l6-6Z"/></svg>
+                    </button>
+                    <div class="accordion-body" hidden>
+                        <p>Receipts are emailed to your registered address and also appear under Payment History in your account.</p>
+                    </div>
+                </div>
+                <div class="accordion" data-accordion>
+                    <button type="button" class="accordion-head" aria-expanded="false">
+                        <span>Who do I contact for billing concerns?</span>
+                        <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 8l6 6H6l6-6Z"/></svg>
+                    </button>
+                    <div class="accordion-body" hidden>
+                        <p>Reach the Accounting office at (042) 555-0168 or accounting@spa.edu.ph.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="directory" id="directory">
+            <div class="section-head">
+                <span class="eyebrow eyebrow-dark">Directory</span>
+                <h2 class="section-title">School Offices</h2>
+                <p class="section-text">Reach the right office without waiting in line.</p>
+            </div>
+
+            <div class="directory-grid">
+                <div class="office stagger"><h3>Registrar</h3><p>registrar@spa.edu.ph</p><p class="muted">Records and certifications</p></div>
+                <div class="office stagger"><h3>Accounting</h3><p>accounting@spa.edu.ph</p><p class="muted">Fees, receipts, and balances</p></div>
+                <div class="office stagger"><h3>Guidance Office</h3><p>guidance@spa.edu.ph</p><p class="muted">Counseling and student support</p></div>
+                <div class="office stagger"><h3>IT Support</h3><p>support@spa.edu.ph</p><p class="muted">Account and portal issues</p></div>
+            </div>
+        </section>
+
+        <section class="contact" id="contact">
+            <div class="contact-inner">
+                <div>
+                    <span class="eyebrow">Visit or call</span>
+                    <h2 class="section-title contact-title">Get in Touch</h2>
+                    <p class="section-text contact-text">Yakal 1, Paltic, Dingalan, Aurora, Philippines</p>
+                    <p class="section-text contact-text">(042) 555-0168 &middot; info@spa.edu.ph</p>
+                </div>
+                <form class="contact-form" data-contact-form novalidate>
+                    <label class="field">
+                        <span>Full name</span>
+                        <input type="text" name="name" required placeholder="Juan Dela Cruz">
+                    </label>
+                    <label class="field">
+                        <span>Email</span>
+                        <input type="email" name="email" required placeholder="you@example.com">
+                    </label>
+                    <label class="field">
+                        <span>Message</span>
+                        <textarea name="message" rows="3" required placeholder="How can we help?"></textarea>
+                    </label>
+                    <button type="submit" class="btn btn-primary btn-block">Send message</button>
+                    <p class="form-status" data-form-status role="status" aria-live="polite"></p>
+                </form>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="footer-inner">
+            <div>
+                <strong>Saint Patrick's Academy, Inc.</strong>
+                <p class="muted">Non-stock, non-profit Catholic institution &middot; Founded 1968</p>
+            </div>
+            <nav class="footer-links" aria-label="Footer">
+                <a href="#patron">Our Patron</a>
+                <a href="#features">Features</a>
+                <a href="features.html">Portal Services</a>
+                <a href="#announcements-list">Announcements</a>
+                <a href="#directory">Directory</a>
+                <a href="#contact">Contact</a>
+            </nav>
+        </div>
+        <p class="copyright">&copy; <span id="year">2025</span> Saint Patrick's Academy, Inc. All rights reserved.</p>
+    </footer>
+
+    <button type="button" class="back-to-top" data-back-to-top aria-label="Back to top">
+        <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 6l6 6h-4v6h-4v-6H6l6-6Z"/></svg>
+    </button>
+
+    <div class="modal" id="loginModal" hidden>
+        <div class="modal-backdrop" data-modal-close></div>
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+            <button type="button" class="modal-close" data-modal-close aria-label="Close">&times;</button>
+            <h2 id="loginTitle">Log In</h2>
+            <p class="muted">Access your own record: tuition, balance, due date and payment history.</p>
+            <form id="studentLoginForm" novalidate>
+                <label class="field"><span>Student ID or email</span><input type="text" name="studentId" required autocomplete="username"></label>
+                <label class="field"><span>Password</span><input type="password" name="password" required autocomplete="current-password"></label>
+                <button type="submit" class="btn btn-primary btn-block">Log In</button>
+                <p class="form-status" id="studentLoginStatus" role="status" aria-live="polite"></p>
+            </form>
+            <p class="muted modal-footnote">
+                No account yet? <button type="button" class="link-button" data-modal-open="signupModal">Create one</button>.
+                New accounts are reviewed by the school office before they can be used.
+            </p>
+        </div>
+    </div>
+
+    <div class="modal" id="signupModal" hidden>
+        <div class="modal-backdrop" data-modal-close></div>
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="signupTitle">
+            <button type="button" class="modal-close" data-modal-close aria-label="Close">&times;</button>
+            <h2 id="signupTitle">Create Account</h2>
+            <p class="muted">
+                Fill in your details and register with the Student ID the school already has
+                for you. The school office checks everything you submit and approves your
+                account before you can sign in.
+            </p>
+            <form id="studentSignupForm" novalidate>
+                <p class="signup-group">Who you are</p>
+                <label class="field"><span>Student ID</span><input type="text" name="studentId" required placeholder="2024-001" autocomplete="off"></label>
+                <label class="field"><span>Full name</span><input type="text" name="fullname" required placeholder="Juan Dela Cruz" autocomplete="name"></label>
+                <div class="field-row">
+                    <label class="field"><span>Grade level</span>
+                        <select name="gradeLevel" required>
+                            <option value="">Select grade</option>
+                            <option>Grade 7</option>
+                            <option>Grade 8</option>
+                            <option>Grade 9</option>
+                            <option>Grade 10</option>
+                            <option>Grade 11</option>
+                            <option>Grade 12</option>
+                        </select>
+                    </label>
+                    <label class="field"><span>Section</span><input type="text" name="section" required placeholder="St. Patrick"></label>
+                </div>
+                <div class="field-row">
+                    <label class="field"><span>Birthdate</span><input type="date" name="birthdate" required autocomplete="bday"></label>
+                    <label class="field"><span>Sex</span>
+                        <select name="sex" required>
+                            <option value="">Select</option>
+                            <option>Male</option>
+                            <option>Female</option>
+                        </select>
+                    </label>
+                </div>
+                <label class="field"><span>Home address</span><input type="text" name="address" required placeholder="Barangay, Town, Province" autocomplete="street-address"></label>
+                <label class="field"><span>Contact number</span><input type="tel" name="contact" required placeholder="0917-555-0101" autocomplete="tel"></label>
+
+                <p class="signup-group">Parent or guardian</p>
+                <label class="field"><span>Guardian's full name</span><input type="text" name="guardian" required placeholder="Rosa Dela Cruz"></label>
+                <label class="field"><span>Guardian's contact number</span><input type="tel" name="guardianContact" required placeholder="0917-555-0102"></label>
+                <label class="field"><span>Last school attended</span><input type="text" name="lastSchool" required placeholder="Dingalan Central School"></label>
+
+                <p class="signup-group">Your login</p>
+                <label class="field"><span>Email</span><input type="email" name="email" required placeholder="you@example.com" autocomplete="email"></label>
+                <label class="field"><span>Password</span><input type="password" name="password" required minlength="8" autocomplete="new-password"><small class="field-hint">At least 8 characters.</small></label>
+                <button type="submit" class="btn btn-primary btn-block">Create account</button>
+                <p class="form-status" id="studentSignupStatus" role="status" aria-live="polite"></p>
+            </form>
+            <div id="signupDone" hidden class="signup-done">
+                <h3>Account created</h3>
+                <p class="muted" id="signupDoneText"></p>
+                <button type="button" class="btn btn-secondary btn-block" id="checkStatusBtn">Check approval status</button>
+                <p class="form-status" id="signupStatusCheck" role="status" aria-live="polite"></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

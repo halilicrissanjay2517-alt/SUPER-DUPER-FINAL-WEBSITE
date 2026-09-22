@@ -1,0 +1,54 @@
+# Node
+node_modules/
+npm-debug.log*
+
+# The live database — this holds real students' names, contact details, tuition
+# balances and hashed passwords. It must never be committed or uploaded to a
+# public repo. The server creates a fresh seeded workbook if it is missing.
+database.xlsx
+
+# Local backups and one-off audit/scratch files
+#
+# Everything in this section is scratch work that belongs on your machine and
+# NOT in the published repo: throwaway QA probes, repair scripts, seed data with
+# plaintext passwords, and runtime logs. They are ignored by pattern rather than
+# by name so that OneDrive restoring them (which silently undoes a delete) can
+# never push them back into a commit.
+*.xlsx
+!node_modules/**/*.xlsx
+_db_*.xlsx
+_backup_*.xlsx
+_guardtest.xlsx
+_inspect_db.cjs
+_snap.xlsx
+_guardtest.xlsx
+
+# One-off browser/QA probes and repair scripts
+_qa_*.mjs
+_flowcheck.cjs
+_fixline.cjs
+_repair.cjs
+_seed.json
+_check.cjs
+
+# The live database (repeated here so the rule is impossible to miss)
+database.xlsx
+
+# Server logs (runtime output, no value in version control)
+*.log
+srv-out.log
+srv-err.log
+_srv_out.log
+_srv_err.log
+_srv2_out.log
+_srv2_err.log
+_t_out.log
+_t_err.log
+
+# Local environment / secrets
+.env
+.env.local
+
+# OS / editor noise
+Thumbs.db
+.DS_Store
