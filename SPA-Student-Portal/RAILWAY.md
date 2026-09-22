@@ -36,10 +36,64 @@ Railway deploys from GitHub, so the code has to be there first.
 ## 2. Create the Railway project
 
 1. Sign up at https://railway.com and sign in **with GitHub**.
-2. **New Project → Deploy from GitHub repo** → pick `spa-student-portal`.
+2. **New Project → Deploy from GitHub repo** → pick your repository.
 3. Railway detects Node from `package.json` and runs `npm start`
-   (`node server.js`). There is no `Procfile` — nothing to add. If it ever asks
-   for a start command, the answer is `npm start`.
+   (`node server.js`). There is no `Procfile` — nothing to add.
+
+### ⚠️ If the build fails with “Railpack failed to prepare the build”
+
+That error means Railpack could not find a `package.json` **at the build root** —
+almost always because the Git repository's root is one folder *above* this app:
+
+```
+<repo root>\            ← Railway points Railpack here (no package.json)
+└── SPA-Student-Portal\ ← the app actually lives in here
+```
+
+This is exactly the layout on your machine: `.git` sits in the parent folder, and
+`SPA-Student-Portal` is a subfolder of it. Railpack sees a root with no
+`package.json`, detects no language, and stops before running any `npm` step.
+
+**Fix it — set the Root Directory** (no files need to move, and Git history is
+untouched):
+
+1. Service → **Settings** → **Source** → **Root Directory**.
+2. Enter the folder name exactly:
+
+   ```
+   SPA-Student-Portal
+   ```
+
+3. **Redeploy.** Railpack now finds `package.json`, detects Node, and builds.
+
+**Optional, to pin it in code**: create `railway.json` at the **repo root**
+(beside `.git`, *not* inside `SPA-Student-Portal`). Railway only reads this file
+from the repository root:
+
+```json
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "RAILPACK",
+    "buildCommand": "cd SPA-Student-Portal && npm install --omit=dev",
+    "watchPatterns": ["SPA-Student-Portal/**"]
+  },
+  "deploy": {
+    "startCommand": "node SPA-Student-Portal/server.js",
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 5
+  }
+}
+```
+
+> The **Root Directory** setting alone is enough. Use `railway.json` only if you
+> want the configuration recorded in the repo rather than in the dashboard.
+
+**A cleaner long-term option** (for later, not now): make `SPA-Student-Portal`
+itself the repository root — create a new GitHub repo *from inside* that folder,
+so the repo root and the app root are the same. Then no Root Directory setting is
+needed at all, and the paths in `RAILWAY.md` step 4 (`/app/data`) stay correct.
+
 4. It will build and start. **It is not ready to use yet** — the database is
    still on the temporary filesystem until step 4.
 
@@ -209,6 +263,7 @@ workbook.
 
 | Symptom                                                           | Cause                                        | Fix                                                                                                   |
 | ----------------------------------------------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `Railpack failed to prepare the build`                            | No `package.json` at the build root — the repo root is one folder above the app | Set **Settings → Source → Root Directory** to `SPA-Student-Portal` (step 2)                        |
 | Log says `Data : /app/database.xlsx` (no `/data`)                 | Volume not mounted, or mounted at the wrong path | Set the volume's mount path to `/app/data` (step 4)                                                |
 | Log prints `!! WARNING: no volume is mounted`                     | No volume attached                           | Attach one (step 4)                                                                                    |
 | Data disappears after every redeploy                              | Volume path wrong, or no volume              | Fix the mount path; confirm `Data :` points inside it                                                  |
