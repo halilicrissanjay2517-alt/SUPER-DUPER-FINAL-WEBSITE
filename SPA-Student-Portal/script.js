@@ -12,6 +12,11 @@
      The splash is shown from the very first paint (see the head script and
      styles.css). Here we lift it once the site is ready, then start the hero
      reveal. It always resolves, so the page can never stay covered. */
+
+  // Set by the splash routine below; lets other code (the modal opener) remove
+  // the splash early. A harmless no-op until then, and after it has gone.
+  var liftSplashNow = function () {};
+
   (function dismissSplash() {
     var splash = $("#splash");
     var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -60,6 +65,18 @@
           if (splash.parentNode) splash.parentNode.removeChild(splash);
         }, 700);
       }, wait);
+    };
+
+    // Something needed the page right now — a form opening, say. Lift the
+    // splash without the minimum wait and unlock scrolling immediately, so the
+    // visitor is never typing into a page they cannot reach.
+    liftSplashNow = function liftNow() {
+      if (lifted) return;
+      lifted = true;
+      percentDone = true;
+      if (percentTimer) clearInterval(percentTimer);
+      if (splash.parentNode) splash.parentNode.removeChild(splash);
+      reveal();
     };
 
     // Lift on whichever comes first. Waiting only for `load` holds the page
@@ -127,10 +144,6 @@
   }
 
   /* ---------- Shared formatting helpers ---------- */
-  function peso(value) {
-    return "\u20B1" + (Number(value) || 0).toLocaleString("en-PH");
-  }
-
   function badgeFor(status) {
     var s = String(status).toLowerCase();
     if (s === "enrolled" || s === "paid") return "badge-green";
@@ -138,44 +151,10 @@
     return "badge-blue";
   }
 
-  /** "2025-03-31" -> "Mar 31, 2025". Anything unparseable shows as an em dash. */
-  function niceDate(value) {
-    var day = String(value || "").slice(0, 10);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return "—";
-    var d = new Date(day + "T00:00:00");
-    if (isNaN(d)) return "—";
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-  }
-
-  /** Today as "YYYY-MM-DD", matching how due dates are stored. */
-  function todayISO() {
-    return new Date().toISOString().slice(0, 10);
-  }
-
   function escapeHtml(str) {
     return String(str).replace(/[&<>"']/g, function (c) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
     });
-  }
-
-  /**
-   * How a payment due date reads to a student: a settled account just shows the
-   * date, an account still owing gets a plain-language countdown or warning.
-   */
-  function dueText(s) {
-    var day = String(s.dueDate || "").slice(0, 10);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return { text: "Not set", kind: "" };
-    if ((Number(s.balance) || 0) <= 0) return { text: niceDate(day), kind: "" };
-
-    var days = Math.round(
-      (Date.parse(day + "T00:00:00Z") - Date.parse(todayISO() + "T00:00:00Z")) / 86400000
-    );
-    if (days < 0) return { text: "Overdue by " + Math.abs(days) + " days", kind: "badge-red" };
-    if (days === 0) return { text: "Due today", kind: "badge-amber" };
-    if (days <= 14) {
-      return { text: "Due in " + days + " day" + (days === 1 ? "" : "s"), kind: "badge-amber" };
-    }
-    return { text: niceDate(day), kind: "" };
   }
 
   /* ---------- Sign-in state ----------
@@ -216,22 +195,9 @@
     if (kind) target.classList.add(kind === "ok" ? "is-success" : "is-error");
   }
 
-  /** Show the signed-in view: hero buttons, the My Account panel, no public table. */
-  function applySignedIn() {
-    var panel = $("#account-panel");
-    var publicPanel = $("#records-panel");
-    if (panel) panel.hidden = false;
-    if (publicPanel) publicPanel.hidden = true;
-    if ($("#heroLoginBtn")) $("#heroLoginBtn").hidden = true;
-    if ($("#heroSignupBtn")) $("#heroSignupBtn").hidden = true;
-    if ($("#heroAccountBtn")) $("#heroAccountBtn").hidden = false;
-    if ($("#heroLogoutBtn")) $("#heroLogoutBtn").hidden = false;
-  }
-
+  /** Reset the public page to its signed-out state (used after signing out). */
   function applySignedOut() {
-    var panel = $("#account-panel");
     var publicPanel = $("#records-panel");
-    if (panel) panel.hidden = true;
     if (publicPanel) publicPanel.hidden = false;
     if ($("#heroLoginBtn")) $("#heroLoginBtn").hidden = false;
     if ($("#heroSignupBtn")) $("#heroSignupBtn").hidden = false;
@@ -241,78 +207,25 @@
     if (note) note.hidden = true;
   }
 
-  /** Paint the My Account panel from the student's own record. */
-  function renderMyAccount(s) {
-    var due = dueText(s);
-    if ($("#accountGreeting")) {
-      $("#accountGreeting").textContent =
-        "Signed in as " + s.name + " — " + (s.grade || "") +
-        (s.section ? " · " + s.section : "") + ".";
-    }
-    if ($("#myTotalFee")) $("#myTotalFee").textContent = peso(s.totalFee);
-    if ($("#myPaid")) $("#myPaid").textContent = peso(s.amountPaid);
-    if ($("#myBalance")) $("#myBalance").textContent = peso(s.balance);
+  /** The student's own dashboard page — where a signed-in student belongs. */
+  var DASHBOARD_URL = "student.html";
 
-    var balanceCard = $("#myBalanceCard");
-    if (balanceCard) {
-      balanceCard.classList.toggle("is-clear", (Number(s.balance) || 0) <= 0);
-      balanceCard.classList.toggle("is-owed", (Number(s.balance) || 0) > 0);
-    }
-
-    var dueEl = $("#myDue");
-    if (dueEl) {
-      dueEl.textContent = due.text;
-      dueEl.classList.remove("is-warning");
-      if (due.kind === "badge-red" || due.kind === "badge-amber") dueEl.classList.add("is-warning");
-    }
-
-    var statusEl = $("#myStatus");
-    if (statusEl) {
-      statusEl.textContent = s.status || "—";
-      statusEl.className = "badge " + badgeFor(s.status);
-    }
-    if ($("#myIdentity")) {
-      $("#myIdentity").textContent = "Student ID " + s.id +
-        (s.lastPaymentDate ? " · last payment " + niceDate(s.lastPaymentDate) : " · no payments yet");
-    }
-
-    var tbody = $("#myPayments");
-    if (!tbody) return;
-    var payments = s.payments || [];
-    tbody.innerHTML = "";
-    if (payments.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5" class="table-empty">No payments recorded yet.</td></tr>';
-      return;
-    }
-    payments.forEach(function (p) {
-      var tr = document.createElement("tr");
-      tr.innerHTML =
-        "<td>" + escapeHtml(niceDate(p.date)) + "</td>" +
-        "<td><strong>" + escapeHtml(p.receiptNo) + "</strong></td>" +
-        '<td class="amount-cell">' + peso(p.amount) + "</td>" +
-        "<td>" + escapeHtml(p.method || "—") + "</td>" +
-        "<td>" + escapeHtml(p.note || "—") + "</td>";
-      tbody.appendChild(tr);
-    });
-  }
-
-  /** Fetch the signed-in student's own record and show the account panel. */
-  function loadMyAccount() {
-    return studentApi("/api/student/me")
-      .then(function (data) {
-        studentState.student = data.student;
-        applySignedIn();
-        renderMyAccount(data.student);
+  /**
+   * A returning student who still has a valid session should not land on the
+   * public marketing page: send them straight to their own dashboard. If the
+   * stored token is stale the request 401s and we quietly clear it, leaving
+   * the public page exactly as it was.
+   */
+  function resumeSession() {
+    if (!studentState.token) return;
+    studentApi("/api/student/me")
+      .then(function () {
+        window.location.replace(DASHBOARD_URL);
       })
       .catch(function (err) {
-        // An expired or withdrawn session simply returns the student to the
-        // public view rather than showing a broken panel.
-        studentState.token = null;
-        studentState.student = null;
-        localStorage.removeItem(STUDENT_TOKEN_KEY);
-        applySignedOut();
         if (err.status === 401 || err.status === 403) {
-          setLoginStatus("Your session ended. Please sign in again.", "error");
+          studentState.token = null;
+          localStorage.removeItem(STUDENT_TOKEN_KEY);
         }
       });
   }
@@ -416,18 +329,38 @@
 
   /* ---------- Modal open / close ---------- */
   var openModals = [];
-  var lockScroll = function () { document.body.classList.add("no-scroll"); };
+  var lockScroll = function () {
+    document.body.classList.add("no-scroll");
+    // Flag the whole document so the stylesheet can stand down the expensive
+    // background work (parallax photo, blurred header) while a dialog is open.
+    document.documentElement.classList.add("modal-open");
+  };
   var unlockScroll = function () {
-    if (openModals.length === 0) document.body.classList.remove("no-scroll");
+    if (openModals.length === 0) {
+      document.body.classList.remove("no-scroll");
+      document.documentElement.classList.remove("modal-open");
+    }
   };
 
   function openModal(modal) {
     if (!modal || openModals.indexOf(modal) !== -1) return;
+    // A modal opened during the intro splash would sit UNDERNEATH it (the
+    // splash sits at z-index 2000), leaving a form the visitor can see but not
+    // type into. Opening a form is a clear signal they want the page now, so
+    // hand it over at once instead of waiting for the animation to finish.
+    liftSplashNow();
     modal.hidden = false;
     openModals.push(modal);
     lockScroll();
-    var focusable = $("input, button, textarea, a[href]", modal);
-    if (focusable) focusable.focus();
+    // Listeners elsewhere (the scroll-reveal) settle their heavy background
+    // work once they hear this, which is what keeps typing in the form smooth.
+    document.dispatchEvent(new CustomEvent("modalopened"));
+    // Focus the first field directly, so typing can start immediately without
+    // a click — and without the browser scrolling the inert page behind.
+    var focusable = $("input, textarea, select", modal) || $("button, a[href]", modal);
+    if (focusable) {
+      try { focusable.focus({ preventScroll: true }); } catch (err) { focusable.focus(); }
+    }
   }
 
   function closeModal(modal) {
@@ -443,6 +376,13 @@
       openModal(document.getElementById(trigger.getAttribute("data-modal-open")));
     });
   });
+
+  /* Arriving from the dashboard's "Sign in" link (studentportal.html#login)
+     should land on the sign-in form straight away, not just the hero. */
+  if (window.location.hash === "#login") {
+    var loginModal = document.getElementById("loginModal");
+    if (loginModal) openModal(loginModal);
+  }
 
   $$("[data-modal-close]").forEach(function (el) {
     el.addEventListener("click", function () {
@@ -544,10 +484,8 @@
           $$(".field input", loginForm).forEach(function (i) { i.classList.remove("is-invalid"); });
           setLoginStatus("", "");
           closeModal($("#loginModal"));
-          loadMyAccount().then(function () {
-            var panel = $("#account-panel");
-            if (panel) panel.scrollIntoView({ behavior: "smooth", block: "start" });
-          });
+          // Their own dashboard is the real destination after signing in.
+          window.location.href = DASHBOARD_URL;
         })
         .catch(function (err) {
           setLoginStatus(err.message, "error");
@@ -657,10 +595,12 @@
   var heroAccount = $("#heroAccountBtn");
   if (heroAccount) {
     heroAccount.addEventListener("click", function () {
-      var panel = $("#account-panel");
-      if (panel) panel.scrollIntoView({ behavior: "smooth", block: "start" });
+      window.location.href = DASHBOARD_URL;
     });
   }
+
+  /* A student who is already signed in belongs on their dashboard, not here. */
+  resumeSession();
 
   /* ---------- Reading progress bar ---------- */
   var progressFill = $("#readingProgress");
@@ -691,6 +631,15 @@
     }, { rootMargin: "0px 0px -12% 0px", threshold: 0.08 });
 
     revealTargets.forEach(function (section) { revealObserver.observe(section); });
+
+    // Sections still waiting below the fold should not hold a GPU layer while a
+    // dialog is open — that is memory a phone wants for typing. Hand it back on
+    // open; it is only re-earned if the section then scrolls into view.
+    document.addEventListener("modalopened", function () {
+      $$(".reveal:not(.is-visible)").forEach(function (section) {
+        section.style.willChange = "auto";
+      });
+    });
   }
 
   /* ---------- Animated hero counters ----------

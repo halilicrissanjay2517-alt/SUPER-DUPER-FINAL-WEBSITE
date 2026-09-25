@@ -548,6 +548,64 @@ function publicAccount(account) {
 }
 
 /**
+ * The profile fields a signed-in student is allowed to change about themselves.
+ * Name, Student ID, grade, section and every tuition figure are deliberately
+ * absent: those belong to the school's record, not to the student's screen.
+ */
+const EDITABLE_PROFILE_FIELDS = [
+  "address",
+  "contact",
+  "guardian",
+  "guardianContact",
+  "lastSchool",
+];
+
+/**
+ * The shape the dashboard renders as the student's own profile. Read-only
+ * identity comes from the account and, where the two differ, the roster record
+ * is the authority on name, grade and section — the school's version wins.
+ */
+function studentProfileFor(db, account) {
+  if (!account) return null;
+  const student = readSheet(db, SHEETS.students).find(
+    (s) => String(s.id).trim().toLowerCase() === String(account.studentId).trim().toLowerCase()
+  );
+  return {
+    studentId: account.studentId,
+    fullname: student && student.name ? student.name : account.fullname,
+    email: account.email || "",
+    gradeLevel: student && student.grade ? student.grade : account.gradeLevel || "",
+    section: student && student.section ? student.section : account.section || "",
+    status: student ? student.status : account.status,
+    birthdate: account.birthdate || "",
+    sex: account.sex || "",
+    address: account.address || "",
+    contact: account.contact || "",
+    guardian: account.guardian || "",
+    guardianContact: account.guardianContact || "",
+    lastSchool: account.lastSchool || "",
+  };
+}
+
+/**
+ * Copy the contact details the office relies on from the account onto the
+ * roster record, so "phone this student's guardian" reads the same in both
+ * places. Only the shared, non-billing fields move; name, grade, section and
+ * every tuition figure are left exactly as the school set them.
+ */
+function syncRosterContactFromAccount(db, account) {
+  const students = readSheet(db, SHEETS.students);
+  const index = students.findIndex(
+    (s) => String(s.id).trim().toLowerCase() === String(account.studentId).trim().toLowerCase()
+  );
+  if (index === -1) return;
+  const record = students[index];
+  if (account.contact) record.contact = account.contact;
+  if (account.guardian) record.guardian = account.guardian;
+  writeSheet(db, SHEETS.students, students, STUDENT_COLUMNS);
+}
+
+/**
  * Add the roster cross-check to a student account.
  *
  * `onRoster` answers "is this Student ID on the school list right now?", which
@@ -1095,6 +1153,94 @@ async function handleApi(req, res, pathname) {
     appendLog(db, session.studentId, "password-change", session.studentId, "Student changed password");
     saveDb(db);
     return sendJson(res, 200, { ok: true });
+  }
+
+  /* ---- GET /api/student/profile  (the signed-in student's own profile) ----
+     The profile is the account details the student may see and keep up to date
+     about themselves — never tuition, balance or status, which belong to the
+     school. The read route pairs with the update route below. */
+  if (pathname === "/api/student/profile" && req.method === "GET") {
+    const session = requireStudent(req, res);
+    if (!session) return;
+    const db = loadDb();
+    const account = findAccount(db, session.studentId);
+    if (!account) return sendJson(res, 404, { error: "Account not found" });
+    return sendJson(res, 200, {
+      profile: studentProfileFor(db, account),
+      editable: EDITABLE_PROFILE_FIELDS,
+    });
+  }
+
+  /* ---- POST /api/student/profile  (a student updates their own profile) ----
+     Only the fields in EDITABLE_PROFILE_FIELDS are honoured, and each is
+     trimmed and length-checked. A signed-in student therefore cannot rename
+     themselves to a different person, change their grade (and so their fee),
+     or touch any tuition figure — the roster keeps the school's version of
+     those, and an administrator owns them. */
+  if (pathname === "/api/student/profile" && req.method === "POST") {
+    const session = requireStudent(req, res);
+    if (!session) return;
+    const body = await readBody(req);
+    const db = loadDb();
+    const accounts = readAccounts(db);
+    const index = accounts.findIndex(
+      (a) => String(a.studentId) === String(session.studentId)
+    );
+    if (index === -1) return sendJson(res, 404, { error: "Account not found" });
+
+    const account = accounts[index];
+    const next = {};
+    // Work only from the allow-list, so an unexpected key in the body is ignored
+    // rather than written into the workbook.
+    for (const field of EDITABLE_PROFILE_FIELDS) {
+      if (body[field] === undefined) continue;
+      next[field] = String(body[field] === null ? "" : body[field]).trim();
+    }
+
+    // The contact number is the one field with a shape worth enforcing: a bad
+    // one is worse than an empty one, and the school phones students with it.
+    if (next.contact && !/^[0-9+()\-\s]{7,}$/.test(next.contact)) {
+      return sendJson(res, 400, { error: "Enter a valid contact number" });
+    }
+    if (next.guardianContact && !/^[0-9+()\-\s]{7,}$/.test(next.guardianContact)) {
+      return sendJson(res, 400, { error: "Enter a valid guardian contact number" });
+    }
+    // A short guard on the free-text fields keeps a runaway paste out of the
+    // workbook.
+    const tooLong = EDITABLE_PROFILE_FIELDS.find(
+      (f) => next[f] && next[f].length > 160
+    );
+    if (tooLong) {
+      return sendJson(res, 400, { error: "That value is too long — please shorten it." });
+    }
+
+    account.address = next.address !== undefined ? next.address : account.address;
+    account.contact = next.contact !== undefined ? next.contact : account.contact;
+    account.guardian = next.guardian !== undefined ? next.guardian : account.guardian;
+    account.guardianContact =
+      next.guardianContact !== undefined ? next.guardianContact : account.guardianContact;
+    account.lastSchool =
+      next.lastSchool !== undefined ? next.lastSchool : account.lastSchool;
+    accounts[index] = account;
+    writeAccounts(db, accounts);
+
+    // A few of these also live on the roster record, where the office reads them
+    // for billing and contact. Keep those in step so the two never disagree —
+    // but only fill from the account, never touch a name, grade or fee.
+    syncRosterContactFromAccount(db, account);
+
+    appendLog(
+      db,
+      session.studentId,
+      "profile-update",
+      session.studentId,
+      "Student updated their own profile details"
+    );
+    saveDb(db);
+    return sendJson(res, 200, {
+      profile: studentProfileFor(db, findAccount(db, session.studentId)),
+      message: "Your profile was updated.",
+    });
   }
 
   /* ================= Administrator: account approvals ================= */

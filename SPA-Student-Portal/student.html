@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Saint Patrick's Academy, Inc. — your own student account: tuition, balance, due date and payment history.">
+    <meta name="robots" content="noindex">
+    <title>My Account — Saint Patrick's Academy, Inc.</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="dashboard.css">
+</head>
+<body class="dash-body">
+    <a class="skip-link" href="#dashMain">Skip to main content</a>
+
+    <!-- The student dashboard is a private page, so there is no marketing chrome:
+         just a slim header carrying the school mark, the student's own session,
+         and a way out. All figures come from the student's OWN record; the server
+         refuses every admin route for a student session. -->
+    <header class="dash-header">
+        <div class="dash-header-inner">
+            <a class="dash-brand" href="studentportal.html">
+                <img src="logo.png" alt="Saint Patrick's Academy, Inc. logo">
+                <span class="dash-brand-text">
+                    <strong>Saint Patrick's Academy, Inc.</strong>
+                    <small>Student Dashboard</small>
+                </span>
+            </a>
+            <div class="dash-header-actions">
+                <span class="dash-identity" id="dashIdentity" hidden></span>
+                <a class="btn btn-ghost dash-back" href="studentportal.html">&larr; Portal home</a>
+                <button type="button" class="btn btn-primary" id="dashLogoutBtn">Sign out</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="dash-main" id="dashMain">
+        <!-- Shown while the session is checked. The page is private, so nothing
+             of the record is in the HTML itself — it is fetched after sign-in. -->
+        <div class="dash-loading" id="dashLoading" role="status" aria-live="polite">
+            <span class="dash-spinner" aria-hidden="true"></span>
+            <p>Loading your account…</p>
+        </div>
+
+        <!-- Shown when there is no valid session: offer a way back to sign in. -->
+        <div class="dash-blocked" id="dashBlocked" hidden>
+            <h1>Please sign in</h1>
+            <p class="muted" id="dashBlockedText">
+                This page shows your own tuition and payment records, so it is only
+                available after you sign in.
+            </p>
+            <a class="btn btn-primary" href="studentportal.html#login">Sign in on the portal &rarr;</a>
+        </div>
+
+        <!-- The dashboard proper. -->
+        <div class="dash-content" id="dashContent" hidden>
+            <section class="dash-hero">
+                <div>
+                    <span class="eyebrow eyebrow-dark">My Account</span>
+                    <h1 class="dash-title" id="dashName">—</h1>
+                    <p class="dash-sub" id="dashSubtitle"></p>
+                </div>
+                <span class="badge" id="dashStatus">—</span>
+            </section>
+
+            <!-- The four figures a student comes for, largest idea first. -->
+            <section class="dash-cards" aria-label="Tuition summary">
+                <div class="account-card is-emphasis" id="dashBalanceCard">
+                    <span class="account-card-label">Remaining balance</span>
+                    <strong class="account-card-value" id="dashBalance">₱0</strong>
+                    <span class="dash-card-note" id="dashBalanceNote"></span>
+                </div>
+                <div class="account-card">
+                    <span class="account-card-label">Paid so far</span>
+                    <strong class="account-card-value" id="dashPaid">₱0</strong>
+                    <span class="dash-card-note" id="dashPaidNote"></span>
+                </div>
+                <div class="account-card">
+                    <span class="account-card-label">Tuition fee</span>
+                    <strong class="account-card-value" id="dashTotalFee">₱0</strong>
+                    <span class="dash-card-note">Total assessed</span>
+                </div>
+                <div class="account-card">
+                    <span class="account-card-label">Payment due</span>
+                    <strong class="account-card-value" id="dashDue">—</strong>
+                    <span class="dash-card-note" id="dashDueNote"></span>
+                </div>
+            </section>
+
+            <div class="dash-grid">
+                <!-- My profile — the student's own page about themselves. The
+                     identity block is the school's record and stays read-only;
+                     the contact details below it are theirs to keep current. -->
+                <section class="dash-panel dash-profile" aria-labelledby="dashProfileHeading">
+                    <header class="dash-panel-head">
+                        <h2 id="dashProfileHeading">My profile</h2>
+                        <button type="button" class="btn btn-secondary btn-sm" id="dashProfileEditBtn">Edit</button>
+                    </header>
+
+                    <div class="profile-ident">
+                        <span class="profile-avatar" id="dashProfileAvatar" aria-hidden="true">—</span>
+                        <div class="profile-ident-text">
+                            <strong class="profile-name" id="dashProfileName">—</strong>
+                            <span class="profile-line" id="dashProfileMeta"></span>
+                            <span class="badge" id="dashProfileStatus">—</span>
+                        </div>
+                    </div>
+
+                    <!-- Read-only: the school owns these. -->
+                    <dl class="dash-details" id="dashDetails"></dl>
+
+                    <!-- Editable contact details, hidden until Edit is pressed. -->
+                    <form id="dashProfileForm" novalidate hidden>
+                        <p class="signup-group">Contact details</p>
+                        <label class="field">
+                            <span>Home address</span>
+                            <input type="text" name="address" placeholder="Barangay, Town, Province" autocomplete="street-address">
+                        </label>
+                        <div class="field-row">
+                            <label class="field">
+                                <span>Contact number</span>
+                                <input type="tel" name="contact" placeholder="0917-555-0101" autocomplete="tel">
+                            </label>
+                            <label class="field">
+                                <span>Guardian's contact number</span>
+                                <input type="tel" name="guardianContact" placeholder="0917-555-0102">
+                            </label>
+                        </div>
+                        <label class="field">
+                            <span>Parent or guardian</span>
+                            <input type="text" name="guardian" placeholder="Rosa Dela Cruz">
+                        </label>
+                        <label class="field">
+                            <span>Last school attended</span>
+                            <input type="text" name="lastSchool" placeholder="Dingalan Central School">
+                        </label>
+                        <div class="profile-actions">
+                            <button type="submit" class="btn btn-primary">Save changes</button>
+                            <button type="button" class="btn btn-ghost" id="dashProfileCancelBtn">Cancel</button>
+                        </div>
+                        <p class="form-status" id="dashProfileFormStatus" role="status" aria-live="polite"></p>
+                    </form>
+
+                    <p class="profile-note" id="dashProfileNote">
+                        Need a correction to your name, grade or section?
+                        Contact the Registrar at (042) 555-0168.
+                    </p>
+                </section>
+
+                <!-- My login -->
+                <section class="dash-panel" aria-labelledby="dashLoginHeading">
+                    <header class="dash-panel-head">
+                        <h2 id="dashLoginHeading">My login</h2>
+                    </header>
+                    <dl class="dash-details" id="dashLoginDetails"></dl>
+                    <form id="dashPasswordForm" novalidate>
+                        <p class="signup-group">Change password</p>
+                        <label class="field">
+                            <span>Current password</span>
+                            <input type="password" name="currentPassword" required autocomplete="current-password">
+                        </label>
+                        <label class="field">
+                            <span>New password</span>
+                            <input type="password" name="newPassword" required minlength="8"
+                                autocomplete="new-password">
+                            <small class="field-hint">At least 8 characters.</small>
+                        </label>
+                        <button type="submit" class="btn btn-secondary btn-block">Update password</button>
+                        <p class="form-status" id="dashPasswordStatus" role="status" aria-live="polite"></p>
+                    </form>
+                </section>
+            </div>
+
+            <!-- Payment history -->
+            <section class="dash-panel" aria-labelledby="dashPaymentsHeading">
+                <header class="dash-panel-head">
+                    <h2 id="dashPaymentsHeading">Payment history</h2>
+                    <span class="dash-panel-total" id="dashPaymentsTotal"></span>
+                </header>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Date</th>
+                                <th scope="col">Receipt</th>
+                                <th scope="col">Amount</th>
+                                <th scope="col">Method</th>
+                                <th scope="col">Note</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dashPayments">
+                            <tr><td colspan="5" class="table-empty">Loading…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer class="dash-footer">
+        <div class="dash-footer-inner">
+            <span>Saint Patrick's Academy, Inc. &middot; Yakal 1, Paltic, Dingalan, Aurora</span>
+            <span class="muted">Questions about your balance? Contact the Accounting office at (042) 555-0168.</span>
+        </div>
+    </footer>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>

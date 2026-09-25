@@ -68,7 +68,14 @@ untouched):
 
 **Optional, to pin it in code**: create `railway.json` at the **repo root**
 (beside `.git`, *not* inside `SPA-Student-Portal`). Railway only reads this file
-from the repository root:
+from the repository root.
+
+> **Use this only if you have NOT set a Root Directory.** These paths assume the
+> repo root is the build root, so the app folder has to be named explicitly. If
+> you set **Settings → Source → Root Directory** to `SPA-Student-Portal` (the
+> recommended route above), the build root *is* the app folder — then Railpack
+> finds `server.js` on its own and you should leave this file out entirely,
+> because `node SPA-Student-Portal/server.js` would not exist in that image.
 
 ```json
 {
@@ -88,6 +95,8 @@ from the repository root:
 
 > The **Root Directory** setting alone is enough. Use `railway.json` only if you
 > want the configuration recorded in the repo rather than in the dashboard.
+> Pick one — setting both is how the start command ends up pointing at a path
+> that does not exist in the built image.
 
 **A cleaner long-term option** (for later, not now): make `SPA-Student-Portal`
 itself the repository root — create a new GitHub repo *from inside* that folder,

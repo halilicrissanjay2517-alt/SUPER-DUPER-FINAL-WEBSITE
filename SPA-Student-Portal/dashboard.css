@@ -1,0 +1,408 @@
+/* Saint Patrick's Academy, Inc. — Student Dashboard (student.html).
+   Deliberately lighter than the public landing page: this is a private data
+   page, so it uses no background photos, no backdrop blurs and no scroll
+   animations. That keeps it fast on the phones students actually use. */
+
+.dash-body {
+  background: var(--canvas, #f6f8f6);
+  color: var(--ink);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Header ---------- */
+.dash-header {
+  background: var(--green-900);
+  color: #fff;
+  padding: 14px 24px;
+}
+
+.dash-header-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.dash-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: #fff;
+}
+
+.dash-brand img {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: #fff;
+  object-fit: cover;
+}
+
+.dash-brand-text strong {
+  display: block;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.dash-brand-text small {
+  color: #9fc0ae;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.dash-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.dash-identity {
+  font-size: 13px;
+  font-weight: 600;
+  color: #cfe6da;
+}
+
+.dash-header .btn-ghost {
+  color: #cfe6da;
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.dash-header .btn-ghost:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* ---------- Main ---------- */
+.dash-main {
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 34px 24px 56px;
+}
+
+.dash-loading,
+.dash-blocked {
+  text-align: center;
+  padding: 70px 10px;
+}
+
+.dash-blocked h1 {
+  margin: 0 0 10px;
+}
+
+.dash-spinner {
+  display: inline-block;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid var(--line);
+  border-top-color: var(--green-600);
+  animation: dash-spin 0.8s linear infinite;
+}
+
+@keyframes dash-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dash-spinner { animation: none; }
+}
+
+/* ---------- Hero strip ---------- */
+.dash-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+}
+
+.dash-title {
+  margin: 6px 0 4px;
+  font-size: 32px;
+  line-height: 1.15;
+}
+
+.dash-sub {
+  margin: 0;
+  color: #64748b;
+  font-weight: 600;
+}
+
+/* ---------- Summary cards ---------- */
+.dash-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 26px;
+}
+
+.dash-card-note {
+  font-size: 12.5px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+/* ---------- Panels ---------- */
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.dash-panel {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  border-radius: 14px;
+  padding: 22px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.dash-panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.dash-panel-head h2 {
+  margin: 0;
+  font-size: 19px;
+}
+
+.dash-panel-total {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--green-700);
+}
+
+/* A label/value list, kept readable on a phone. */
+.dash-details {
+  margin: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.dash-details div {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.dash-details div:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.dash-details dt {
+  color: #64748b;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.dash-details dd {
+  margin: 0;
+  font-weight: 700;
+  text-align: right;
+  word-break: break-word;
+}
+
+#dashPasswordForm {
+  margin-top: 20px;
+}
+
+/* ---------- My profile ---------- */
+.dash-profile .dash-details {
+  margin-top: 18px;
+}
+
+.profile-ident {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+}
+
+/* A square of initials: no upload, no broken image, still personal. */
+.profile-avatar {
+  flex: 0 0 auto;
+  width: 62px;
+  height: 62px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(150deg, var(--green-700), var(--green-900));
+  color: #fff;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.profile-ident-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.profile-name {
+  font-size: 18px;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.profile-line {
+  font-size: 13.5px;
+  color: #64748b;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+/* The status badge shares its line with the identity text, so keep it snug. */
+.profile-ident-text .badge {
+  align-self: flex-start;
+  margin-top: 2px;
+}
+
+.profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.profile-note {
+  margin: 18px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  font-size: 12.5px;
+  color: #64748b;
+}
+
+/* Small variant of the shared button, for a header action like "Edit". */
+.dash-panel .btn-sm {
+  padding: 8px 16px;
+  font-size: 13.5px;
+}
+
+/* The dashboard reuses the public page's field styles, but is not scoped to
+   them here — repeat the essentials so the profile form matches the password
+   form without dragging in the whole landing-page form. */
+.dash-panel .field {
+  display: block;
+  margin-bottom: 14px;
+}
+
+.dash-panel .field span {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.dash-panel .field input {
+  width: 100%;
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 15px;
+  color: var(--ink);
+  background: #fbfdfb;
+  transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+  contain: paint;
+}
+
+.dash-panel .field input:focus {
+  outline: none;
+  border-color: var(--green-600);
+  box-shadow: var(--ring);
+}
+
+.dash-panel .field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.dash-panel .signup-group {
+  margin: 4px 0 12px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--green-700);
+}
+
+.dash-panel .form-status {
+  margin: 12px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  min-height: 20px;
+}
+
+.dash-panel .form-status.is-success {
+  color: var(--green-700);
+}
+
+.dash-panel .form-status.is-error {
+  color: #d64545;
+}
+
+@media (max-width: 560px) {
+  .dash-panel .field-row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}
+
+/* ---------- Footer ---------- */
+.dash-footer {
+  background: var(--green-900);
+  color: #cfe6da;
+  padding: 22px 24px;
+}
+
+.dash-footer-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 13.5px;
+}
+
+.dash-footer .muted {
+  color: #9fc0ae;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 900px) {
+  .dash-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dash-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 560px) {
+  .dash-cards { grid-template-columns: 1fr; }
+  .dash-main { padding: 24px 18px 44px; }
+  .dash-title { font-size: 26px; }
+  .dash-header { padding: 12px 18px; }
+  .dash-header-actions { width: 100%; justify-content: space-between; }
+  .dash-identity { width: 100%; }
+}

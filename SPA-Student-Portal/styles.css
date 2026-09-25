@@ -389,7 +389,36 @@ img {
   position: absolute;
   inset: -6% 0;
   background: url("bg.jpg") center/cover no-repeat;
-  will-change: transform;
+}
+
+/* While a modal is open the page behind is inert, so nothing back there needs
+   to repaint. Pausing the parallax layer, the blurred header AND the blurred
+   side panel is what keeps typing in the sign-up form smooth — otherwise every
+   keystroke re-composites the whole photo-and-blur backdrop underneath the
+   dialog. `.hero-panel` was the one blurred layer still running behind the
+   dialog, which is why typing there could still feel sticky. */
+.modal-open .hero-bg {
+  transform: none !important;
+  visibility: hidden;
+}
+
+.modal-open .site-header,
+.modal-open .hero-panel {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* The side panel also floats forever, so stop that while a form is open: an
+   infinite animation keeps the compositor busy on every repaint. */
+.modal-open .hero-panel {
+  animation: none !important;
+}
+
+/* Nothing far from a dialog needs to animate while it is open. Settle the
+   reveal layers so their permanent `will-change` is released exactly when the
+   user is typing. */
+.modal-open .reveal {
+  will-change: auto;
 }
 
 /* The dark wash sits above the photo and stays put. Kept light enough that the
@@ -623,12 +652,15 @@ section {
   opacity: 0;
   transform: translateY(26px);
   transition: opacity 0.6s var(--ease), transform 0.6s var(--ease);
-  will-change: opacity, transform;
 }
 
 .reveal.is-visible {
   opacity: 1;
   transform: none;
+  /* The section has finished animating, so give the layer back. A permanent
+     `will-change` keeps an unnecessary GPU layer alive on every section, which
+     is exactly the memory a phone needs to type smoothly. */
+  will-change: auto;
 }
 
 .section-head {
@@ -1312,6 +1344,9 @@ section {
   color: var(--ink);
   background: #fbfdfb;
   transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+  /* Text is typed into these constantly, so let the browser keep the caret and
+     the ring on their own layer instead of repainting the field each keystroke. */
+  contain: paint;
 }
 
 .field select {
@@ -1501,8 +1536,11 @@ section {
 .modal-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(6, 42, 26, 0.55);
-  backdrop-filter: blur(3px);
+  /* A plain translucent wash, deliberately NOT a backdrop-filter blur. A blur
+     here re-composites the whole page behind the modal on every keystroke,
+     which is what made typing in the sign-up form feel slow. The solid wash
+     looks the same and costs nothing. */
+  background: rgba(6, 42, 26, 0.62);
 }
 
 .modal-card {

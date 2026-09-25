@@ -99,7 +99,7 @@
     </div>
 
     <main id="main">
-        <section class="hero">
+        <section class="hero" id="login">
             <div class="hero-bg" aria-hidden="true"></div>
             <div class="hero-spotlight" aria-hidden="true"></div>
             <div class="hero-inner">
@@ -302,59 +302,6 @@
                 </article>
             </div>
             <p class="empty-state" id="announcementEmpty" hidden>No announcements in this category yet.</p>
-        </section>
-
-        <!-- ================= MY ACCOUNT (signed-in students) =================
-             Personal financial details appear here and nowhere else. Before
-             signing in this section is simply hidden. -->
-        <section class="account" id="account-panel" hidden>
-            <div class="section-head">
-                <span class="eyebrow eyebrow-dark">Your records</span>
-                <h2 class="section-title">My Account</h2>
-                <p class="section-text" id="accountGreeting"></p>
-            </div>
-
-            <div class="account-cards">
-                <div class="account-card">
-                    <span class="account-card-label">Tuition Fee</span>
-                    <strong class="account-card-value" id="myTotalFee">₱0</strong>
-                </div>
-                <div class="account-card">
-                    <span class="account-card-label">Paid so far</span>
-                    <strong class="account-card-value" id="myPaid">₱0</strong>
-                </div>
-                <div class="account-card is-emphasis" id="myBalanceCard">
-                    <span class="account-card-label">Remaining balance</span>
-                    <strong class="account-card-value" id="myBalance">₱0</strong>
-                </div>
-                <div class="account-card">
-                    <span class="account-card-label">Payment due</span>
-                    <strong class="account-card-value" id="myDue">—</strong>
-                </div>
-            </div>
-
-            <div class="account-meta">
-                <span class="badge" id="myStatus">—</span>
-                <span class="muted" id="myIdentity"></span>
-            </div>
-
-            <h3 class="account-subtitle">Payment history</h3>
-            <div class="table-wrap">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th scope="col">Date</th>
-                            <th scope="col">Receipt</th>
-                            <th scope="col">Amount</th>
-                            <th scope="col">Method</th>
-                            <th scope="col">Note</th>
-                        </tr>
-                    </thead>
-                    <tbody id="myPayments">
-                        <tr><td colspan="5" class="table-empty">Loading…</td></tr>
-                    </tbody>
-                </table>
-            </div>
         </section>
 
         <!-- ================= FIND MY RECORD (public, no money) =================
