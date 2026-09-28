@@ -643,6 +643,17 @@ function readAccounts(db) {
     accounts.push(accountFromRow(row, credential));
   });
 
+  // A credential whose student has no row on the roster still has to be
+  // returned: it is the login the student made for themselves, and dropping it
+  // here would make them unable to sign in until the office approves them.
+  credentials.forEach(function (credential, id) {
+    if (seen.has(id)) return;
+    accounts.push(accountFromRow({ id: credential.studentId }, credential));
+  });
+
+  return accounts;
+}
+
 /**
  * Find the one account that identifies this student. A student signs in with
  * either their Student ID or the email they registered, so both are matched.
