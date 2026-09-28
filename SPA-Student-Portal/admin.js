@@ -148,6 +148,9 @@
       $("#addStudentBtn").hidden = view !== "students";
       // Recording a payment is useful from the student list and the payment list.
       $("#addPaymentBtn").hidden = view !== "students" && view !== "payments";
+      // Creating a login belongs where the student list and the approval queue
+      // are — those are the two screens where the office decides who gets in.
+      $("#createAccountBtn").hidden = view !== "students" && view !== "approvals";
       if (view === "admins") loadAdmins();
       if (view === "payments") loadPayments();
       if (view === "approvals") loadApprovals();
@@ -688,6 +691,19 @@
       histBtn.addEventListener("click", function () { openHistoryModal(s); });
       wrap.appendChild(histBtn);
 
+      // The quick way to give this one student a login, without leaving the list.
+      var acctBtn = document.createElement("button");
+      acctBtn.type = "button";
+      acctBtn.className = "icon-btn";
+      // The student this button acts on is read back from the DOM, so the
+      // marker is part of the button's contract, not decoration.
+      acctBtn.setAttribute("data-student", s.id);
+      acctBtn.title = "Create a portal account for " + s.name;
+      acctBtn.innerHTML =
+        '<svg class="icon" viewBox="0 0 24 24"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-4 0-8 2-8 5v3h16v-3c0-3-4-5-8-5Zm9-4v-2h-2V6h-2v2h-2v2h2v2h2v-2h2Z"/></svg>';
+      acctBtn.addEventListener("click", function () { openAccountModal(s.id); });
+      wrap.appendChild(acctBtn);
+
       if (state.admin && state.admin.role === "superadmin") {
         var delBtn = document.createElement("button");
         delBtn.type = "button";
@@ -896,6 +912,125 @@
         studentStatus.textContent = err.message;
         studentStatus.className = "form-status is-error";
       });
+  });
+
+  /* ---------------------------------------------- Create a student account
+     One button, one job: write a working login into database.xlsx. The account
+     is created active, so the office is not left with a pending request to
+     approve later — the same click both records it and lets the student in. */
+
+  var accountModal = $("#accountModal");
+  var accountForm = $("#accountForm");
+  var accountStatus = $("#accountStatus");
+
+  /** Fill the student list, newest first so a just-added student is on top. */
+  function openAccountModal(selectedId) {
+    accountForm.reset();
+    accountStatus.textContent = "";
+    accountStatus.className = "form-status";
+
+    var select = $("#accountStudent");
+    select.innerHTML = "";
+    if (state.students.length === 0) {
+      var none = document.createElement("option");
+      none.value = "";
+      none.textContent = "No students yet — add a student first";
+      select.appendChild(none);
+    } else {
+      state.students.slice().reverse().forEach(function (s) {
+        var opt = document.createElement("option");
+        opt.value = s.id;
+        opt.textContent = s.name + " — " + s.id + (s.grade ? " (" + s.grade + ")" : "");
+        select.appendChild(opt);
+      });
+      if (selectedId) select.value = selectedId;
+    }
+
+    // The email on the student record is the sensible default, and the Student ID
+    // itself doubles as a sign-in name, so a login works without one.
+    var chosen = state.students.find(function (s) { return String(s.id) === String(select.value); });
+    $("#accountEmail").value = chosen && chosen.email ? chosen.email : "";
+
+    accountModal.hidden = false;
+    accountForm.password.focus();
+  }
+
+  if ($("#createAccountBtn")) {
+    $("#createAccountBtn").addEventListener("click", function () { openAccountModal(null); });
+  }
+
+  $("#accountStudent").addEventListener("change", function () {
+    var chosen = state.students.find(function (s) { return String(s.id) === String(this.value); }.bind(this));
+    $("#accountEmail").value = chosen && chosen.email ? chosen.email : "";
+  });
+
+  accountForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var studentId = accountForm.studentId.value;
+    if (!studentId) {
+      accountStatus.textContent = "Choose a student first.";
+      accountStatus.className = "form-status is-error";
+      return;
+    }
+
+    accountStatus.textContent = "Creating account…";
+    accountStatus.className = "form-status";
+
+    api("/api/students/" + encodeURIComponent(studentId) + "/login", {
+      method: "POST",
+      body: { email: accountForm.email.value.trim(), password: accountForm.password.value },
+    })
+      .then(function (data) {
+        accountModal.hidden = true;
+        var creds = data.credentials || {};
+        // Show the details that were just written, once, while they are on
+        // screen — this is the moment the office copies them for the student.
+        toast(
+          "Account created — username " + creds.username + ", password " +
+            (creds.password || accountForm.password.value)
+        );
+        loadStudents();
+        loadApprovals();
+        loadLogs();
+      })
+      .catch(function (err) {
+        accountStatus.textContent = err.message;
+        accountStatus.className = "form-status is-error";
+      });
+  });
+
+  /* ------------------------------------------- Open the Excel database
+     Streams the live workbook back, so the file the office gets is exactly the
+     one the website is writing to — every student, every account, every figure. */
+
+  function downloadDatabase(button) {
+    if (!state.token) return;
+    if (button) button.disabled = true;
+    toast("Preparing database.xlsx…");
+    fetch("/api/database", { headers: { Authorization: "Bearer " + state.token } })
+      .then(function (res) {
+        if (!res.ok) throw new Error("Could not build the database file");
+        return res.blob();
+      })
+      .then(function (blob) {
+        var url = URL.createObjectURL(blob);
+        var link = document.createElement("a");
+        link.href = url;
+        link.download = "student-database-" + todayISO() + ".xlsx";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        // Give the browser a moment to start the download before the blob is
+        // released, otherwise a slow disk can produce a broken file.
+        setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+        toast("database.xlsx downloaded");
+      })
+      .catch(function (err) { toast(err.message, true); })
+      .then(function () { if (button) button.disabled = false; });
+  }
+
+  $$("#openDatabaseBtn, #downloadDbBtn").forEach(function (btn) {
+    btn.addEventListener("click", function () { downloadDatabase(btn); });
   });
 
   /* ---------------------------------------------------------- Admins */

@@ -72,6 +72,22 @@ const STUDENT_COLUMNS = [
   "guardian",
   "contact",
   "email",
+  // The account history lives on the student's own row. This is the sheet the
+  // office opens in Excel, so everything about a student — including whether
+  // they have a portal login and who approved it — reads in one place instead
+  // of being split across a sheet only the dashboard ever looks at.
+  "accountStatus",
+  "username",
+  "passwordNote",
+  "registeredAt",
+  "approvedBy",
+  "approvedAt",
+  "birthdate",
+  "sex",
+  "address",
+  "guardianContact",
+  "lastSchool",
+  "note",
 ];
 
 /** Default tuition by grade level, used when a student is added without a fee. */
@@ -225,6 +241,11 @@ const ACCOUNT_COLUMNS = [
   "approvedBy",
   "approvedAt",
   "note",
+  // The password an administrator typed when creating the login, kept only so
+  // the office can read it off the dashboard and hand it to the student. Blank
+  // for an account the student made themselves: those they chose, so the school
+  // never sees or stores it in the clear.
+  "passwordNote",
   // Details the student fills in at sign-up. The office reads these to confirm
   // the applicant really is the student the ID belongs to, instead of typing
   // the student in by hand.
@@ -355,10 +376,10 @@ function createSeedDb() {
   // paid, and the due dates the balances belong to. Every figure below is
   // derived again by syncStudentBilling, so the four sheets agree from the start.
   const students = [
-    { id: "2024-001", name: "Maria Santos", grade: "Grade 10", section: "St. Patrick", status: "Enrolled", totalFee: 31000, dueDate: "2025-03-31", guardian: "Rosa Santos", contact: "0917-555-0101", email: "maria@example.com" },
-    { id: "2024-002", name: "Jose Ramos", grade: "Grade 9", section: "St. Brigid", status: "Enrolled", totalFee: 30000, dueDate: "2025-03-31", guardian: "Pedro Ramos", contact: "0917-555-0102", email: "jose@example.com" },
-    { id: "2024-003", name: "Ana Cruz", grade: "Grade 12", section: "St. Columba", status: "Pending", totalFee: 35000, dueDate: "2025-02-28", guardian: "Lita Cruz", contact: "0917-555-0103", email: "ana@example.com" },
-    { id: "2024-004", name: "Liam Reyes", grade: "Grade 8", section: "St. Ita", status: "Partial", totalFee: 29000, dueDate: "2025-04-15", guardian: "Mark Reyes", contact: "0917-555-0104", email: "liam@example.com" },
+    { id: "2024-001", name: "Maria Santos", grade: "Grade 10", section: "St. Patrick", status: "Enrolled", totalFee: 31000, dueDate: "2025-03-31", guardian: "Rosa Santos", contact: "0917-555-0101", email: "maria@example.com", accountStatus: "active", username: "2024-001" },
+    { id: "2024-002", name: "Jose Ramos", grade: "Grade 9", section: "St. Brigid", status: "Enrolled", totalFee: 30000, dueDate: "2025-03-31", guardian: "Pedro Ramos", contact: "0917-555-0102", email: "jose@example.com", accountStatus: "active", username: "2024-002" },
+    { id: "2024-003", name: "Ana Cruz", grade: "Grade 12", section: "St. Columba", status: "Pending", totalFee: 35000, dueDate: "2025-02-28", guardian: "Lita Cruz", contact: "0917-555-0103", email: "ana@example.com", accountStatus: "none", username: "2024-003" },
+    { id: "2024-004", name: "Liam Reyes", grade: "Grade 8", section: "St. Ita", status: "Partial", totalFee: 29000, dueDate: "2025-04-15", guardian: "Mark Reyes", contact: "0917-555-0104", email: "liam@example.com", accountStatus: "none", username: "2024-004" },
   ];
 
   const payments = [
@@ -430,7 +451,10 @@ function createSeedDb() {
 
 /** Column widths for every sheet, so the workbook opens tidy in Excel. */
 function applySheetFormatting(db) {
-  applyColumnWidths(db, SHEETS.students, [11, 20, 10, 14, 12, 12, 12, 12, 12, 16, 18, 16, 26]);
+  applyColumnWidths(db, SHEETS.students, [
+    11, 22, 10, 16, 12, 12, 12, 16, 18, 16, 26,
+    13, 13, 16, 22, 16, 22, 12, 7, 30, 18, 22, 30,
+  ]);
   applyColumnWidths(db, SHEETS.payments, [12, 11, 11, 20, 11, 15, 13, 28]);
   applyColumnWidths(db, SHEETS.admins, [14, 20, 12, 66, 34, 8]);
   applyColumnWidths(db, SHEETS.logs, [26, 14, 16, 12, 70]);
@@ -460,6 +484,7 @@ function migrateDb(db) {
   // tuition picture: derive totalFee from the old balance plus what has already
   // been paid, then re-derive everything from the payment ledger.
   const students = readSheet(db, SHEETS.students);
+  const credentials = readSheet(db, SHEETS.accounts);
   const hasBillingColumns = !!(db.Sheets[SHEETS.students] &&
     XLSX.utils.sheet_to_json(db.Sheets[SHEETS.students], { header: 1 })[0] || [])
     .includes("amountPaid");
@@ -472,6 +497,22 @@ function migrateDb(db) {
       }, 0);
       student.totalFee = (Number(student.balance) || 0) + paid;
     }
+    // Give every student row the account columns. A workbook written before the
+    // login details moved onto this sheet has them only in Accounts, so they are
+    // copied across here — otherwise the office would open database.xlsx and
+    // find an approved student with no sign of their account.
+    const credential = credentials.find(
+      (a) => String(a.studentId || "").trim().toLowerCase() ===
+             String(student.id || "").trim().toLowerCase()
+    );
+    const linked = accountFromRow(student, credential);
+    ACCOUNT_LINK_FIELDS.forEach((col) => {
+      if (student[col] === undefined || student[col] === "") {
+        if (linked[col] !== undefined) student[col] = linked[col];
+      }
+    });
+    if (!student.username) student.username = student.id;
+    if (!student.accountStatus) student.accountStatus = "active";
     syncStudentBilling(db, student);
   });
   writeSheet(db, SHEETS.students, students, STUDENT_COLUMNS);
@@ -498,10 +539,109 @@ function findAdmin(db, username) {
 
 /* ------------------------------------------------- Student login accounts */
 
-/** Every student account, whatever its state. */
-function readAccounts(db) {
-  return readSheet(db, SHEETS.accounts);
+/**
+ * The account data now lives on the student's own row in the visible Students
+ * sheet, and the hidden Accounts sheet holds the credentials. Both sides are
+ * joined here on the Student ID, so a row can be missing from either one while
+ * the login still works — the credential is what actually lets a student in.
+ *
+ * Writing login data into the sheet the office opens is deliberate: the whole
+ * point of the Excel database is that it is the single record of the school.
+ */
+const ACCOUNT_LINK_FIELDS = [
+  "username",
+  "accountStatus",
+  "registeredAt",
+  "approvedBy",
+  "approvedAt",
+  "birthdate",
+  "sex",
+  "address",
+  "guardianContact",
+  "lastSchool",
+  "note",
+  "passwordNote",
+];
+
+/** One student row and one credential row, joined into the account shape. */
+function accountFromRow(row, credential, email) {
+  const merged = {};
+  ACCOUNT_COLUMNS.forEach(function (col) { merged[col] = ""; });
+  ACCOUNT_LINK_FIELDS.forEach(function (col) {
+    if (row[col] !== undefined && row[col] !== null) merged[col] = row[col];
+  });
+  // The Student sheet spells these two differently to the Account sheet.
+  merged.studentId = String(row.id === undefined || row.id === null ? "" : row.id);
+  merged.fullname = row.name || "";
+  merged.email = email !== undefined ? email : (row.email || "");
+  // The identity fields the two sheets both hold, under the Customer-sheet names.
+  merged.gradeLevel = row.grade || merged.gradeLevel || "";
+  merged.section = row.section || merged.section || "";
+  merged.guardian = row.guardian || merged.guardian || "";
+  merged.contact = row.contact || merged.contact || "";
+  if (!merged.username) merged.username = merged.studentId;
+
+  if (credential) {
+    merged.passwordHash = credential.passwordHash || "";
+    merged.salt = credential.salt || "";
+    // The credential owns the login state and the details collected at sign-up;
+    // the visible row is the copy. Preferring the credential means a workbook
+    // that only ever had the Accounts sheet still reads correctly.
+    merged.status = credential.status || "";
+    merged.createdAt = credential.createdAt || merged.registeredAt || "";
+    merged.approvedBy = credential.approvedBy || merged.approvedBy || "";
+    merged.approvedAt = credential.approvedAt || merged.approvedAt || "";
+    if (!merged.passwordNote) merged.passwordNote = credential.passwordNote || "";
+    ["gradeLevel", "section", "birthdate", "sex", "address", "contact",
+      "guardian", "guardianContact", "lastSchool", "note"].forEach(function (col) {
+      if (credential[col]) merged[col] = credential[col];
+    });
+  }
+  return merged;
 }
+
+/** Drop the bookkeeping columns, leaving the roster record as the API shows it. */
+function studentForApi(row) {
+  const out = {};
+  STUDENT_COLUMNS.forEach(function (col) {
+    if (STUDENT_ACCOUNT_LINK_FIELDS.indexOf(col) === -1) out[col] = row[col];
+  });
+  return out;
+}
+
+const STUDENT_ACCOUNT_LINK_FIELDS = ACCOUNT_LINK_FIELDS.concat(["username"]);
+
+/**
+ * Every student account, whatever its state.
+ *
+ * A credential-only row (an account the student created themselves, before the
+ * roster record exists) is kept as it is, so a login always survives even when
+ * the visible row has not been written yet.
+ */
+function readAccounts(db) {
+  const rows = readSheet(db, SHEETS.students);
+  const credentials = new Map();
+  readSheet(db, SHEETS.accounts).forEach(function (a) {
+    const id = String(a.studentId || "").trim().toLowerCase();
+    // Only a row that actually carries a password is a credential. A workbook
+    // written before the login moved onto the Students sheet can have a row
+    // here holding nothing but account details, and treating that as a login
+    // would put an unapproved account into the approval queue.
+    if (id && a.passwordHash) credentials.set(id, a);
+  });
+
+  const accounts = [];
+  const seen = new Set();
+  rows.forEach(function (row) {
+    const id = String(row.id || "").trim();
+    if (!id) return;
+    // A student with no account keeps the Students sheet's own default rather
+    // than being invented into the approval queue.
+    const credential = credentials.get(id.toLowerCase());
+    if (!credential && !row.accountStatus) return;
+    seen.add(id.toLowerCase());
+    accounts.push(accountFromRow(row, credential));
+  });
 
 /**
  * Find the one account that identifies this student. A student signs in with
@@ -517,8 +657,143 @@ function findAccount(db, identifier) {
   );
 }
 
+/**
+ * Write the account list back out.
+ *
+ * The visible half lands on the student's own row in the Students sheet — which
+ * is what makes an approved account show up in the Excel the office opens — and
+ * only the credentials are kept in the Accounts sheet.
+ */
 function writeAccounts(db, accounts) {
-  writeSheet(db, SHEETS.accounts, accounts, ACCOUNT_COLUMNS);
+  const credentials = readSheet(db, SHEETS.accounts);
+  accounts.forEach(function (account) {
+    const id = String(account.studentId || "").trim().toLowerCase();
+    if (!id) return;
+    const index = credentials.findIndex(
+      (a) => String(a.studentId || "").trim().toLowerCase() === id
+    );
+    // An account is only real once it has a password behind it. readAccounts
+    // returns a row for every student who has any account state at all, and
+    // most of those carry no credential — persisting them wrote a blank login
+    // into the Accounts sheet, which then answered "an account already exists"
+    // for a student who had never registered one, permanently.
+    if (!account.passwordHash) {
+      if (index !== -1) {
+        const row = credentials[index];
+        // Never blank a real login, and never invent one.
+        if (account.approvedBy !== undefined) row.approvedBy = account.approvedBy;
+        if (account.approvedAt !== undefined) row.approvedAt = account.approvedAt;
+        if (account.createdAt) row.createdAt = row.createdAt || account.createdAt;
+        const state = account.status || account.accountStatus;
+        if (state && row.passwordHash) row.status = state;
+      }
+      return;
+    }
+    if (index === -1) {
+      const fresh = {};
+      ACCOUNT_COLUMNS.forEach(function (col) { fresh[col] = account[col] === undefined ? "" : account[col]; });
+      credentials.push(fresh);
+    } else {
+      const row = credentials[index];
+      // The credential is the authority on the login: its state, who approved it
+      // and the password. Keep it in step with whatever the caller just decided,
+      // but only copy the password when the caller actually carries one, so a
+      // plain status change can never blank a working login.
+      row.studentId = account.studentId;
+      const state = account.status || account.accountStatus;
+      if (state) row.status = state;
+      if (account.approvedBy !== undefined) row.approvedBy = account.approvedBy;
+      if (account.approvedAt !== undefined) row.approvedAt = account.approvedAt;
+      if (account.createdAt) row.createdAt = row.createdAt || account.createdAt;
+      if (account.passwordHash !== undefined) row.passwordHash = account.passwordHash;
+      if (account.salt !== undefined) row.salt = account.salt;
+      if (account.passwordNote !== undefined && !row.passwordNote) {
+        row.passwordNote = account.passwordNote;
+      }
+    }
+  });
+  writeSheet(db, SHEETS.accounts, credentials, ACCOUNT_COLUMNS);
+  syncStudentAccountRows(db, accounts);
+}
+
+/**
+ * Put the account columns onto the matching Students-sheet rows.
+ *
+ * A student always ends up in the workbook this way: a sign-up writes the row
+ * straight away and only the approval flips it to "active".
+ */
+function syncStudentAccountRows(db, accounts) {
+  const students = readSheet(db, SHEETS.students);
+  let changed = false;
+  accounts.forEach(function (account) {
+    const id = String(account.studentId || "").trim().toLowerCase();
+    if (!id) return;
+    // A row holding nothing but credentials (an early workbook) must not put a
+    // student on the roster, or every login would invent one.
+    if (!account.passwordHash && !account.status) return;
+    let index = students.findIndex(
+      (s) => String(s.id || "").trim().toLowerCase() === id
+    );
+    if (index === -1) {
+      // No record yet: an applicant whose Student ID is not on the school list.
+      // Their row is written from what they entered so the office sees the
+      // application in Excel, and the approval completes it.
+      const record = {};
+      STUDENT_COLUMNS.forEach(function (col) { record[col] = ""; });
+      record.id = String(account.studentId).trim();
+      record.name = String(account.fullname || "").trim();
+      record.grade = String(account.gradeLevel || "").trim();
+      record.section = String(account.section || "").trim();
+      record.status = "Pending";
+      record.totalFee = feeForGrade(record.grade);
+      record.guardian = String(account.guardian || "").trim();
+      record.contact = String(account.contact || "").trim();
+      record.email = String(account.email || "").trim();
+      students.push(record);
+      index = students.length - 1;
+      changed = true;
+    }
+    const row = students[index];
+    ACCOUNT_LINK_FIELDS.forEach(function (col) {
+      if (account[col] === undefined) return;
+      const next = account[col] === null ? "" : account[col];
+      if (String(row[col] === undefined ? "" : row[col]) !== String(next)) {
+        row[col] = next;
+        changed = true;
+      }
+    });
+    if (!row.username) { row.username = row.id; changed = true; }
+  });
+  if (changed) writeSheet(db, SHEETS.students, students, STUDENT_COLUMNS);
+}
+
+/** Record the login details an administrator handed to a student. */
+function setAccountCredentials(db, studentId, username, password) {
+  const accounts = readAccounts(db);
+  const index = accounts.findIndex(
+    (a) => String(a.studentId).trim().toLowerCase() === String(studentId).trim().toLowerCase()
+  );
+  if (index === -1) return false;
+  const account = accounts[index];
+  account.username = username || account.studentId;
+  account.salt = newSalt();
+  account.passwordHash = hashPassword(password, account.salt);
+  account.passwordNote = password;
+  accounts[index] = account;
+  writeAccounts(db, accounts);
+  return true;
+}
+
+/** The credentials the dashboard shows the office so they can hand them over. */
+function credentialsFor(db, account) {
+  return {
+    studentId: account.studentId,
+    username: account.username || account.studentId,
+    // Only a password the office itself set is ever read back. One the student
+    // chose stays a hash, exactly as it should.
+    password: account.passwordNote || "",
+    status: account.status,
+  };
 }
 
 /**
@@ -534,6 +809,11 @@ function publicAccount(account) {
     approvedBy: account.approvedBy || "",
     approvedAt: account.approvedAt || "",
     note: account.note || "",
+    // The login the office hands over. The password is blank for a student who
+    // chose their own; it is only filled in for an account an administrator
+    // created and set the password for.
+    username: account.username || account.studentId,
+    password: account.passwordNote || "",
     // What the student supplied at sign-up, for the office to verify against.
     gradeLevel: account.gradeLevel || "",
     section: account.section || "",
@@ -621,7 +901,7 @@ function syncRosterContactFromAccount(db, account) {
  * dashboard can render the Approve button from either one.
  */
 function enrichAccountForRoster(db, account) {
-  const student = readSheet(db, SHEETS.students).find(
+  const row = readSheet(db, SHEETS.students).find(
     (s) => String(s.id).trim().toLowerCase() === String(account.studentId).trim().toLowerCase()
   );
   // An account created without the column (an older workbook) is judged by
@@ -629,13 +909,13 @@ function enrichAccountForRoster(db, account) {
   const claimed = String(account.rosterMatch || "").trim().toLowerCase();
   const rosterMatch = claimed === "new" || claimed === "roster"
     ? claimed
-    : student ? "roster" : "new";
+    : row ? "roster" : "new";
   return Object.assign(publicAccount(account), {
-    onRoster: !!student,
+    onRoster: !!row,
     rosterMatch,
-    studentName: student ? student.name : "",
-    grade: student ? student.grade : "",
-    section: student ? student.section : "",
+    studentName: row ? row.name : "",
+    grade: row ? row.grade : "",
+    section: row ? row.section : "",
   });
 }
 
@@ -667,6 +947,20 @@ function createStudentFromAccount(db, account) {
   record.guardian = String(account.guardian || "").trim();
   record.contact = String(account.contact || "").trim();
   record.email = String(account.email || "").trim();
+  // Carry the account history across too. A sign-up normally writes these with
+  // the row already; this is the repair path for a workbook that only has the
+  // credential, so an approved student is never missing from the visible sheet.
+  record.username = account.username || studentId;
+  record.accountStatus = account.status || "pending";
+  record.registeredAt = account.createdAt || "";
+  record.approvedBy = account.approvedBy || "";
+  record.approvedAt = account.approvedAt || "";
+  record.passwordNote = account.passwordNote || "";
+  record.birthdate = String(account.birthdate || "").trim();
+  record.sex = String(account.sex || "").trim();
+  record.address = String(account.address || "").trim();
+  record.guardianContact = String(account.guardianContact || "").trim();
+  record.lastSchool = String(account.lastSchool || "").trim();
   syncStudentBilling(db, record);
 
   students.push(record);
@@ -752,17 +1046,33 @@ function throttleKey(req, scope) {
   return scope + "|" + ip;
 }
 
-/** true when this request is allowed to try; false when it must be refused. */
+/**
+ * True when this request is allowed to try; false when it must be refused.
+ *
+ * This only CHECKS the window — it deliberately does not count the attempt.
+ * Counting here counted every request that reached the route, so ten ordinary
+ * page loads or a passing test run were enough to lock the office out of
+ * sign-in with a 429 that never came from a wrong password. The only thing
+ * worth counting is a sign-in that actually FAILED, and the route knows that
+ * better than this function does: it calls recordFailedAttempt on the rejection
+ * paths and clearLoginAttempts on success.
+ */
 function allowLoginAttempt(req, scope) {
+  const entry = loginAttempts.get(throttleKey(req, scope));
+  if (!entry || entry.resetAt < Date.now()) return true;
+  return entry.count < LOGIN_MAX_ATTEMPTS;
+}
+
+/** A sign-in was rejected, so charge it against the throttle window. */
+function recordFailedAttempt(req, scope) {
   const key = throttleKey(req, scope);
   const now = Date.now();
   const entry = loginAttempts.get(key);
   if (!entry || entry.resetAt < now) {
     loginAttempts.set(key, { count: 1, resetAt: now + LOGIN_WINDOW_MS });
-    return true;
+    return;
   }
   entry.count += 1;
-  return entry.count <= LOGIN_MAX_ATTEMPTS;
 }
 
 /** A sign-in succeeded, so forget the failures that preceded it. */
@@ -877,12 +1187,16 @@ async function handleApi(req, res, pathname) {
     const body = await readBody(req);
     const db = loadDb();
     const admin = findAdmin(db, body.username || "");
-    if (!admin) return sendJson(res, 401, { error: "Unknown username" });
+    if (!admin) {
+      recordFailedAttempt(req, "admin");
+      return sendJson(res, 401, { error: "Unknown username" });
+    }
     if (String(admin.active).toLowerCase() === "no") {
       return sendJson(res, 403, { error: "Account is disabled" });
     }
     const expected = hashPassword(body.password || "", admin.salt);
     if (expected !== admin.passwordHash) {
+      recordFailedAttempt(req, "admin");
       return sendJson(res, 401, { error: "Incorrect password" });
     }
     clearLoginAttempts(req, "admin");
@@ -1016,6 +1330,7 @@ async function handleApi(req, res, pathname) {
       approvedBy: "",
       approvedAt: "",
       note: "",
+      passwordNote: "",
       gradeLevel: details.gradeLevel,
       section: details.section,
       birthdate: details.birthdate,
@@ -1028,6 +1343,10 @@ async function handleApi(req, res, pathname) {
       rosterMatch: student ? "roster" : "new",
     };
     accounts.push(account);
+    // The row is written to the visible Students sheet straight away, carrying
+    // the answer to "did this one sign themselves up or did the office make the
+    // account?". The login only starts working at approval, but the office can
+    // already see the person in the Excel database they keep opening.
     writeAccounts(db, accounts);
     appendLog(
       db,
@@ -1075,7 +1394,10 @@ async function handleApi(req, res, pathname) {
 
     // A uniform message for "no such account" and "wrong password" keeps the
     // route from confirming which Student IDs are registered.
-    const wrong = () => sendJson(res, 401, { error: "Incorrect Student ID/email or password" });
+    const wrong = () => {
+      recordFailedAttempt(req, "student");
+      return sendJson(res, 401, { error: "Incorrect Student ID/email or password" });
+    };
     if (!account) return wrong();
 
     if (hashPassword(body.password || "", account.salt) !== account.passwordHash) {
@@ -1126,6 +1448,185 @@ async function handleApi(req, res, pathname) {
     return sendJson(res, 200, { account: publicAccount(account) });
   }
 
+  /* ---- POST /api/students/:id/login  (give a student a sign-in) ----
+     The "Create account" button. One action does everything the office asked
+     for: the login is written straight into database.xlsx and the account is
+     live immediately, so there is no separate approval step to forget. */
+  const loginMatch = pathname.match(/^\/api\/students\/([^/]+)\/login$/);
+  if (loginMatch && req.method === "POST") {
+    const session = requireAuth(req, res);
+    if (!session) return;
+    const id = decodeURIComponent(loginMatch[1]);
+    const body = await readBody(req);
+    const db = loadDb();
+    const students = readSheet(db, SHEETS.students);
+    const index = students.findIndex(
+      (s) => String(s.id).trim().toLowerCase() === id.trim().toLowerCase()
+    );
+    if (index === -1) return sendJson(res, 404, { error: "Student not found" });
+
+    const student = students[index];
+    const email = String(body.email || student.email || "").trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return sendJson(res, 400, { error: "Enter a valid email address for this student" });
+    }
+
+    const password = String(body.password || "");
+    if (password.length < 8) {
+      return sendJson(res, 400, { error: "Use a password of at least 8 characters" });
+    }
+
+    const accounts = readAccounts(db);
+    const existing = accounts.find(
+      (a) => String(a.studentId).trim().toLowerCase() === String(student.id).trim().toLowerCase()
+    );
+    if (existing && String(existing.status).toLowerCase() === "active") {
+      return sendJson(res, 409, {
+        error: "This student already has an active account. Reset the password instead.",
+      });
+    }
+
+    const salt = newSalt();
+    const account = existing || {};
+    account.studentId = String(student.id).trim();
+    account.fullname = String(student.name || "").trim();
+    account.email = email;
+    account.passwordHash = hashPassword(password, salt);
+    account.salt = salt;
+    account.passwordNote = password;
+    account.status = "active";
+    account.createdAt = account.createdAt || new Date().toISOString();
+    account.approvedBy = session.username;
+    account.approvedAt = new Date().toISOString();
+    // The visible row carries the account state directly, not only through the
+    // hidden credential, so the workbook reads correctly on its own.
+    account.accountStatus = "active";
+    // Carry the record as it stands onto the account, so the workbook row and
+    // the login never disagree about who this student is.
+    account.gradeLevel = student.grade || account.gradeLevel || "";
+    account.section = student.section || account.section || "";
+    account.contact = student.contact || account.contact || "";
+    account.guardian = student.guardian || account.guardian || "";
+    account.rosterMatch = "roster";
+
+    if (existing) {
+      const at = accounts.findIndex(
+        (a) => String(a.studentId).trim().toLowerCase() === String(student.id).trim().toLowerCase()
+      );
+      accounts[at] = account;
+    } else {
+      accounts.push(account);
+    }
+    writeAccounts(db, accounts);
+
+    // The email lives on the roster record too, so the sheet the office opens
+    // carries the address the student signs in with.
+    if (String(students[index].email || "") !== email) {
+      students[index].email = email;
+      writeSheet(db, SHEETS.students, students, STUDENT_COLUMNS);
+    }
+
+    appendLog(
+      db,
+      session.username,
+      "create-account",
+      student.id,
+      "Created the portal account for " + student.name + " (active, written to database.xlsx)"
+    );
+    saveDb(db);
+
+    return sendJson(res, 201, {
+      account: publicAccount(account),
+      credentials: credentialsFor(db, account),
+      message: "Account created and active. The student can sign in now.",
+    });
+  }
+
+  /* ---- POST /api/students/:id/approved  (flag a record as approved) ----
+     Approving an account that a student created themselves. The account data is
+     already on the student row; this is the switch that makes the login usable. */
+  const approveMatch = pathname.match(/^\/api\/students\/([^/]+)\/approved$/);
+  if (approveMatch && req.method === "POST") {
+    const session = requireAuth(req, res);
+    if (!session) return;
+    const id = decodeURIComponent(approveMatch[1]);
+    const body = await readBody(req);
+    const db = loadDb();
+    const students = readSheet(db, SHEETS.students);
+    const index = students.findIndex(
+      (s) => String(s.id).trim().toLowerCase() === id.trim().toLowerCase()
+    );
+    if (index === -1) return sendJson(res, 404, { error: "Student not found" });
+
+    const student = students[index];
+    // If the office confirmed a grade or section on the review screen, honour it
+    // and re-derive the fee before the record is marked approved.
+    ["gradeLevel", "section", "guardian", "contact", "guardianContact", "lastSchool", "address"].forEach(
+      function (key) {
+        if (body[key] === undefined) return;
+        const next = String(body[key]).trim();
+        if (!next) return;
+        if (key === "gradeLevel") student.grade = next;
+        else if (STUDENT_COLUMNS.indexOf(key) !== -1) student[key] = next;
+      }
+    );
+    if (body.gradeLevel) student.totalFee = feeForGrade(student.grade);
+    syncStudentBilling(db, student);
+
+    student.accountStatus = "active";
+    student.approvedBy = session.username;
+    student.approvedAt = new Date().toISOString();
+    students[index] = student;
+    writeSheet(db, SHEETS.students, students, STUDENT_COLUMNS);
+
+    // Keep the credential row in step, so the Accounts sheet and the visible
+    // row never tell different stories about the same student.
+    const credentials = readSheet(db, SHEETS.accounts);
+    const at = credentials.findIndex(
+      (a) => String(a.studentId).trim().toLowerCase() === String(student.id).trim().toLowerCase()
+    );
+    if (at !== -1) {
+      credentials[at].status = "active";
+      credentials[at].approvedBy = session.username;
+      credentials[at].approvedAt = student.approvedAt;
+      writeSheet(db, SHEETS.accounts, credentials, ACCOUNT_COLUMNS);
+    }
+
+    appendLog(
+      db,
+      session.username,
+      "account-approve",
+      student.id,
+      "Approved the account for " + student.name + " — written to database.xlsx"
+    );
+    saveDb(db);
+    return sendJson(res, 200, {
+      student: studentForApi(student),
+      credentials: student.passwordNote
+        ? { studentId: student.id, username: student.username || student.id, password: student.passwordNote }
+        : null,
+    });
+  }
+
+  /* ---- GET /api/database  (download database.xlsx) ----
+     The "Open Excel database" button. The workbook is written to the live file
+     and then streamed back, so what the office downloads is exactly what the
+     website is using — not whatever a browser tab happened to cache. */
+  if (pathname === "/api/database" && req.method === "GET") {
+    const session = requireAuth(req, res);
+    if (!session) return;
+    const db = loadDb();
+    saveDb(db);
+    const data = fs.readFileSync(DB_FILE);
+    res.writeHead(200, {
+      "Content-Type": MIME[".xlsx"],
+      "Content-Disposition": 'attachment; filename="student-database.xlsx"',
+      "Content-Length": data.length,
+      "Cache-Control": "no-store",
+    });
+    return res.end(data);
+  }
+
   /* ---- POST /api/student/password  (a student changes their own password) ---- */
   if (pathname === "/api/student/password" && req.method === "POST") {
     const session = requireStudent(req, res);
@@ -1148,6 +1649,9 @@ async function handleApi(req, res, pathname) {
     }
     account.salt = newSalt();
     account.passwordHash = hashPassword(next, account.salt);
+    // The student chose this one, so the office's copy is cleared: the school
+    // never keeps a password the student set for themselves.
+    account.passwordNote = "";
     accounts[index] = account;
     writeAccounts(db, accounts);
     appendLog(db, session.studentId, "password-change", session.studentId, "Student changed password");
@@ -1339,13 +1843,6 @@ async function handleApi(req, res, pathname) {
         if (record.grade) {
           record.totalFee = feeForGrade(record.grade);
         }
-        syncStudentBilling(db, record);
-        const students = readSheet(db, SHEETS.students);
-        const at = students.findIndex(
-          (s) => String(s.id).trim().toLowerCase() === String(account.studentId).trim().toLowerCase()
-        );
-        students[at] = record;
-        writeSheet(db, SHEETS.students, students, STUDENT_COLUMNS);
         if (changes.length) {
           appendLog(
             db,
@@ -1374,8 +1871,49 @@ async function handleApi(req, res, pathname) {
     if (body.password) {
       account.salt = newSalt();
       account.passwordHash = hashPassword(String(body.password), account.salt);
+      account.passwordNote = String(body.password);
     }
     accounts[index] = account;
+
+    // Approving is the moment the record becomes complete, so it is re-derived
+    // from the reviewed answers and written to the sheet in the same breath as
+    // the status change. This is what puts the student into database.xlsx as a
+    // fully approved row in a single, atomic step — there is no window in which
+    // an account is approved but the workbook does not know it.
+    if (action === "approve") {
+      const students = readSheet(db, SHEETS.students);
+      const at = students.findIndex(
+        (s) => String(s.id).trim().toLowerCase() === String(account.studentId).trim().toLowerCase()
+      );
+      if (at !== -1) {
+        const record = students[at];
+        if (!/dropped|graduated/i.test(String(record.status))) record.status = "Enrolled";
+        record.accountStatus = "active";
+        record.approvedBy = session.username;
+        record.approvedAt = account.approvedAt;
+        record.username = account.username || record.username || record.id;
+        record.email = record.email || account.email || "";
+        record.guardian = record.guardian || account.guardian || "";
+        record.contact = record.contact || account.contact || "";
+        if (!Number(record.totalFee)) record.totalFee = feeForGrade(record.grade);
+        syncStudentBilling(db, record);
+        students[at] = record;
+        writeSheet(db, SHEETS.students, students, STUDENT_COLUMNS);
+        drafted = {
+          id: record.id,
+          name: record.name,
+          grade: record.grade,
+          section: record.section,
+          status: record.status,
+          balance: Number(record.balance) || 0,
+        };
+      }
+      // The credential carries the state the sign-in route actually reads, so it
+      // must be written with the same value the visible row just got.
+      account.accountStatus = "active";
+    } else {
+      account.accountStatus = account.status;
+    }
     writeAccounts(db, accounts);
 
     appendLog(
@@ -1443,7 +1981,27 @@ async function handleApi(req, res, pathname) {
     const session = requireAuth(req, res);
     if (!session) return;
     const db = loadDb();
-    return sendJson(res, 200, { students: readSheet(db, SHEETS.students) });
+    // The account bookkeeping columns are stripped: the dashboard has no use
+    // for the login state of every row, and a stored password must never reach
+    // a browser. The "Create account" button reads them per student instead.
+    return sendJson(res, 200, {
+      students: readSheet(db, SHEETS.students).map(studentForApi),
+    });
+  }
+
+  /* ---- GET /api/students/:id/login  (the sign-in details for one student) ---- */
+  const loginInfoMatch = pathname.match(/^\/api\/students\/([^/]+)\/login$/);
+  if (loginInfoMatch && req.method === "GET") {
+    const session = requireAuth(req, res);
+    if (!session) return;
+    const id = decodeURIComponent(loginInfoMatch[1]);
+    const db = loadDb();
+    const account = findAccount(db, id);
+    if (!account) return sendJson(res, 404, { error: "Student not found" });
+    return sendJson(res, 200, {
+      credentials: credentialsFor(db, account),
+      email: account.email || "",
+    });
   }
 
   /* ---- POST /api/students  (create) ---- */
@@ -1777,10 +2335,15 @@ async function handleApi(req, res, pathname) {
       });
     }
 
+    // A miss is what a scraper produces, so that is what is charged to the
+    // window; a hit and the plain summary are ordinary use and free.
     const student = students.find(
       (s) => String(s.id).trim().toLowerCase() === wanted.toLowerCase()
     );
-    if (!student) return sendJson(res, 404, { error: "No student found with that ID" });
+    if (!student) {
+      recordFailedAttempt(req, "student-lookup");
+      return sendJson(res, 404, { error: "No student found with that ID" });
+    }
 
     return sendJson(res, 200, {
       students: [

@@ -90,8 +90,10 @@
                 </div>
                 <div class="topbar-actions">
                     <a class="btn btn-secondary" href="studentportal.html" target="_blank" rel="noopener">View site</a>
-                    <button type="button" class="btn btn-secondary" id="addPaymentBtn">+ Record payment</button>
-                    <button type="button" class="btn btn-primary" id="addStudentBtn">+ Add student</button>
+                    <button type="button" class="btn btn-secondary" id="openDatabaseBtn" title="Download database.xlsx with every student">Excel database</button>
+                    <button type="button" class="btn btn-secondary" id="createAccountBtn">+ Create student account</button>
+                    <button type="button" class="btn btn-secondary" id="addStudentBtn">+ Add student</button>
+                    <button type="button" class="btn btn-primary" id="addPaymentBtn">+ Record payment</button>
                 </div>
             </header>
 
@@ -108,6 +110,10 @@
                         <span class="pill pill-amber"><strong id="statBalance">₱0</strong> outstanding</span>
                         <span class="pill pill-blue"><strong id="statPending">0</strong> unpaid</span>
                         <span class="pill pill-red"><strong id="statOverdue">0</strong> overdue</span>
+                        <button type="button" class="btn btn-secondary btn-mini" id="downloadDbBtn"
+                                title="Download every student as database.xlsx">
+                            Open Excel database
+                        </button>
                     </div>
                 </div>
 
@@ -418,6 +424,47 @@
                     <button type="submit" class="btn btn-primary">Create account</button>
                 </div>
                 <p class="form-status" id="adminStatus" role="status" aria-live="polite"></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= CREATE STUDENT ACCOUNT MODAL =================
+         The one-click way to give a student a login. It writes the account
+         straight into database.xlsx and makes it live immediately, so there is
+         no separate approval step to come back to. -->
+    <div class="modal" id="accountModal" hidden>
+        <div class="modal-backdrop" data-close-modal></div>
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="accountModalTitle">
+            <button type="button" class="modal-close" data-close-modal aria-label="Close">&times;</button>
+            <h2 id="accountModalTitle">Create student account</h2>
+            <p class="muted">
+                Creates the student's portal login and writes it straight into
+                <strong>database.xlsx</strong>. The account is active at once, so the
+                student can sign in as soon as you hand them these details.
+            </p>
+
+            <form id="accountForm">
+                <label class="field">
+                    <span>Student</span>
+                    <select name="studentId" id="accountStudent" required></select>
+                </label>
+                <label class="field">
+                    <span>Email (their sign-in name also works)</span>
+                    <input name="email" id="accountEmail" type="email" placeholder="student@example.com">
+                </label>
+                <label class="field">
+                    <span>Password</span>
+                    <input name="password" type="password" required minlength="8" placeholder="At least 8 characters">
+                </label>
+                <p class="muted" style="font-size:13px">
+                    Hand the Student ID and password to the student. Whoever approves
+                    the account is recorded against it in the workbook.
+                </p>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create account now</button>
+                </div>
+                <p class="form-status" id="accountStatus" role="status" aria-live="polite"></p>
             </form>
         </div>
     </div>

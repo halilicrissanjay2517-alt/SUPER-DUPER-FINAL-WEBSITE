@@ -233,6 +233,33 @@
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+  /* The header holds five controls now. Without these two the row will not
+     shrink, so on a narrow laptop it pushed past the edge of the topbar
+     instead of wrapping onto a second line. */
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* "Create student account" is the action the office reaches for most and needs
+   to spot instantly, so it is the one outlined-in-green button in the header.
+   "+ Record payment" keeps the solid fill and sits to its right. */
+#createAccountBtn {
+  border-color: var(--green-600);
+  color: var(--green-700);
+  font-weight: 600;
+}
+
+/* "Excel database" is a utility, not a peer of the two create actions, so it
+   reads as a quiet text button until you point at it. */
+#openDatabaseBtn {
+  border-color: transparent;
+  background: transparent;
+  color: #475569;
+}
+
+#openDatabaseBtn:hover {
+  background: rgba(21, 92, 61, 0.07);
+  color: var(--green-800);
 }
 
 .admin-view {
@@ -885,6 +912,12 @@
 
   .topbar-actions {
     width: 100%;
+  }
+
+  /* "+ Record payment" is the primary action, not the first in the row, so it
+     goes to the top where a thumb reaches it first. */
+  #addPaymentBtn {
+    order: -1;
   }
 
   .topbar-actions .btn {
