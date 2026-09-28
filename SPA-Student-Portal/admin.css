@@ -793,6 +793,24 @@
   grid-column: 1 / -1;
 }
 
+/* A field with a button beside it (e.g. Password + Generate). The wrapper is a
+   div, not a span, because .field span is styled as a bold block label. */
+.field-with-action {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.field-with-action input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.field-with-action .btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
 .field select {
   width: 100%;
   padding: 12px 14px;
