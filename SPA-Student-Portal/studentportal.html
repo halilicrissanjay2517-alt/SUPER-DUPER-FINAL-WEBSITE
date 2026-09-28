@@ -507,7 +507,7 @@
                 <label class="field"><span>Full name</span><input type="text" name="fullname" required placeholder="Juan Dela Cruz" autocomplete="name"></label>
                 <div class="field-row">
                     <label class="field"><span>Grade level</span>
-                        <select name="gradeLevel" required>
+                        <select name="gradeLevel">
                             <option value="">Select grade</option>
                             <option>Grade 7</option>
                             <option>Grade 8</option>
@@ -517,29 +517,29 @@
                             <option>Grade 12</option>
                         </select>
                     </label>
-                    <label class="field"><span>Section</span><input type="text" name="section" required placeholder="St. Patrick"></label>
+                    <label class="field"><span>Section</span><input type="text" name="section" placeholder="St. Patrick"></label>
                 </div>
                 <div class="field-row">
-                    <label class="field"><span>Birthdate</span><input type="date" name="birthdate" required autocomplete="bday"></label>
+                    <label class="field"><span>Birthdate</span><input type="date" name="birthdate" autocomplete="bday"></label>
                     <label class="field"><span>Sex</span>
-                        <select name="sex" required>
+                        <select name="sex">
                             <option value="">Select</option>
                             <option>Male</option>
                             <option>Female</option>
                         </select>
                     </label>
                 </div>
-                <label class="field"><span>Home address</span><input type="text" name="address" required placeholder="Barangay, Town, Province" autocomplete="street-address"></label>
-                <label class="field"><span>Contact number</span><input type="tel" name="contact" required placeholder="0917-555-0101" autocomplete="tel"></label>
+                <label class="field"><span>Home address</span><input type="text" name="address" placeholder="Barangay, Town, Province" autocomplete="street-address"></label>
+                <label class="field"><span>Contact number</span><input type="tel" name="contact" placeholder="0917-555-0101" autocomplete="tel"></label>
 
                 <p class="signup-group">Parent or guardian</p>
-                <label class="field"><span>Guardian's full name</span><input type="text" name="guardian" required placeholder="Rosa Dela Cruz"></label>
-                <label class="field"><span>Guardian's contact number</span><input type="tel" name="guardianContact" required placeholder="0917-555-0102"></label>
-                <label class="field"><span>Last school attended</span><input type="text" name="lastSchool" required placeholder="Dingalan Central School"></label>
+                <label class="field"><span>Guardian's full name</span><input type="text" name="guardian" placeholder="Rosa Dela Cruz"></label>
+                <label class="field"><span>Guardian's contact number</span><input type="tel" name="guardianContact" placeholder="0917-555-0102"></label>
+                <label class="field"><span>Last school attended</span><input type="text" name="lastSchool" placeholder="Dingalan Central School"></label>
 
                 <p class="signup-group">Your login</p>
                 <label class="field"><span>Email</span><input type="email" name="email" required placeholder="you@example.com" autocomplete="email"></label>
-                <label class="field"><span>Password</span><input type="password" name="password" required minlength="8" autocomplete="new-password"><small class="field-hint">At least 8 characters.</small></label>
+                <label class="field"><span>Password</span><input type="password" name="password" required minlength="6" autocomplete="new-password"><small class="field-hint">At least 6 characters.</small></label>
                 <button type="submit" class="btn btn-primary btn-block">Create account</button>
                 <p class="form-status" id="studentSignupStatus" role="status" aria-live="polite"></p>
             </form>

@@ -1253,8 +1253,10 @@ async function handleApi(req, res, pathname) {
     const password = String(body.password || "");
 
     // The student's own details. The office reviews these to confirm the person
-    // signing up is the student the ID belongs to, so they are required and
-    // stored with the request instead of being typed in by an administrator.
+    // signing up is the student the ID belongs to, but they are OPTIONAL at
+    // sign-up: a student should never be blocked from creating a login by a
+    // field they do not have to hand. Anything left blank is simply absent from
+    // the approval queue, and the office fills it in from the record it holds.
     const details = {
       gradeLevel: String(body.gradeLevel || "").trim(),
       section: String(body.section || "").trim(),
@@ -1267,32 +1269,31 @@ async function handleApi(req, res, pathname) {
       lastSchool: String(body.lastSchool || "").trim(),
     };
 
+    // Only the three things a login cannot exist without are required: who the
+    // account belongs to, a way to reach them, and a password to sign in with.
     if (!studentId || !fullname || !email || !password) {
-      return sendJson(res, 400, { error: "Complete every field to register" });
+      return sendJson(res, 400, { error: "Enter your Student ID, name, email and password" });
     }
-    if (password.length < 8) {
-      return sendJson(res, 400, { error: "Use a password of at least 8 characters" });
+    if (password.length < 6) {
+      return sendJson(res, 400, { error: "Use a password of at least 6 characters" });
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return sendJson(res, 400, { error: "Enter a valid email address" });
     }
 
-    // Every detail is required: an approval decision needs them all, so an
-    // incomplete request is refused here rather than landing in the queue as a
-    // form the office cannot check.
-    const missing = Object.keys(details).filter((k) => !details[k]);
-    if (missing.length) {
-      return sendJson(res, 400, {
-        error: "Complete every field so the school can confirm who you are.",
-      });
-    }
-    if (!/^[0-9+()\-\s]{7,}$/.test(details.contact)) {
+    // The remaining details are optional. When one IS supplied it still has to
+    // be well formed, so a typo is caught now rather than in the queue — but a
+    // blank value is accepted and simply left out.
+    if (details.contact && !/^[0-9+()\-\s]{7,}$/.test(details.contact)) {
       return sendJson(res, 400, { error: "Enter a valid contact number" });
     }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(details.birthdate)) {
+    if (details.guardianContact && !/^[0-9+()\-\s]{7,}$/.test(details.guardianContact)) {
+      return sendJson(res, 400, { error: "Enter a valid guardian contact number" });
+    }
+    if (details.birthdate && !/^\d{4}-\d{2}-\d{2}$/.test(details.birthdate)) {
       return sendJson(res, 400, { error: "Enter your birthdate as YYYY-MM-DD" });
     }
-    if (!["male", "female"].includes(details.sex.toLowerCase())) {
+    if (details.sex && !["male", "female"].includes(details.sex.toLowerCase())) {
       return sendJson(res, 400, { error: "Select your sex" });
     }
 

@@ -414,13 +414,16 @@
       var input = $("input, textarea, select", field);
       if (!input) return;
       var value = input.value.trim();
-      var valid = value !== "";
-      if (valid && input.type === "email") valid = emailPattern.test(value);
-      if (valid && input.type === "password" && input.hasAttribute("minlength")) {
+      // Only a field marked `required` has to be filled in. An optional field is
+      // allowed to stay blank; when it IS filled, its format is still checked
+      // below, so anything typed has to be well formed.
+      var valid = !input.hasAttribute("required") || value !== "";
+      if (valid && value !== "" && input.type === "email") valid = emailPattern.test(value);
+      if (valid && value !== "" && input.type === "password" && input.hasAttribute("minlength")) {
         valid = value.length >= Number(input.getAttribute("minlength"));
       }
       // A phone number needs at least 7 digits, ignoring spaces and separators.
-      if (valid && input.type === "tel") valid = /^[0-9+()\-\s]{7,}$/.test(value);
+      if (valid && value !== "" && input.type === "tel") valid = /^[0-9+()\-\s]{7,}$/.test(value);
       if (!markField(field, valid)) ok = false;
     });
     return ok;
