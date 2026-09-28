@@ -959,6 +959,19 @@
     $("#createAccountBtn").addEventListener("click", function () { openAccountModal(null); });
   }
 
+  /* A ready-to-hand-over password, so the office never has to stop and invent
+     one. Letters and digits only — easy to read out over a desk. */
+  if ($("#generatePasswordBtn")) {
+    $("#generatePasswordBtn").addEventListener("click", function () {
+      var alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+      var out = "";
+      for (var i = 0; i < 10; i++) {
+        out += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+      }
+      $("#accountPassword").value = out;
+    });
+  }
+
   $("#accountStudent").addEventListener("change", function () {
     var chosen = state.students.find(function (s) { return String(s.id) === String(this.value); }.bind(this));
     $("#accountEmail").value = chosen && chosen.email ? chosen.email : "";

@@ -449,16 +449,21 @@
                     <select name="studentId" id="accountStudent" required></select>
                 </label>
                 <label class="field">
-                    <span>Email (their sign-in name also works)</span>
+                    <span>Email <em class="muted">(optional)</em></span>
                     <input name="email" id="accountEmail" type="email" placeholder="student@example.com">
                 </label>
                 <label class="field">
                     <span>Password</span>
-                    <input name="password" type="password" required minlength="8" placeholder="At least 8 characters">
+                    <span class="field-row">
+                        <input name="password" id="accountPassword" type="text" required minlength="8" placeholder="At least 8 characters" autocomplete="off">
+                        <button type="button" class="btn btn-secondary" id="generatePasswordBtn" title="Make a ready-to-hand-over password">Generate</button>
+                    </span>
                 </label>
                 <p class="muted" style="font-size:13px">
-                    Hand the Student ID and password to the student. Whoever approves
-                    the account is recorded against it in the workbook.
+                    Only the password is needed — the Student ID is already the
+                    sign-in name, and the email can stay blank. Hit Generate to get a
+                    ready password. Whoever creates the account is recorded on it in
+                    the workbook.
                 </p>
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>

@@ -287,6 +287,16 @@ function newSalt() {
   return crypto.randomBytes(16).toString("hex");
 }
 
+/** A ready-to-hand-over password, so creating an account never waits on one.
+ *  Letters and digits only (no look-alike characters) so it can be read aloud. */
+function randomPassword(length = 10) {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+  const bytes = crypto.randomBytes(length);
+  let out = "";
+  for (let i = 0; i < length; i++) out += alphabet[bytes[i] % alphabet.length];
+  return out;
+}
+
 /**
  * Coerce a value to a number for sheet storage. The browser sends form field
  * values as strings, and a quoted "0" silently breaks Excel sorting and SUMs.
@@ -1479,11 +1489,16 @@ async function handleApi(req, res, pathname) {
 
     const student = students[index];
     const email = String(body.email || student.email || "").trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return sendJson(res, 400, { error: "Enter a valid email address for this student" });
+    // The email is only how the office reaches the student. Sign-in uses the
+    // Student ID, so a blank email must not block the account from being made.
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return sendJson(res, 400, { error: "That email address looks incomplete. Fix it, or leave it blank." });
     }
 
-    const password = String(body.password || "");
+    // One click should be enough: when the office does not type a password, the
+    // server supplies a strong one and hands it straight back to be copied.
+    let password = String(body.password || "");
+    if (!password) password = randomPassword();
     if (password.length < 8) {
       return sendJson(res, 400, { error: "Use a password of at least 8 characters" });
     }
@@ -1532,8 +1547,9 @@ async function handleApi(req, res, pathname) {
     writeAccounts(db, accounts);
 
     // The email lives on the roster record too, so the sheet the office opens
-    // carries the address the student signs in with.
-    if (String(students[index].email || "") !== email) {
+    // carries the address the student signs in with. When it was left blank, the
+    // record keeps whatever it already had rather than being wiped.
+    if (email && String(students[index].email || "") !== email) {
       students[index].email = email;
       writeSheet(db, SHEETS.students, students, STUDENT_COLUMNS);
     }
