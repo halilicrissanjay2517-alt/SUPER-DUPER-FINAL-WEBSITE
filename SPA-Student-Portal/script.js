@@ -530,8 +530,6 @@
           address: value("address"),
           contact: value("contact"),
           guardian: value("guardian"),
-          guardianContact: value("guardianContact"),
-          lastSchool: value("lastSchool"),
           email: value("email"),
           password: signupForm.elements.password.value,
         },
