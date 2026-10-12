@@ -2,10 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="description" content="Saint Patrick's Academy, Inc. — your own student account: tuition, balance, due date and payment history.">
     <meta name="robots" content="noindex">
+    <meta name="theme-color" content="#04231a">
     <title>My Account — Saint Patrick's Academy, Inc.</title>
+    <link rel="icon" href="logo.png">
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="dashboard.css">
 </head>
@@ -27,6 +29,7 @@
             </a>
             <div class="dash-header-actions">
                 <span class="dash-identity" id="dashIdentity" hidden></span>
+                <button type="button" class="btn btn-ghost" id="dashRefreshBtn" title="Refresh my figures" aria-label="Refresh my figures">Refresh</button>
                 <a class="btn btn-ghost dash-back" href="studentportal.html">&larr; Portal home</a>
                 <button type="button" class="btn btn-primary" id="dashLogoutBtn">Sign out</button>
             </div>
@@ -43,6 +46,7 @@
 
         <!-- Shown when there is no valid session: offer a way back to sign in. -->
         <div class="dash-blocked" id="dashBlocked" hidden>
+            <span class="dash-blocked-mark" aria-hidden="true">&#128274;</span>
             <h1>Please sign in</h1>
             <p class="muted" id="dashBlockedText">
                 This page shows your own tuition and payment records, so it is only
@@ -54,13 +58,19 @@
         <!-- The dashboard proper. -->
         <div class="dash-content" id="dashContent" hidden>
             <section class="dash-hero">
-                <div>
-                    <span class="eyebrow eyebrow-dark">My Account</span>
-                    <h1 class="dash-title" id="dashName">—</h1>
-                    <p class="dash-sub" id="dashSubtitle"></p>
+                <div class="dash-hero-id">
+                    <span class="profile-avatar dash-hero-avatar" id="dashHeroAvatar" aria-hidden="true">—</span>
+                    <div class="dash-hero-text">
+                        <span class="eyebrow eyebrow-dark">My Account</span>
+                        <h1 class="dash-title" id="dashName">—</h1>
+                        <p class="dash-sub" id="dashSubtitle"></p>
+                    </div>
+                    <span class="badge" id="dashStatus">—</span>
                 </div>
-                <span class="badge" id="dashStatus">—</span>
             </section>
+
+            <!-- A gentle banner for the one thing that most needs attention. -->
+            <p class="dash-alert" id="dashAlert" role="status" aria-live="polite" hidden></p>
 
             <!-- The four figures a student comes for, largest idea first. -->
             <section class="dash-cards" aria-label="Tuition summary">
@@ -79,7 +89,7 @@
                     <strong class="account-card-value" id="dashTotalFee">₱0</strong>
                     <span class="dash-card-note">Total assessed</span>
                 </div>
-                <div class="account-card">
+                <div class="account-card" id="dashDueCard">
                     <span class="account-card-label">Payment due</span>
                     <strong class="account-card-value" id="dashDue">—</strong>
                     <span class="dash-card-note" id="dashDueNote"></span>
@@ -156,12 +166,18 @@
                         <p class="signup-group">Change password</p>
                         <label class="field">
                             <span>Current password</span>
-                            <input type="password" name="currentPassword" required autocomplete="current-password">
+                            <div class="password-field">
+                                <input type="password" name="currentPassword" required autocomplete="current-password">
+                                <button type="button" class="password-toggle" aria-label="Show password" aria-pressed="false">Show</button>
+                            </div>
                         </label>
                         <label class="field">
                             <span>New password</span>
-                            <input type="password" name="newPassword" required minlength="8"
-                                autocomplete="new-password">
+                            <div class="password-field">
+                                <input type="password" name="newPassword" required minlength="8"
+                                    autocomplete="new-password">
+                                <button type="button" class="password-toggle" aria-label="Show password" aria-pressed="false">Show</button>
+                            </div>
                             <small class="field-hint">At least 8 characters.</small>
                         </label>
                         <button type="submit" class="btn btn-secondary btn-block">Update password</button>
@@ -170,7 +186,7 @@
                 </section>
             </div>
 
-            <!-- 88888Payment history -->
+            <!-- Payment history -->
             <section class="dash-panel" aria-labelledby="dashPaymentsHeading">
                 <header class="dash-panel-head">
                     <h2 id="dashPaymentsHeading">Payment history</h2>

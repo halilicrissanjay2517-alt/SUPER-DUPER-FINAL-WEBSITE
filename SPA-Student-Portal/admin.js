@@ -173,9 +173,6 @@
      different things. This view is the bridge: only an explicit approval here
      turns a pending request into a working login. */
 
-  var accountFilter = "pending";
-  var allAccounts = [];
-
   $$("[data-account-filter]").forEach(function (chip) {
     chip.addEventListener("click", function () {
       accountFilter = chip.getAttribute("data-account-filter");
@@ -193,12 +190,90 @@
     return '<span class="badge badge-amber">Awaiting approval</span>';
   }
 
+  /**
+   * The coloured initials disc shown beside a student's name. Two letters are
+   * derived from the name (falling back to the Student ID), and the colour is
+   * chosen from a fixed palette by a hash of the ID so the same student always
+   * gets the same colour — a small thing, but it lets the eye pick a row out at
+   * a glance instead of reading every name.
+   */
+  var AVATAR_TONES = [
+    "#0b5c34", "#1d6fb8", "#8a5a00", "#7a3f8f",
+    "#b23a48", "#0e7490", "#4d7c0f", "#9a3412",
+  ];
+
+  function initials(name, fallback) {
+    var parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return String(fallback || "?").slice(0, 2).toUpperCase();
+    var first = parts[0].charAt(0);
+    var last = parts.length > 1 ? parts[parts.length - 1].charAt(0) : "";
+    return (first + last).toUpperCase();
+  }
+
+  function avatarTone(key) {
+    var str = String(key || "");
+    var hash = 0;
+    for (var i = 0; i < str.length; i += 1) {
+      hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
+    }
+    return AVATAR_TONES[hash % AVATAR_TONES.length];
+  }
+
+  /** A name cell: initials disc, full name, and the Student ID underneath. */
+  function nameCell(name, sub, key) {
+    return (
+      '<div class="acct-cell">' +
+      '<span class="avatar" style="background:' + avatarTone(key) + '" aria-hidden="true">' +
+      escapeHtml(initials(name, key)) +
+      "</span>" +
+      '<span class="acct-meta"><span class="acct-name">' + escapeHtml(name || "—") + "</span>" +
+      (sub ? '<span class="acct-sub">' + escapeHtml(sub) + "</span>" : "") +
+      "</span></div>"
+    );
+  }
+
+  /** "3 hours ago" for the recent past, an exact date once it is older. */
+  function relativeTime(iso) {
+    if (!iso) return { text: "—", title: "" };
+    var then = new Date(iso);
+    if (isNaN(then)) return { text: "—", title: "" };
+    var exact = then.toLocaleString();
+    var mins = Math.round((Date.now() - then.getTime()) / 60000);
+    if (mins < 1) return { text: "just now", title: exact };
+    if (mins < 60) return { text: mins + " min ago", title: exact };
+    var hours = Math.round(mins / 60);
+    if (hours < 24) return { text: hours + (hours === 1 ? " hour ago" : " hours ago"), title: exact };
+    var days = Math.round(hours / 24);
+    if (days < 7) return { text: days + (days === 1 ? " day ago" : " days ago"), title: exact };
+    return { text: then.toLocaleDateString(), title: exact };
+  }
+
+  var accountFilter = "pending";
+  var accountQuery = "";
+  var allAccounts = [];
+
+  var accountSearch = $("#accountSearch");
+  if (accountSearch) {
+    accountSearch.addEventListener("input", function () {
+      accountQuery = accountSearch.value.trim().toLowerCase();
+      renderApprovals();
+    });
+  }
+
   function renderApprovals() {
     var tbody = $("#approvalRows");
     if (!tbody) return;
 
     var rows = allAccounts.filter(function (a) {
-      return accountFilter === "all" || String(a.status).toLowerCase() === accountFilter;
+      var matchesStatus = accountFilter === "all" || String(a.status).toLowerCase() === accountFilter;
+      if (!matchesStatus) return false;
+      if (!accountQuery) return true;
+      // One search box covers the three things the office types in practice:
+      // a Student ID, a name, or an email.
+      var haystack = [a.studentId, a.fullname, a.email, a.studentName]
+        .join(" ")
+        .toLowerCase();
+      return haystack.indexOf(accountQuery) !== -1;
     });
 
     tbody.innerHTML = "";
@@ -206,10 +281,12 @@
     if (empty) empty.hidden = rows.length !== 0;
 
     if (rows.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" class="table-empty">' +
-        (accountFilter === "pending"
+      var noMatch = accountQuery
+        ? 'No accounts match "' + escapeHtml(accountQuery) + '".'
+        : accountFilter === "pending"
           ? "No accounts are waiting for approval."
-          : "No accounts in this list.") + "</td></tr>";
+          : "No accounts in this list.";
+      tbody.innerHTML = '<tr><td colspan="7" class="table-empty">' + noMatch + "</td></tr>";
       return;
     }
 
@@ -221,19 +298,22 @@
       // on the school list shows whose record it is; one that is not yet listed
       // is a new student, whose record approval will create.
       var rosterCell = a.onRoster
-        ? '<span class="badge badge-green">Yes</span>' +
+        ? '<span class="badge badge-green">On file</span>' +
           '<span class="roster-name">' + escapeHtml(a.studentName || "") +
           (a.grade ? " · " + escapeHtml(a.grade) : "") + "</span>"
         : '<span class="badge badge-blue">New student</span>' +
           '<span class="roster-name">Record created on approval</span>';
 
+      var when = relativeTime(a.createdAt);
+
       tr.innerHTML =
-        "<td><strong>" + escapeHtml(a.studentId) + "</strong></td>" +
-        "<td>" + escapeHtml(a.fullname) + "</td>" +
-        "<td>" + escapeHtml(a.email) + "</td>" +
-        "<td>" + rosterCell + "</td>" +
-        '<td class="date-cell">' + (a.createdAt ? new Date(a.createdAt).toLocaleString() : "—") + "</td>" +
-        "<td>" + accountStatusBadge(a.status) +
+        '<td data-label="Student ID"><span class="id-chip">' + escapeHtml(a.studentId) + "</span></td>" +
+        '<td data-label="Registered as">' + nameCell(a.fullname, "Sign-in: " + (a.username || a.studentId), a.studentId) + "</td>" +
+        '<td data-label="Email" class="acct-meta"><span class="acct-name">' + escapeHtml(a.email || "—") + "</span>" +
+          (a.contact ? '<span class="acct-sub">' + escapeHtml(a.contact) + "</span>" : "") + "</td>" +
+        '<td data-label="On roster">' + rosterCell + "</td>" +
+        '<td class="date-cell" data-label="Requested" title="' + escapeHtml(when.title) + '">' + escapeHtml(when.text) + "</td>" +
+        '<td data-label="Status">' + accountStatusBadge(a.status) +
           (status === "active" && a.approvedBy
             ? '<span class="roster-name">by ' + escapeHtml(a.approvedBy) + "</span>"
             : "") +
@@ -342,28 +422,59 @@
       ["Email", account.email],
     ];
 
-    var submitted = pairs
+    // Which of the student's own answers the office should trust, and which
+    // should make them look twice. A name or birthdate that disagrees with the
+    // record is the strongest signal that this is not the student the ID
+    // belongs to, so it is flagged rather than left for the reader to spot.
+    function norm(v) {
+      return String(v || "").trim().toLowerCase().replace(/\s+/g, " ");
+    }
+    var checks = [];
+    if (account.onRoster) {
+      if (account.fullname && account.studentName) {
+        checks.push(norm(account.fullname) === norm(account.studentName)
+          ? { ok: true, text: "The name matches the one on the school record." }
+          : { ok: false, text: "The name does not match the school record (“" + account.studentName + "”)." });
+      }
+      if (account.birthdate && account.grade) {
+        checks.push({ ok: true, text: "The grade claimed is “" + account.gradeLevel + "”; the record holds “" + account.grade + "”." });
+      }
+    }
+
+    // What the school already holds for this ID, so the two can be compared.
+    var onFile =
+      '<div class="detail-item"><span class="detail-key">Name on file</span><span class="detail-val' +
+      (account.studentName ? "" : " is-empty") +
+      '">' + (account.studentName ? escapeHtml(account.studentName) : "Not on file yet") + "</span></div>" +
+      '<div class="detail-item"><span class="detail-key">Grade &amp; section</span><span class="detail-val' +
+      (account.grade ? "" : " is-empty") +
+      '">' +
+      (account.grade ? escapeHtml(account.grade) : "Not on file yet") +
+      (account.section ? " &middot; " + escapeHtml(account.section) : "") +
+      "</span></div>";
+
+    var checksHtml = checks.length
+      ? '<ul class="review-checks">' +
+        checks.map(function (c) {
+          return '<li class="' + (c.ok ? "is-ok" : "is-bad") + '">' + escapeHtml(c.text) + "</li>";
+        }).join("") +
+        "</ul>"
+      : "";
+
+    var detailsHtml = pairs
       .map(function (pair) {
-        var shown = pair[1] ? escapeHtml(pair[1]) : '<span class="review-empty">Not supplied</span>';
+        var val = (pair[1] === undefined || pair[1] === null) ? "" : pair[1];
         return (
-          '<div class="review-line"><span class="review-key">' +
+          '<div class="detail-item"><span class="detail-key">' +
           escapeHtml(pair[0]) +
-          '</span><span class="review-val">' +
-          shown +
+          '</span><span class="detail-val' +
+          (val ? "" : " is-empty") +
+          '">' +
+          (val ? escapeHtml(val) : "Not supplied") +
           "</span></div>"
         );
       })
       .join("");
-
-    // What the school already holds for this ID, so the two can be compared.
-    var onFile =
-      "<div class=\"review-line\"><span class=\"review-key\">Name on file</span><span class=\"review-val\">" +
-      (account.studentName ? escapeHtml(account.studentName) : "—") +
-      "</span></div>" +
-      "<div class=\"review-line\"><span class=\"review-key\">Grade &amp; section on file</span><span class=\"review-val\">" +
-      (account.grade ? escapeHtml(account.grade) : "—") +
-      (account.section ? " &middot; " + escapeHtml(account.section) : "") +
-      "</span></div>";
 
     var reviewRow = document.createElement("tr");
     reviewRow.className = "review-row";
@@ -372,15 +483,50 @@
     cell.colSpan = 7;
     cell.innerHTML =
       '<div class="review-panel">' +
+      '<div class="review-head">' +
+      '<span class="avatar avatar-lg" style="background:' + avatarTone(account.studentId) + '" aria-hidden="true">' +
+      escapeHtml(initials(account.fullname, account.studentId)) +
+      "</span>" +
+      '<div class="review-head-meta">' +
+      '<strong>' + escapeHtml(account.fullname || "Application") + "</strong>" +
+      '<span>Student ID <b>' + escapeHtml(account.studentId) + "</b> · " +
+      escapeHtml(account.email || "no email") + "</span>" +
+      '</div><div class="review-head-badges">' +
+      accountStatusBadge(account.status) +
+      '<span class="badge ' + (account.onRoster ? "badge-green" : "badge-blue") + '">' +
+      (account.onRoster ? "On roster" : "New student") +
+      "</span></div></div>" +
+      '<div class="review-cols">' +
       '<div class="review-col"><h4>Submitted by the student</h4>' +
-      submitted +
+      '<div class="detail-grid">' + detailsHtml + "</div>" +
       "</div>" +
       '<div class="review-col review-col-file"><h4>Already on the school record</h4>' +
-      onFile +
+      '<div class="detail-grid">' + onFile + "</div>" +
+      checksHtml +
       (account.onRoster
         ? '<p class="review-note review-ok">This Student ID is already on the school list.</p>'
         : '<p class="review-note review-ok">This Student ID is not on the school list yet — approving will create their student record from the details above.</p>') +
+      "</div></div>" +
+      '<div class="review-actions">' +
+      '<button type="button" class="btn btn-secondary btn-mini" data-review-close>Close review</button>' +
+      (String(account.status).toLowerCase() === "pending"
+        ? '<button type="button" class="btn btn-primary btn-mini" data-review-approve>Approve this account</button>' +
+          '<button type="button" class="btn btn-ghost btn-mini" data-review-reject>Reject</button>'
+        : "") +
       "</div></div>";
+
+    var closeBtn = cell.querySelector("[data-review-close]");
+    if (closeBtn) {
+      closeBtn.addEventListener("click", function () { toggleReviewRow(tbody, tr, button, account); });
+    }
+    var approveBtn = cell.querySelector("[data-review-approve]");
+    if (approveBtn) {
+      approveBtn.addEventListener("click", function () { setAccountStatus(account, "approve"); });
+    }
+    var rejectBtn = cell.querySelector("[data-review-reject]");
+    if (rejectBtn) {
+      rejectBtn.addEventListener("click", function () { setAccountStatus(account, "reject"); });
+    }
 
     tr.parentNode.insertBefore(reviewRow, tr.nextSibling);
     button.setAttribute("aria-expanded", "true");
@@ -1421,6 +1567,25 @@
   }
 
   /* ---------------------------------------------------------- Boot */
+  /* ------------------------------------------------- Show / hide password
+     Delegated so it also covers password fields inside modals that open later.
+     Only the input's type changes; the value sent to the server never does. */
+  document.addEventListener("click", function (e) {
+    var btn = e.target.closest ? e.target.closest(".password-toggle") : null;
+    if (!btn) return;
+    var wrapper = btn.closest(".password-field");
+    var input = wrapper && wrapper.querySelector("input");
+    if (!input) return;
+
+    var show = input.type === "password";
+    input.type = show ? "text" : "password";
+    input.classList.toggle("has-password-toggle", show);
+    btn.textContent = show ? "Hide" : "Show";
+    btn.setAttribute("aria-label", show ? "Hide password" : "Show password");
+    btn.setAttribute("aria-pressed", show ? "true" : "false");
+    input.focus();
+  });
+
   if (state.token) {
     api("/api/me")
       .then(function (data) {

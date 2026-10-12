@@ -462,6 +462,27 @@
     });
   }
 
+  /* ---------- Show / hide password ----------
+     One delegated listener covers every .password-field on the page, including
+     modals opened later. The button only flips the input type; it never touches
+     the value, so what is submitted is unchanged. */
+  document.addEventListener("click", function (e) {
+    var btn = e.target.closest ? e.target.closest(".password-toggle") : null;
+    if (!btn) return;
+    var wrapper = btn.closest(".password-field");
+    var input = wrapper && wrapper.querySelector("input");
+    if (!input) return;
+
+    var show = input.type === "password";
+    input.type = show ? "text" : "password";
+    input.classList.toggle("has-password-toggle", show);
+    btn.textContent = show ? "Hide" : "Show";
+    btn.setAttribute("aria-label", show ? "Hide password" : "Show password");
+    btn.setAttribute("aria-pressed", show ? "true" : "false");
+    // Keep the caret where the visitor was typing.
+    input.focus();
+  });
+
   /* ---------- Student sign in ---------- */
   var loginForm = $("#studentLoginForm");
   if (loginForm) {

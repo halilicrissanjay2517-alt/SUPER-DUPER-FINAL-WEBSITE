@@ -645,10 +645,16 @@ function readAccounts(db) {
   rows.forEach(function (row) {
     const id = String(row.id || "").trim();
     if (!id) return;
-    // A student with no account keeps the Students sheet's own default rather
-    // than being invented into the approval queue.
+    // Only a row that actually carries a login is an account. `accountStatus`
+    // alone is NOT enough: migration stamps every enrolled student with
+    // "active" (meaning "on the roster", not "has a login"), and the seed does
+    // the same for its sample students. Treating that as a real account made a
+    // student who had never registered answer "an account already exists",
+    // which blocked the whole sign-up → approval → sign-in flow. A genuine
+    // account is one with a credential, or one a student created themselves
+    // (which is stamped with a registration time when they sign up).
     const credential = credentials.get(id.toLowerCase());
-    if (!credential && !row.accountStatus) return;
+    if (!credential && !row.registeredAt) return;
     seen.add(id.toLowerCase());
     accounts.push(accountFromRow(row, credential));
   });
@@ -1993,7 +1999,33 @@ async function handleApi(req, res, pathname) {
     );
     if (index === -1) return sendJson(res, 404, { error: "Account not found" });
     const [removed] = accounts.splice(index, 1);
+    // Purge the credential row itself. writeAccounts only writes the accounts it
+    // is handed, so dropping this one from the list would leave its password row
+    // in the Accounts sheet untouched — and readAccounts treats any row with a
+    // passwordHash as a real login, so the deleted account reappeared on the very
+    // next read. Remove it from the sheet before persisting the survivors.
+    const credentials = readSheet(db, SHEETS.accounts);
+    const survivors = credentials.filter(
+      (a) => String(a.studentId || "").trim().toLowerCase() !== String(removed.studentId).trim().toLowerCase()
+    );
+    if (survivors.length !== credentials.length) {
+      writeSheet(db, SHEETS.accounts, survivors, ACCOUNT_COLUMNS);
+    }
     writeAccounts(db, accounts);
+    // Remove the account bookkeeping from the student's own row as well. Without
+    // this the row keeps its `registeredAt`, and readAccounts treats any row that
+    // has one as an account — so the deleted login reappeared in the accounts
+    // list (as a credential-less zombie) on the very next read.
+    const students = readSheet(db, SHEETS.students);
+    const rowIndex = students.findIndex(
+      (s) => String(s.id).trim().toLowerCase() === String(removed.studentId).trim().toLowerCase()
+    );
+    if (rowIndex !== -1) {
+      ACCOUNT_LINK_FIELDS.forEach(function (col) {
+        if (STUDENT_COLUMNS.indexOf(col) !== -1) students[rowIndex][col] = "";
+      });
+      writeSheet(db, SHEETS.students, students, STUDENT_COLUMNS);
+    }
     sessions.forEach((value, key) => {
       if (value.kind === "student" && String(value.studentId) === String(removed.studentId)) {
         sessions.delete(key);

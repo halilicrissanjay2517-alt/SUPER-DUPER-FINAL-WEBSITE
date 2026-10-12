@@ -395,15 +395,21 @@ function waitForServer(attempts = 40) {
        Sign-up now collects the student's full details (so the office can
        confirm who they are before approving), so every payload here carries
        the complete set. */
+    // 2024-004 (Liam Reyes) is the roster student used for the whole sign-up
+    // flow: the seed gives them a record but NO login (accountStatus "none"),
+    // so registering here is a genuine first sign-up. 2024-002 already ships
+    // with an active seeded account, which made sign-up return 409.
+    const SIGNUP_ID = "2024-004";
+    const SIGNUP_NAME = "Liam Reyes";
     const STUDENT_DETAILS = {
-      gradeLevel: "Grade 9",
-      section: "St. Brigid",
-      birthdate: "2007-05-20",
+      gradeLevel: "Grade 8",
+      section: "St. Ita",
+      birthdate: "2008-11-02",
       sex: "Male",
       address: "Yakal 1, Paltic, Dingalan, Aurora",
-      contact: "0917-555-0102",
-      guardian: "Pedro Ramos",
-      guardianContact: "0917-555-0202",
+      contact: "0917-555-0104",
+      guardian: "Mark Reyes",
+      guardianContact: "0917-555-0204",
       lastSchool: "Dingalan Central School",
     };
 
@@ -422,30 +428,40 @@ function waitForServer(attempts = 40) {
       stranger.status === 201 && stranger.body.account.status === "pending",
       `status=${stranger.status} accountStatus=${stranger.body.account && stranger.body.account.status}`);
 
+    // The applicant IS written to the Students sheet straight away, so the office
+    // can see the application in the Excel workbook they keep open. What must not
+    // happen is the applicant slipping in as an ACTIVE student before approval:
+    // the row exists, but it is Pending.
     const rosterAfterApply = await call("/api/students", { token });
-    check("an off-roster applicant is NOT added to the student roster",
-      !rosterAfterApply.body.students.some((s) => String(s.id) === "NOT-ON-FILE"),
-      "roster untouched");
+    const applicant = rosterAfterApply.body.students.find((s) => String(s.id) === "NOT-ON-FILE");
+    check("an off-roster applicant is written to the roster as Pending, not active",
+      !!applicant && String(applicant.status).toLowerCase() === "pending",
+      applicant ? "status=" + applicant.status : "applicant missing");
 
     // 31. A short password is refused.
     const weakPw = await call("/api/student/signup", {
       method: "POST",
-      body: Object.assign({ studentId: "2024-002", fullname: "Jose Ramos", email: "jose2@example.com", password: "short" }, STUDENT_DETAILS),
+      body: Object.assign({ studentId: SIGNUP_ID, fullname: SIGNUP_NAME, email: "liam2@example.com", password: "short" }, STUDENT_DETAILS),
     });
     check("sign-up refuses a too-short password", weakPw.status === 400, `status=${weakPw.status}`);
 
-    // 31b. An incomplete application is refused: the office cannot verify a
-    //      request that is missing the student's own details.
+    // 31b. An unfinished application is ACCEPTED as pending. The student's own
+    //      details (grade, birthdate, guardian, …) are optional at sign-up: a
+    //      student must never be blocked from reaching the office by a field
+    //      they do not have to hand. This uses its OWN Student ID so the pending
+    //      account it creates cannot collide with the full sign-up below.
     const incomplete = await call("/api/student/signup", {
       method: "POST",
-      body: { studentId: "2024-002", fullname: "Jose Ramos", email: "jose3@example.com", password: "studentpass1" },
+      body: { studentId: "2024-009", fullname: "Incomplete Applicant", email: "incomplete@example.com", password: "studentpass1" },
     });
-    check("sign-up refuses an incomplete application", incomplete.status === 400, `status=${incomplete.status}`);
+    check("sign-up accepts an application without the optional details",
+      incomplete.status === 201 && incomplete.body.account.status === "pending",
+      `status=${incomplete.status} accountStatus=${incomplete.body.account && incomplete.body.account.status}`);
 
     // 32. A real student registers. The account is pending, not usable.
     const signup = await call("/api/student/signup", {
       method: "POST",
-      body: Object.assign({ studentId: "2024-002", fullname: "Jose Ramos", email: "jose@example.com", password: "studentpass1" }, STUDENT_DETAILS),
+      body: Object.assign({ studentId: SIGNUP_ID, fullname: SIGNUP_NAME, email: "liam@example.com", password: "studentpass1" }, STUDENT_DETAILS),
     });
     check("a student can register an account", signup.status === 201, `status=${signup.status} ${JSON.stringify(signup.body).slice(0, 120)}`);
     check("a new account starts as pending", signup.status === 201 && signup.body.account.status === "pending",
@@ -462,32 +478,32 @@ function waitForServer(attempts = 40) {
     // 33. Registering the same ID twice is refused.
     const dupe = await call("/api/student/signup", {
       method: "POST",
-      body: Object.assign({ studentId: "2024-002", fullname: "Jose Ramos", email: "other@example.com", password: "studentpass1" }, STUDENT_DETAILS),
+      body: Object.assign({ studentId: SIGNUP_ID, fullname: SIGNUP_NAME, email: "other@example.com", password: "studentpass1" }, STUDENT_DETAILS),
     });
     check("a duplicate sign-up is refused", dupe.status === 409, `status=${dupe.status}`);
 
     // 34. THE KEY RULE: a pending account cannot sign in.
     const pendingLogin = await call("/api/student/login", {
       method: "POST",
-      body: { studentId: "2024-002", password: "studentpass1" },
+      body: { studentId: SIGNUP_ID, password: "studentpass1" },
     });
     check("a pending account cannot sign in", pendingLogin.status === 403,
       `status=${pendingLogin.status} ${JSON.stringify(pendingLogin.body).slice(0, 100)}`);
 
     // 35. The student can check their own status without signing in.
-    const status = await call("/api/student/status?id=2024-002");
+    const status = await call("/api/student/status?id=" + SIGNUP_ID);
     check("a student can check their approval status",
       status.status === 200 && status.body.status === "pending",
       `status=${status.status} appStatus=${status.body.status}`);
 
     // 36. The approval queue shows the waiting account, with the roster match.
     const queue = await call("/api/accounts/pending", { token });
-    const waiting = (queue.body.accounts || []).find((a) => a.studentId === "2024-002");
+    const waiting = (queue.body.accounts || []).find((a) => a.studentId === SIGNUP_ID);
     check("the pending account appears in the admin approval queue",
       queue.status === 200 && !!waiting && queue.body.pendingCount >= 1,
       `status=${queue.status} pending=${queue.body.pendingCount}`);
     check("the queued account is matched to the roster",
-      !!waiting && waiting.onRoster === true && waiting.studentName === "Jose Ramos",
+      !!waiting && waiting.onRoster === true && waiting.studentName === SIGNUP_NAME,
       JSON.stringify(waiting || {}).slice(0, 140));
 
     // 37. The dashboard badge count matches the queue.
@@ -504,7 +520,7 @@ function waitForServer(attempts = 40) {
     // (Approved below, then tried against /api/accounts.)
 
     // 40. An administrator approves the account.
-    const approve = await call("/api/accounts/2024-002", {
+    const approve = await call("/api/accounts/" + SIGNUP_ID, {
       method: "PATCH", token, body: { action: "approve" },
     });
     check("an admin can approve an account",
@@ -516,7 +532,7 @@ function waitForServer(attempts = 40) {
 
     // 41. NOW the student can sign in.
     const studentLogin = await call("/api/student/login", {
-      method: "POST", body: { studentId: "2024-002", password: "studentpass1" },
+      method: "POST", body: { studentId: SIGNUP_ID, password: "studentpass1" },
     });
     const studentToken = studentLogin.body.token;
     check("an approved student can sign in",
@@ -524,14 +540,14 @@ function waitForServer(attempts = 40) {
 
     // 42. A wrong password is still refused after approval.
     const wrongPw = await call("/api/student/login", {
-      method: "POST", body: { studentId: "2024-002", password: "not-the-password" },
+      method: "POST", body: { studentId: SIGNUP_ID, password: "not-the-password" },
     });
     check("a wrong student password is refused", wrongPw.status === 401, `status=${wrongPw.status}`);
 
     // 43. The student sees their OWN record, with their payment history.
     const me = await call("/api/student/me", { token: studentToken });
     check("a signed-in student can read their own record",
-      me.status === 200 && me.body.student && me.body.student.id === "2024-002",
+      me.status === 200 && me.body.student && me.body.student.id === SIGNUP_ID,
       `status=${me.status} id=${me.body.student && me.body.student.id}`);
     check("the student record includes their own payment history",
       me.status === 200 && Array.isArray(me.body.student.payments),
@@ -557,14 +573,14 @@ function waitForServer(attempts = 40) {
     });
     check("a student can change their password", pwChange.status === 200, `status=${pwChange.status}`);
     check("the old student password no longer works",
-      (await call("/api/student/login", { method: "POST", body: { studentId: "2024-002", password: "studentpass1" } })).status === 401,
+      (await call("/api/student/login", { method: "POST", body: { studentId: SIGNUP_ID, password: "studentpass1" } })).status === 401,
       "old password rejected");
     check("the new student password works",
-      (await call("/api/student/login", { method: "POST", body: { studentId: "2024-002", password: "newstudentpass2" } })).status === 200,
+      (await call("/api/student/login", { method: "POST", body: { studentId: SIGNUP_ID, password: "newstudentpass2" } })).status === 200,
       "new password accepted");
 
     // 47. Withdrawing access signs the student out and blocks them again.
-    const revoke = await call("/api/accounts/2024-002", {
+    const revoke = await call("/api/accounts/" + SIGNUP_ID, {
       method: "PATCH", token, body: { action: "pending" },
     });
     check("an admin can withdraw access",
@@ -576,14 +592,14 @@ function waitForServer(attempts = 40) {
 
     // 48. Rejecting is recorded, and a rejected student is blocked with a
     // distinct message rather than a generic failure.
-    const reject = await call("/api/accounts/2024-002", {
+    const reject = await call("/api/accounts/" + SIGNUP_ID, {
       method: "PATCH", token, body: { action: "reject" },
     });
     check("an admin can reject an account",
       reject.status === 200 && reject.body.account.status === "rejected",
       `status=${reject.status}`);
     const rejectedLogin = await call("/api/student/login", {
-      method: "POST", body: { studentId: "2024-002", password: "newstudentpass2" },
+      method: "POST", body: { studentId: SIGNUP_ID, password: "newstudentpass2" },
     });
     check("a rejected account cannot sign in", rejectedLogin.status === 403, `status=${rejectedLogin.status}`);
 
@@ -599,7 +615,7 @@ function waitForServer(attempts = 40) {
 
     // 50. The registered account is on disk, and no plaintext password is.
     const accRows = XLSX.utils.sheet_to_json(wb4.Sheets["Accounts"]);
-    const onDisk = accRows.find((a) => String(a.studentId) === "2024-002");
+    const onDisk = accRows.find((a) => String(a.studentId) === SIGNUP_ID);
     check("the student account persists to database.xlsx", !!onDisk,
       "rows=" + accRows.length);
     check("no plaintext student password is stored",
@@ -608,19 +624,19 @@ function waitForServer(attempts = 40) {
       "passwords are hashed");
 
     // 51. A superadmin can delete an account outright.
-    const delAcc = await call("/api/accounts/2024-002", { method: "DELETE", token });
+    const delAcc = await call("/api/accounts/" + SIGNUP_ID, { method: "DELETE", token });
     check("a superadmin can delete a student account", delAcc.status === 200, `status=${delAcc.status}`);
     const afterDel = await call("/api/accounts", { token });
     check("the deleted account is gone",
-      !(afterDel.body.accounts || []).some((a) => a.studentId === "2024-002"),
+      !(afterDel.body.accounts || []).some((a) => a.studentId === SIGNUP_ID),
       "account removed");
 
     // 52. The roster entry itself was never touched by any of the above.
     const roster = await call("/api/students", { token });
-    const jose = roster.body.students.find((s) => String(s.id) === "2024-002");
+    const rosterStudent = roster.body.students.find((s) => String(s.id) === SIGNUP_ID);
     check("registering never modified the student roster",
-      !!jose && jose.name === "Jose Ramos",
-      `name=${jose && jose.name}`);
+      !!rosterStudent && rosterStudent.name === SIGNUP_NAME,
+      `name=${rosterStudent && rosterStudent.name}`);
 
     // 20. Path traversal is blocked (raw socket, since fetch normalises "..").
     const traversalStatus = (rawPath) =>

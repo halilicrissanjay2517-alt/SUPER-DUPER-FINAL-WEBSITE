@@ -450,13 +450,104 @@
 }
 
 /* Approvals — 7 columns. */
-.table-approvals th:nth-child(1) { width: 14%; }  /* Student ID */
-.table-approvals th:nth-child(2) { width: 18%; }  /* Registered as */
-.table-approvals th:nth-child(3) { width: 22%; }  /* Email */
+.table-approvals th:nth-child(1) { width: 13%; }  /* Student ID */
+.table-approvals th:nth-child(2) { width: 20%; }  /* Registered as */
+.table-approvals th:nth-child(3) { width: 21%; }  /* Email */
 .table-approvals th:nth-child(4) { width: 12%; }  /* On roster */
-.table-approvals th:nth-child(5) { width: 12%; }  /* Requested */
-.table-approvals th:nth-child(6) { width: 10%; }  /* Status */
+.table-approvals th:nth-child(5) { width: 11%; }  /* Requested */
+.table-approvals th:nth-child(6) { width: 11%; }  /* Status */
 .table-approvals th:nth-child(7) { width: 12%; }  /* Actions */
+
+/* ---------------- Account cells ----------------
+   The account list is where the office scans for a name, not an ID, so each
+   row leads with a coloured initials disc and the name, with the login detail
+   underneath in a smaller line. */
+.account-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.account-bar .filter-bar {
+  margin: 0;
+}
+
+.account-bar .inline-field {
+  flex: 1 1 260px;
+  margin-left: auto;
+  max-width: 420px;
+}
+
+.acct-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.avatar {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+
+.avatar-lg {
+  width: 48px;
+  height: 48px;
+  font-size: 17px;
+}
+
+.acct-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.table-approvals td .acct-meta {
+  display: flex;
+}
+
+.acct-name {
+  font-weight: 600;
+  color: var(--ink, #1f2937);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.acct-sub {
+  color: #64748b;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+/* A pill around the Student ID so it reads as an identifier, not prose. */
+.id-chip {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #eef3ef;
+  border: 1px solid var(--line);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #334155;
+  white-space: nowrap;
+}
 
 /* Administrators — 5 columns. */
 .table-admins th:nth-child(1) { width: 22%; }     /* Username */
@@ -811,6 +902,38 @@
   white-space: nowrap;
 }
 
+/* A password field with a Show/Hide button inside its right edge. */
+.password-field {
+  position: relative;
+}
+
+.password-field input[type="password"],
+.password-field input[type="text"].has-password-toggle {
+  padding-right: 64px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  border: 0;
+  background: transparent;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--green-600, #2f6d4f);
+  cursor: pointer;
+  border-radius: var(--radius-sm, 8px);
+}
+
+.password-toggle:hover,
+.password-toggle:focus-visible {
+  background: rgba(47, 109, 79, 0.1);
+  outline: none;
+}
+
 .field select {
   width: 100%;
   padding: 12px 14px;
@@ -1028,14 +1151,65 @@ tr.review-row > td {
 }
 
 .review-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px 20px 20px;
+  animation: review-in 0.22s var(--ease, ease);
+}
+
+@keyframes review-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* The panel's own title bar: who this is, and where the application stands. */
+.review-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.review-head-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.review-head-meta strong {
+  font-size: 15.5px;
+  color: var(--green-800, #24503a);
+}
+
+.review-head-meta span {
+  font-size: 12.5px;
+  color: #64748b;
+}
+
+.review-head-meta b {
+  color: #334155;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.review-head-badges {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.review-cols {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 22px;
-  padding: 18px 20px 20px;
 }
 
 @media (max-width: 900px) {
-  .review-panel {
+  .review-cols {
     grid-template-columns: 1fr;
   }
 }
@@ -1053,32 +1227,93 @@ tr.review-row > td {
   color: #64748b;
 }
 
-.review-line {
+/* A tidy two-column block of label/value rows, each on a soft card line. */
+.detail-grid {
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-item {
   display: grid;
   grid-template-columns: 42% 58%;
   gap: 8px;
-  padding: 5px 0;
+  padding: 7px 0;
   border-bottom: 1px dashed #e2e8e4;
   font-size: 13px;
 }
 
-.review-line:last-child {
+.detail-item:last-child {
   border-bottom: 0;
 }
 
-.review-key {
+.detail-key {
   color: #64748b;
   font-weight: 600;
 }
 
-.review-val {
+.detail-val {
   color: var(--ink, #1f2937);
   overflow-wrap: anywhere;
 }
 
-.review-empty {
+.detail-val.is-empty {
   color: #b45309;
   font-style: italic;
+}
+
+/* The cross-check result: a short list of pass/attention findings. */
+.review-checks {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.review-checks li {
+  position: relative;
+  padding-left: 22px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: #334155;
+}
+
+.review-checks li::before {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-weight: 800;
+}
+
+.review-checks li.is-ok::before {
+  content: "\2713";
+  color: #2f8a52;
+}
+
+.review-checks li.is-bad::before {
+  content: "!";
+  color: #b42318;
+}
+
+.review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.review-actions .btn-primary {
+  order: 2;
+}
+
+.review-actions [data-review-close] {
+  order: 3;
+}
+
+.review-actions [data-review-reject] {
+  order: 1;
 }
 
 .review-note {

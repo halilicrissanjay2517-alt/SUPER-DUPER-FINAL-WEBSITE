@@ -1373,6 +1373,40 @@ section {
   box-shadow: 0 0 0 3px rgba(214, 69, 69, 0.18);
 }
 
+/* A wrapper for a password field with a Show/Hide button inside its right edge.
+   The input keeps its normal look; only its right padding grows to clear the
+   button. Used by every password form so the control is identical everywhere. */
+.password-field {
+  position: relative;
+}
+
+.password-field input[type="password"],
+.password-field input[type="text"].has-password-toggle {
+  padding-right: 64px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  border: 0;
+  background: transparent;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--green-600, #2f6d4f);
+  cursor: pointer;
+  border-radius: var(--radius-sm, 8px);
+}
+
+.password-toggle:hover,
+.password-toggle:focus-visible {
+  background: rgba(47, 109, 79, 0.1);
+  outline: none;
+}
+
 .field-hint {
   display: block;
   margin-top: 5px;

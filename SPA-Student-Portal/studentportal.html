@@ -75,11 +75,11 @@
             <div class="nav-links">
                 <a href="#patron">Our Patron</a>
                 <a href="#features">Features</a>
-                <a href="features.html">Services</a>
+                <a href="studentportal.html">Student Portal</a>
+                <a href="faculty.html">Faculty &amp; Staff</a>
                 <a href="#announcements-list">Announcements</a>
                 <a href="#directory">Directory</a>
                 <a href="#contact">Contact</a>
-                <a href="admin.html" class="nav-admin">Admin</a>
                 <button type="button" class="btn btn-ghost nav-toggle" data-menu-toggle aria-expanded="false" aria-controls="mobileMenu">
                     <span class="sr-only">Toggle menu</span>
                     <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6Zm0 5h18v2H3v-2Zm0 5h18v2H3v-2Z"/></svg>
@@ -91,11 +91,11 @@
     <div class="mobile-menu" id="mobileMenu" hidden>
         <a href="#patron">Our Patron</a>
         <a href="#features">Features</a>
-        <a href="features.html">Portal Services</a>
+        <a href="studentportal.html">Student Portal</a>
+        <a href="faculty.html">Faculty &amp; Staff</a>
         <a href="#announcements-list">Announcements</a>
         <a href="#directory">Directory</a>
         <a href="#contact">Contact</a>
-        <a href="admin.html">Admin Dashboard</a>
     </div>
 
     <main id="main">
@@ -247,12 +247,12 @@
 
             <!-- One obvious route into the full services page. -->
             <div class="features-more">
-                <a class="btn btn-primary" href="features.html">Explore all portal services &rarr;</a>
-                <span class="muted">A detailed guide to each of the four portals.</span>
+                <a class="btn btn-primary" href="studentportal.html">Open the Student Portal &rarr;</a>
+                <a class="btn btn-secondary" href="faculty.html">Faculty &amp; Staff &rarr;</a>
             </div>
         </section>
 
-        <section class="board" id="announcements-list">
+        <section class="board" id="announcements-list" hidden>
             <div class="section-head">
                 <span class="eyebrow eyebrow-dark">Newsboard</span>
                 <h2 class="section-title">Announcements</h2>
@@ -307,7 +307,7 @@
         <!-- ================= FIND MY RECORD (public, no money) =================
              Anyone may confirm that a Student ID is on file and see its class
              details. Fees, payments and balances are behind the login. -->
-        <section class="records" id="records-panel">
+        <section class="records" id="records-panel" hidden>
             <div class="section-head">
                 <span class="eyebrow eyebrow-dark">Records</span>
                 <h2 class="section-title">Find My Record</h2>
@@ -345,7 +345,7 @@
             <p class="empty-state" id="studentEmpty" hidden>No student found with that ID.</p>
         </section>
 
-        <section class="steps" id="enrollment-steps">
+        <section class="steps" id="enrollment-steps" hidden>
             <div class="section-head">
                 <span class="eyebrow eyebrow-dark">Enrollment</span>
                 <h2 class="section-title">How to Enroll</h2>
@@ -360,7 +360,7 @@
             </ol>
         </section>
 
-        <section class="faq" id="payment-table">
+        <section class="faq" id="payment-table" hidden>
             <div class="section-head">
                 <span class="eyebrow eyebrow-dark">Help desk</span>
                 <h2 class="section-title">Payment Guide &amp; FAQ</h2>
@@ -459,7 +459,8 @@
             <nav class="footer-links" aria-label="Footer">
                 <a href="#patron">Our Patron</a>
                 <a href="#features">Features</a>
-                <a href="features.html">Portal Services</a>
+                <a href="studentportal.html">Student Portal</a>
+                <a href="faculty.html">Faculty &amp; Staff</a>
                 <a href="#announcements-list">Announcements</a>
                 <a href="#directory">Directory</a>
                 <a href="#contact">Contact</a>
@@ -480,7 +481,12 @@
             <p class="muted">Access your own record: tuition, balance, due date and payment history.</p>
             <form id="studentLoginForm" novalidate>
                 <label class="field"><span>Student ID or email</span><input type="text" name="studentId" required autocomplete="username"></label>
-                <label class="field"><span>Password</span><input type="password" name="password" required autocomplete="current-password"></label>
+                <label class="field"><span>Password</span>
+                    <div class="password-field">
+                        <input type="password" name="password" required autocomplete="current-password">
+                        <button type="button" class="password-toggle" aria-label="Show password" aria-pressed="false">Show</button>
+                    </div>
+                </label>
                 <button type="submit" class="btn btn-primary btn-block">Log In</button>
                 <p class="form-status" id="studentLoginStatus" role="status" aria-live="polite"></p>
             </form>
@@ -558,7 +564,12 @@
 
                 <p class="signup-group">Your login</p>
                 <label class="field"><span>Email</span><input type="email" name="email" required placeholder="you@example.com" autocomplete="email"></label>
-                <label class="field"><span>Password</span><input type="password" name="password" required minlength="6" autocomplete="new-password"><small class="field-hint">At least 6 characters.</small></label>
+                <label class="field"><span>Password</span>
+                    <div class="password-field">
+                        <input type="password" name="password" required minlength="6" autocomplete="new-password">
+                        <button type="button" class="password-toggle" aria-label="Show password" aria-pressed="false">Show</button>
+                    </div>
+                <small class="field-hint">At least 6 characters.</small></label>
                 <button type="submit" class="btn btn-primary btn-block">Create account</button>
                 <p class="form-status" id="studentSignupStatus" role="status" aria-live="polite"></p>
             </form>

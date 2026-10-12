@@ -39,19 +39,22 @@
     });
   }
 
-  /** How a due date reads, given how much is still owed. */
+  /**
+   * How a due date reads, given how much is still owed. `overdue` / `soon` are
+   * flags the alert banner keys off, so the page never has to parse the words.
+   */
   function dueText(s) {
     var day = String(s.dueDate || "").slice(0, 10);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return { text: "Not set", note: "" };
-    if ((Number(s.balance) || 0) <= 0) return { text: niceDate(day), note: "Account settled" };
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return { text: "Not set", note: "", overdue: false, soon: false };
+    if ((Number(s.balance) || 0) <= 0) return { text: niceDate(day), note: "Account settled", overdue: false, soon: false };
 
     var days = Math.round(
       (Date.parse(day + "T00:00:00Z") - Date.parse(todayISO() + "T00:00:00Z")) / 86400000
     );
-    if (days < 0) return { text: "Overdue", note: "By " + Math.abs(days) + " days" };
-    if (days === 0) return { text: "Due today", note: niceDate(day) };
-    if (days <= 14) return { text: "In " + days + (days === 1 ? " day" : " days"), note: niceDate(day) };
-    return { text: niceDate(day), note: "" };
+    if (days < 0) return { text: "Overdue", note: "By " + Math.abs(days) + " days", overdue: true, soon: false };
+    if (days === 0) return { text: "Due today", note: niceDate(day), overdue: false, soon: true };
+    if (days <= 14) return { text: "In " + days + (days === 1 ? " day" : " days"), note: niceDate(day), overdue: false, soon: true };
+    return { text: niceDate(day), note: "", overdue: false, soon: false };
   }
 
   function studentApi(pathname, options) {
@@ -86,6 +89,7 @@
     document.title = (s.name || "My Account") + " — Saint Patrick's Academy, Inc.";
 
     if ($("#dashName")) $("#dashName").textContent = s.name || "—";
+    if ($("#dashHeroAvatar")) $("#dashHeroAvatar").textContent = initials(s.name);
     if ($("#dashSubtitle")) {
       $("#dashSubtitle").textContent =
         "Student ID " + (s.id || "—") + " · " + (s.grade || "") +
@@ -126,6 +130,12 @@
     var due = dueText(s);
     if ($("#dashDue")) $("#dashDue").textContent = due.text;
     if ($("#dashDueNote")) $("#dashDueNote").textContent = due.note || "No deadline set";
+    var dueCard = $("#dashDueCard");
+    if (dueCard) {
+      dueCard.classList.toggle("is-overdue", due.overdue === true);
+      dueCard.classList.toggle("is-settled", balance <= 0);
+    }
+    renderAlert(s, balance, due);
 
     /* Details + payment history */
     var payments = s.payments || [];
@@ -152,6 +162,43 @@
         }).join("");
       }
     }
+  }
+
+  /**
+   * One banner carrying the single thing that most needs the student's
+   * attention: an overdue balance, a due date close at hand, or the good news
+   * that the account is settled. Kept to one line so it never becomes noise.
+   */
+  function renderAlert(s, balance, due) {
+    var el = $("#dashAlert");
+    if (!el) return;
+    var kind = "";
+    var text = "";
+
+    if (balance <= 0) {
+      if ((Number(s.totalFee) || 0) > 0) {
+        kind = "is-ok";
+        text = "Your tuition is fully paid. Thank you — nothing further is due.";
+      }
+    } else if (due.overdue === true) {
+      kind = "is-danger";
+      text = "Your payment is overdue" + (due.note ? " (" + due.note.toLowerCase() + ")" : "") +
+        ". Please settle it with the Accounting office.";
+    } else if (due.soon === true) {
+      kind = "is-warn";
+      text = "Your payment is due " + due.text.toLowerCase() +
+        (due.note ? " — " + due.note : "") + ".";
+    }
+
+    if (!kind) {
+      el.hidden = true;
+      el.className = "dash-alert";
+      el.textContent = "";
+      return;
+    }
+    el.hidden = false;
+    el.className = "dash-alert " + kind;
+    el.textContent = text;
   }
 
   function renderDetails(s, account) {
@@ -330,16 +377,9 @@
     window.location.href = "studentportal.html";
   }
 
-  function boot() {
-    if (!token) {
-      showBlocked(
-        "This page shows your own tuition and payment records, so it is only " +
-        "available after you sign in."
-      );
-      return;
-    }
-
-    studentApi("/api/student/me")
+  /** Fetch the record and profile and paint the page. Shared by boot + Refresh. */
+  function loadAccount() {
+    return studentApi("/api/student/me")
       .then(function (data) {
         renderRecord(data.student);
         if ($("#dashLoading")) $("#dashLoading").hidden = true;
@@ -353,16 +393,27 @@
             renderDetails(data.student, res.profile);
           })
           .catch(function () { renderDetails(data.student, null); });
-      })
-      .catch(function (err) {
-        token = null;
-        localStorage.removeItem(TOKEN_KEY);
-        if (err.status === 401 || err.status === 403) {
-          showBlocked("Your session has ended. Please sign in again to see your account.");
-        } else {
-          showBlocked(err.message || "We could not load your account. Please try again.");
-        }
       });
+  }
+
+  function boot() {
+    if (!token) {
+      showBlocked(
+        "This page shows your own tuition and payment records, so it is only " +
+        "available after you sign in."
+      );
+      return;
+    }
+
+    loadAccount().catch(function (err) {
+      token = null;
+      localStorage.removeItem(TOKEN_KEY);
+      if (err.status === 401 || err.status === 403) {
+        showBlocked("Your session has ended. Please sign in again to see your account.");
+      } else {
+        showBlocked(err.message || "We could not load your account. Please try again.");
+      }
+    });
   }
 
   /* ---------- Change own password ---------- */
@@ -400,6 +451,34 @@
 
   var logoutBtn = $("#dashLogoutBtn");
   if (logoutBtn) logoutBtn.addEventListener("click", signOut);
+
+  /* Re-read the figures on demand — a payment recorded at the office shows up
+     without a full sign-out/sign-in cycle. */
+  var refreshBtn = $("#dashRefreshBtn");
+  if (refreshBtn) {
+    refreshBtn.addEventListener("click", function () {
+      if (!token) return;
+      refreshBtn.setAttribute("aria-busy", "true");
+      refreshBtn.disabled = true;
+      loadAccount()
+        .then(function () {
+          setStatus($("#dashProfileFormStatus"), "Your figures are up to date.", "ok");
+        })
+        .catch(function (err) {
+          if (err.status === 401 || err.status === 403) {
+            token = null;
+            localStorage.removeItem(TOKEN_KEY);
+            showBlocked("Your session has ended. Please sign in again to see your account.");
+          } else {
+            setStatus($("#dashProfileFormStatus"), err.message || "Could not refresh.", "error");
+          }
+        })
+        .then(function () {
+          refreshBtn.removeAttribute("aria-busy");
+          refreshBtn.disabled = false;
+        });
+    });
+  }
 
   boot();
 })();
