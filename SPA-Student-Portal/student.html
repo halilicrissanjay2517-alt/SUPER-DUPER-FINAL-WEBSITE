@@ -20,20 +20,51 @@
          refuses every admin route for a student session. -->
     <header class="dash-header">
         <div class="dash-header-inner">
-            <a class="dash-brand" href="studentportal.html">
-                <img src="logo.png" alt="Saint Patrick's Academy, Inc. logo">
-                <span class="dash-brand-text">
-                    <strong>Saint Patrick's Academy, Inc.</strong>
-                    <small>Student Dashboard</small>
-                </span>
-            </a>
+            <div class="dash-header-left">
+                <!-- The account avatar sits in the left corner: the student's own
+                     picture (or their initials) and a tap-friendly way into the page. -->
+                <a class="dash-corner-avatar" href="#dashTop" id="dashCornerAvatar" title="My account">
+                    <span class="profile-avatar" id="dashCornerAvatarInitials" aria-hidden="true">—</span>
+                    <img class="profile-avatar-img" id="dashCornerAvatarImg" alt="" hidden>
+                </a>
+                <a class="dash-brand" href="studentportal.html">
+                    <img src="logo.png" alt="Saint Patrick's Academy, Inc. logo">
+                    <span class="dash-brand-text">
+                        <strong>Saint Patrick's Academy, Inc.</strong>
+                        <small>Student Dashboard</small>
+                    </span>
+                </a>
+            </div>
             <div class="dash-header-actions">
                 <span class="dash-identity" id="dashIdentity" hidden></span>
                 <button type="button" class="btn btn-ghost" id="dashRefreshBtn" title="Refresh my figures" aria-label="Refresh my figures">Refresh</button>
                 <a class="btn btn-ghost dash-back" href="studentportal.html">&larr; Portal home</a>
                 <button type="button" class="btn btn-primary" id="dashLogoutBtn">Sign out</button>
+                <!-- The 3-line menu: everything on this page, one tap away. -->
+                <button type="button" class="btn btn-ghost dash-menu-toggle" id="dashMenuToggle"
+                        aria-expanded="false" aria-controls="dashMenu" title="Menu">
+                    <span class="sr-only">Open menu</span>
+                    <svg class="icon" aria-hidden="true" viewBox="0 0 24 24">
+                        <path d="M3 6h18v2H3V6Zm0 5h18v2H3v-2Zm0 5h18v2H3v-2Z"/>
+                    </svg>
+                </button>
             </div>
         </div>
+
+        <!-- The menu the 3-line button reveals. It lists the page's own sections
+             plus the ways out, so a student on a phone can move around quickly. -->
+        <nav class="dash-menu" id="dashMenu" hidden aria-label="Dashboard menu">
+            <p class="dash-menu-title">My Account</p>
+            <a href="#dashTop" data-dash-menu-link>Overview</a>
+            <a href="#dashProfile" data-dash-menu-link>My profile</a>
+            <a href="#dashLogin" data-dash-menu-link>My login &amp; password</a>
+            <a href="#dashPayments" data-dash-menu-link>Payment history</a>
+            <p class="dash-menu-title">Actions</p>
+            <button type="button" id="dashMenuRefresh">Refresh my figures</button>
+            <a href="studentportal.html">Back to the portal</a>
+            <a href="features.html">Portal services &amp; help</a>
+            <button type="button" id="dashMenuLogout">Sign out</button>
+        </nav>
     </header>
 
     <main class="dash-main" id="dashMain">
@@ -57,7 +88,7 @@
 
         <!-- The dashboard proper. -->
         <div class="dash-content" id="dashContent" hidden>
-            <section class="dash-hero">
+            <section class="dash-hero" id="dashTop">
                 <div class="dash-hero-id">
                     <div class="avatar-picker avatar-picker-hero">
                         <span class="profile-avatar dash-hero-avatar" id="dashHeroAvatar" aria-hidden="true">—</span>
@@ -103,7 +134,7 @@
                 <!-- My profile — the student's own page about themselves. The
                      identity block is the school's record and stays read-only;
                      the contact details below it are theirs to keep current. -->
-                <section class="dash-panel dash-profile" aria-labelledby="dashProfileHeading">
+                <section class="dash-panel dash-profile" id="dashProfile" aria-labelledby="dashProfileHeading">
                     <header class="dash-panel-head">
                         <h2 id="dashProfileHeading">My profile</h2>
                         <button type="button" class="btn btn-secondary btn-sm" id="dashProfileEditBtn">Edit</button>
@@ -171,7 +202,7 @@
                 </section>
 
                 <!-- My login -->
-                <section class="dash-panel" aria-labelledby="dashLoginHeading">
+                <section class="dash-panel" id="dashLogin" aria-labelledby="dashLoginHeading">
                     <header class="dash-panel-head">
                         <h2 id="dashLoginHeading">My login</h2>
                     </header>
@@ -201,7 +232,7 @@
             </div>
 
             <!-- Payment history -->
-            <section class="dash-panel" aria-labelledby="dashPaymentsHeading">
+            <section class="dash-panel" id="dashPayments" aria-labelledby="dashPaymentsHeading">
                 <header class="dash-panel-head">
                     <h2 id="dashPaymentsHeading">Payment history</h2>
                     <span class="dash-panel-total" id="dashPaymentsTotal"></span>

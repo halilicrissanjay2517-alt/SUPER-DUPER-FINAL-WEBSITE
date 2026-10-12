@@ -227,9 +227,12 @@
    * are looking at. The initials disc remains for everyone else.
    */
   function nameCell(name, sub, key, avatar) {
+    // An <img> cannot send an Authorization header, so the read-only avatar
+    // route also accepts the session token on the query string.
     var disc = avatar
       ? '<span class="avatar avatar-photo">' +
         '<img src="/api/avatar/' + encodeURIComponent(key) + '?v=' + encodeURIComponent(avatar) +
+        (state.token ? "&token=" + encodeURIComponent(state.token) : "") +
         '" alt="" loading="lazy"></span>'
       : '<span class="avatar" style="background:' + avatarTone(key) + '" aria-hidden="true">' +
         escapeHtml(initials(name, key)) +
@@ -498,7 +501,9 @@
       (account.avatar
         ? '<span class="avatar avatar-lg avatar-photo">' +
           '<img src="/api/avatar/' + encodeURIComponent(account.studentId) + '?v=' +
-          encodeURIComponent(account.avatar) + '" alt=""></span>'
+          encodeURIComponent(account.avatar) +
+          (state.token ? "&token=" + encodeURIComponent(state.token) : "") +
+          '" alt=""></span>'
         : '<span class="avatar avatar-lg" style="background:' + avatarTone(account.studentId) + '" aria-hidden="true">' +
           escapeHtml(initials(account.fullname, account.studentId)) +
           "</span>") +

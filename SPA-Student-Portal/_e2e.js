@@ -615,10 +615,22 @@ function waitForServer(attempts = 40) {
       picBack.status === 200 && (picBack.headers.get("content-type") || "").startsWith("image/"),
       `status=${picBack.status} type=${picBack.headers.get("content-type")}`);
 
+    // An <img> tag cannot send an Authorization header, so the route also has to
+    // accept the token on the query string.
+    const picByQuery = await fetch(
+      BASE + "/api/avatar/" + SIGNUP_ID + "?token=" + studentToken
+    );
+    check("the picture also loads with the token on the query string (for <img>)",
+      picByQuery.status === 200, `status=${picByQuery.status}`);
+
     // A student must not be able to fetch someone else's picture.
     const otherPic = await call("/api/avatar/2024-001", { token: studentToken });
     check("a student cannot fetch another student's picture",
       otherPic.status === 403, `status=${otherPic.status}`);
+
+    const noTokenPic = await fetch(BASE + "/api/avatar/" + SIGNUP_ID);
+    check("the avatar route refuses a request with no session at all",
+      noTokenPic.status === 401, `status=${noTokenPic.status}`);
 
     // A file that merely claims to be an image is refused.
     const fakeImg = await call("/api/student/avatar", {

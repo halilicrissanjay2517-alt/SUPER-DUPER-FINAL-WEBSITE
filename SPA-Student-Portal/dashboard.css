@@ -799,3 +799,163 @@
     border-radius: 14px;
   }
 }
+
+/* ---------- Header: account avatar + 3-line menu ----------
+   The left corner carries the student's own avatar so the page always shows
+   whose account it is; the right carries a 3-line menu that gathers every
+   section and every way out into one tidy dropdown. */
+.dash-header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.dash-corner-avatar {
+  position: relative;
+  flex: 0 0 auto;
+  display: inline-block;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  overflow: hidden;
+  text-decoration: none;
+  box-shadow: inset 0 0 0 2px rgba(212, 167, 44, 0.45);
+  transition: box-shadow 0.2s var(--ease), transform 0.2s var(--ease);
+}
+
+.dash-corner-avatar .profile-avatar {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  font-size: 15px;
+  box-shadow: none;
+}
+
+.dash-corner-avatar .profile-avatar-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 12px;
+}
+
+.dash-corner-avatar.has-photo #dashCornerAvatarInitials {
+  visibility: hidden;
+}
+
+.dash-corner-avatar:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 3px rgba(212, 167, 44, 0.35);
+}
+
+/* The 3-line toggle, sized like the other header buttons. */
+.dash-menu-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 12px;
+}
+
+.dash-menu-toggle .icon {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.dash-menu-toggle[aria-expanded="true"] {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* The dropdown itself. Anchored under the header, right-aligned to the button,
+   and never wider than the screen. */
+.dash-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 24px;
+  z-index: 40;
+  width: 240px;
+  max-width: calc(100vw - 32px);
+  padding: 8px;
+  background: #fff;
+  border: 1px solid var(--line, #dbe6de);
+  border-radius: 14px;
+  box-shadow: var(--shadow-lg, 0 22px 48px rgba(6, 35, 26, 0.16));
+  animation: dash-menu-in 0.16s var(--ease, ease);
+}
+
+@keyframes dash-menu-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dash-menu { animation: none; }
+}
+
+.dash-menu-title {
+  margin: 8px 10px 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--green-700, #0d5f3d);
+}
+
+.dash-menu-title:first-child { margin-top: 4px; }
+
+.dash-menu a,
+.dash-menu button {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink, #14261d);
+  font: inherit;
+  font-weight: 600;
+  font-size: 14.5px;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s var(--ease, ease), color 0.15s var(--ease, ease);
+}
+
+.dash-menu a:hover,
+.dash-menu button:hover {
+  background: var(--green-50, #e8f3ec);
+  color: var(--green-800, #0a4a30);
+}
+
+#dashMenuLogout,
+.dash-menu a[href="studentportal.html"] {
+  color: var(--ink, #14261d);
+}
+
+/* The header must be a positioning context for the dropdown. */
+.dash-header {
+  position: relative;
+}
+
+@media (max-width: 560px) {
+  .dash-corner-avatar {
+    width: 38px;
+    height: 38px;
+  }
+
+  .dash-menu {
+    right: 12px;
+    left: 12px;
+    width: auto;
+  }
+
+  .dash-brand-text strong {
+    font-size: 14px;
+  }
+}

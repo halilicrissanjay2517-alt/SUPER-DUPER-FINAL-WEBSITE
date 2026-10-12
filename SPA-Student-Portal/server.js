@@ -1149,6 +1149,28 @@ function getSession(req) {
   return session;
 }
 
+/**
+ * The session for a ?token= on the URL. Used only by the avatar route, whose
+ * image is loaded by an <img> tag that cannot carry an Authorization header.
+ * The route still checks ownership, so this exposes nothing beyond one picture.
+ */
+function sessionFromQueryToken(req) {
+  let token = null;
+  try {
+    token = new URL(req.url, "http://localhost").searchParams.get("token");
+  } catch (err) {
+    return null;
+  }
+  if (!token) return null;
+  const session = sessions.get(token);
+  if (!session) return null;
+  if (session.expires < Date.now()) {
+    sessions.delete(token);
+    return null;
+  }
+  return session;
+}
+
 /* -------------------------------------------------------------------- Server */
 
 const MIME = {

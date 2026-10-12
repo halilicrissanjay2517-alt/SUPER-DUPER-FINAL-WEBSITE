@@ -115,6 +115,25 @@ Only **their own** record: tuition fee, amount paid, remaining balance, payment
 due date, status, and their full payment history. There is no way to view
 another student's figures.
 
+### The student's own account page
+Signing in leads to **My Account** (`student.html`), a private page carrying the
+student's figures, their profile, their login, and their payment history. A few
+things about it:
+
+- **A profile picture.** The student can set their own photo from **My profile →
+  Upload photo** (PNG, JPG, WEBP or GIF, up to 2 MB). It appears in the corner of
+  the header and beside their name; **Remove** clears it again. Only the filename
+  is written into the workbook — the image itself is stored in an `avatars/`
+  folder beside `database.xlsx`, so it persists with the volume and is never
+  inlined into the sheet. A student can fetch **only their own** picture; the
+  office can see any student's picture from the dashboard.
+- **The 3-line menu.** The header carries a menu button that gathers every
+  section of the page (Overview, My profile, My login, Payment history) and the
+  ways out (refresh, portal home, help, sign out) into one dropdown.
+- **Contact details are theirs to edit.** Address, contact numbers, guardian and
+  last school can be kept up to date; name, grade, section and every tuition
+  figure stay read-only and belong to the school.
+
 Before signing in, the public page can only confirm that a Student ID is on
 file (name, grade, section, status). **Fees and balances are never shown
 publicly.**
@@ -154,8 +173,8 @@ the server never silently changes a working login.
 ## The database
 `database.xlsx` is created automatically on first run with these sheets:
 
-- **Students** — `id, name, grade, section, status, totalFee, amountPaid, balance, dueDate, lastPaymentDate, guardian, contact, email`
-- **Accounts** — `studentId, fullname, email, passwordHash, salt, status, createdAt, approvedBy, approvedAt, note, gradeLevel, section, birthdate, sex, address, contact, guardian, guardianContact, lastSchool`
+- **Students** — `id, name, grade, section, status, totalFee, amountPaid, balance, dueDate, lastPaymentDate, guardian, contact, email` plus the account columns below
+- **Accounts** — `studentId, fullname, email, passwordHash, salt, status, createdAt, approvedBy, approvedAt, note, gradeLevel, section, birthdate, sex, address, contact, guardian, guardianContact, lastSchool, rosterMatch, avatar`
 - **Admins** — `username, name, role, passwordHash, salt, active`
 - **Payments** — `date, receiptNo, studentId, studentName, amount, method, receivedBy, note`
 - **Logs** — `timestamp, admin, action, target, details`
@@ -237,7 +256,7 @@ no separate mobile build:
 
 ## Tests
 ```powershell
-node _e2e.js            # 86 checks: the server API end to end
+node _e2e.js            # 96 checks: the server API end to end
 node --test             # 4 checks: the portal HTML itself
 node _launch_check.cjs  # 5 checks: the public-launch safety guards
 ```
@@ -267,7 +286,7 @@ cannot satisfy. The restore runs on every exit path, including a crash.
 | `LAUNCH.md` | Checklist to go live: passwords, sample data, hosting. |
 | `UPLOAD.md` | Step-by-step: putting the site on the internet (tunnels, other hosts). |
 | `RAILWAY.md` | Step-by-step: deploying to Railway (**recommended**). |
-| `_e2e.js` | End-to-end tests (86 checks). |
+| `_e2e.js` | End-to-end tests (96 checks). |
 | `_launch_check.cjs` | Public-launch safety guards (5 checks). |
 | `index.test.mjs` | Page-level tests (4 checks). |
 

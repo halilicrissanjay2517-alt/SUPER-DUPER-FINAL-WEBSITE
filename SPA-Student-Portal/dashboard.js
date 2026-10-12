@@ -90,6 +90,7 @@
 
     if ($("#dashName")) $("#dashName").textContent = s.name || "—";
     if ($("#dashHeroAvatar")) $("#dashHeroAvatar").textContent = initials(s.name);
+    if ($("#dashCornerAvatarInitials")) $("#dashCornerAvatarInitials").textContent = initials(s.name);
     if ($("#dashSubtitle")) {
       $("#dashSubtitle").textContent =
         "Student ID " + (s.id || "—") + " · " + (s.grade || "") +
@@ -284,18 +285,24 @@
     var imgs = [
       { el: $("#dashProfileAvatarImg") },
       { el: $("#dashHeroAvatarImg") },
+      { el: $("#dashCornerAvatarImg") },
     ];
     var removeBtn = $("#dashAvatarRemoveBtn");
+    var corner = $("#dashCornerAvatar");
     var hasPhoto = !!(profile && profile.avatar);
 
     Array.prototype.forEach.call(pickers, function (p) {
       p.classList.toggle("has-photo", hasPhoto);
     });
+    if (corner) corner.classList.toggle("has-photo", hasPhoto);
     if (removeBtn) removeBtn.hidden = !hasPhoto;
 
+    // An <img> cannot send an Authorization header, so the read-only avatar
+    // route also accepts the session token on the query string.
     var src = hasPhoto
       ? "/api/avatar/" + encodeURIComponent(profile.studentId) +
-        "?v=" + encodeURIComponent(profile.avatar)
+        "?v=" + encodeURIComponent(profile.avatar) +
+        (token ? "&token=" + encodeURIComponent(token) : "")
       : "";
     imgs.forEach(function (item) {
       var img = item.el;
@@ -593,6 +600,59 @@
           refreshBtn.removeAttribute("aria-busy");
           refreshBtn.disabled = false;
         });
+    });
+  }
+
+  /* ---------- The 3-line menu ----------
+     Opens the dropdown of sections and actions. Closes on a second press, on a
+     choice, on Escape, or on a click anywhere outside it — so it can never be
+     left hanging open over the page. */
+  var menuToggle = $("#dashMenuToggle");
+  var dashMenu = $("#dashMenu");
+
+  function setMenuOpen(open) {
+    if (!menuToggle || !dashMenu) return;
+    dashMenu.hidden = !open;
+    menuToggle.setAttribute("aria-expanded", open ? "true" : "false");
+  }
+
+  if (menuToggle && dashMenu) {
+    menuToggle.addEventListener("click", function (e) {
+      e.stopPropagation();
+      setMenuOpen(dashMenu.hidden);
+    });
+
+    // Choosing a link closes the menu so the jump is not hidden behind it.
+    Array.prototype.forEach.call(
+      dashMenu.querySelectorAll("a[data-dash-menu-link]"),
+      function (link) {
+        link.addEventListener("click", function () { setMenuOpen(false); });
+      }
+    );
+
+    // The menu's own actions reuse the header controls.
+    var menuRefresh = $("#dashMenuRefresh");
+    if (menuRefresh) {
+      menuRefresh.addEventListener("click", function () {
+        setMenuOpen(false);
+        if (refreshBtn) refreshBtn.click();
+      });
+    }
+    var menuLogout = $("#dashMenuLogout");
+    if (menuLogout) menuLogout.addEventListener("click", function () { signOut(); });
+
+    document.addEventListener("click", function (e) {
+      if (dashMenu.hidden) return;
+      if (!dashMenu.contains(e.target) && !menuToggle.contains(e.target)) {
+        setMenuOpen(false);
+      }
+    });
+
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && !dashMenu.hidden) {
+        setMenuOpen(false);
+        menuToggle.focus();
+      }
     });
   }
 
