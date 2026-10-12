@@ -102,6 +102,69 @@
         <a class="nav-admin" href="admin.html">Admin sign-in</a>
     </div>
 
+    <!-- The features drawer. A tab pinned to the right edge reveals the whole
+         site's features on hover (desktop) or tap (touch). The list is plain
+         markup so it works even before any script runs. -->
+    <button type="button" class="feature-drawer-tab" id="featureDrawerTab"
+            aria-expanded="false" aria-controls="featureDrawer">
+        <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M4 6h16v2H4V6Zm0 5h16v2H4v-2Zm0 5h16v2H4v-2Z"/></svg>
+        <span class="drawer-tab-label">Features</span>
+    </button>
+
+    <div class="feature-drawer-scrim" id="featureDrawerScrim" hidden></div>
+
+    <aside class="feature-drawer" id="featureDrawer" aria-label="Site features" aria-hidden="true">
+        <div class="feature-drawer-head">
+            <div>
+                <span class="eyebrow eyebrow-dark">Everything in one place</span>
+                <h2>Portal features</h2>
+            </div>
+            <button type="button" class="feature-drawer-close" id="featureDrawerClose" aria-label="Close features">&times;</button>
+        </div>
+
+        <p class="feature-drawer-group">For students &amp; parents</p>
+        <ul class="feature-drawer-list">
+            <li><a href="#login" data-drawer-link>
+                <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5Zm-3 8V7a3 3 0 0 1 6 0v3H9Z"/></svg>
+                Log in / Create account</a></li>
+            <li><a href="#features" data-drawer-link>
+                <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M4 4h7v7H4V4Zm9 0h7v7h-7V4ZM4 13h7v7H4v-7Zm9 0h7v7h-7v-7Z"/></svg>
+                Portal features</a></li>
+            <li><a href="#directory" data-drawer-link>
+                <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm0 2c-4 0-8 2-8 5v1h16v-1c0-3-4-5-8-5Z"/></svg>
+                Student &amp; staff directory</a></li>
+            <li><a href="#announcements-list" data-drawer-link>
+                <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M3 10v4h3l6 4V6L6 10H3Zm14.5 2a5 5 0 0 0-3-4.6v9.2a5 5 0 0 0 3-4.6Z"/></svg>
+                Announcements</a></li>
+            <li><a href="#contact" data-drawer-link>
+                <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Zm0 4-8 5-8-5V6l8 5 8-5v2Z"/></svg>
+                Contact the school</a></li>
+        </ul>
+
+        <p class="feature-drawer-group">Records &amp; offices</p>
+        <ul class="feature-drawer-list">
+            <li><a href="studentportal.html" data-drawer-link>
+                <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M6 2h9l5 5v15H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm8 1.5V8h4.5L14 3.5Z"/></svg>
+                Student records</a></li>
+            <li><a href="records.html" data-drawer-link>
+                <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M4 4h16v3H4V4Zm0 6h16v3H4v-3Zm0 6h10v3H4v-3Z"/></svg>
+                Enrollment &amp; tuition</a></li>
+            <li><a href="faculty.html" data-drawer-link>
+                <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3 2 8l10 5 10-5-10-5Zm0 7.5L4 7v5.5c0 1.9 3.6 3.5 8 3.5s8-1.6 8-3.5V7l-8 3.5Z"/></svg>
+                Faculty &amp; staff</a></li>
+            <li><a href="admin.html" data-drawer-link>
+                <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z"/></svg>
+                Administrator sign-in</a></li>
+        </ul>
+
+        <p class="feature-drawer-group">Help</p>
+        <ul class="feature-drawer-list">
+            <li><a href="features.html" data-drawer-link>
+                <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 15h-2v-2h2v2Zm1.8-6.2-.9.9c-.7.7-1 1.3-1 2.3h-2v-.5c0-1 .4-1.9 1.1-2.6l1.2-1.3c.4-.4.6-.9.6-1.5a2 2 0 0 0-4 0H8a4 4 0 0 1 8 0c0 .9-.4 1.8-1.2 2.7Z"/></svg>
+                Portal services &amp; help</a></li>
+        </ul>
+    </aside>
+
     <main id="main">
         <section class="hero" id="login">
             <div class="hero-bg" aria-hidden="true"></div>

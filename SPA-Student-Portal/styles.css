@@ -2627,3 +2627,310 @@ body.no-scroll {
     grid-template-columns: 1fr;
   }
 }
+
+/* ==========================================================================
+   Full-bleed layout · glass features · hover drawer
+   --------------------------------------------------------------------------
+   This block widens the page so it occupies the whole screen, turns the
+   feature surfaces into frosted glass that stays readable, and adds an edge
+   drawer that reveals the whole site's features on hover or tap.
+   It comes last so it layers on top of the original rules without rewriting
+   them — remove this one block to return to the centred 1200px layout.
+   ========================================================================== */
+
+/* ---------- 1. Full-bleed layout --------------------------------------- */
+/* The inner wrappers keep a comfortable reading measure on huge monitors but
+   stretch to fill the screen on everything else. */
+.nav,
+.hero-inner,
+.section-head,
+.feature-grid,
+.patron-inner,
+.records-toolbar,
+.directory-grid,
+.contact-inner {
+  max-width: min(1560px, 100%);
+}
+
+/* Sections keep their vertical rhythm while giving the content more room. */
+section {
+  padding-left: clamp(20px, 4vw, 64px);
+  padding-right: clamp(20px, 4vw, 64px);
+}
+
+/* The hero stretches edge to edge and grows with the viewport. */
+.hero-inner {
+  padding-top: clamp(72px, 9vw, 132px);
+  padding-bottom: clamp(78px, 9vw, 140px);
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 400px);
+  gap: clamp(40px, 5vw, 84px);
+}
+
+/* The features grid fills the width instead of sitting in the middle. */
+.feature-grid {
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  gap: clamp(18px, 2vw, 28px);
+}
+
+/* ---------- 2. Glass features ----------------------------------------- */
+/* A soft, green-tinted backdrop so the frosted cards have something to blur.
+   Without a textured backdrop, "transparent" just looks washed out. */
+.features,
+.records,
+.patron {
+  position: relative;
+  /* A denser wash of colour sits behind the cards so the frosted glass has
+     something to blur — without it, transparency over a near-white canvas is
+     invisible and the cards just read as solid. */
+  background:
+    radial-gradient(620px 380px at 8% 18%, rgba(18, 121, 76, 0.22), transparent 62%),
+    radial-gradient(560px 360px at 40% 90%, rgba(212, 167, 44, 0.20), transparent 64%),
+    radial-gradient(700px 400px at 92% 30%, rgba(26, 143, 92, 0.20), transparent 66%),
+    linear-gradient(180deg, #eef5ef, #e6efe7);
+}
+
+/* A soft, decorative band of foliage behind the feature row, so the blur pulls
+   real detail through the glass rather than flat colour. */
+.features::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 420px;
+  background: url("logo.png") center 40% / 620px no-repeat;
+  opacity: 0.06;
+  pointer-events: none;
+}
+
+/* The card itself: translucent, blurred, with a bright hairline so the edge
+   still reads against whatever is behind it. */
+.feature-card {
+  background: rgba(255, 255, 255, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 12px 34px rgba(6, 35, 26, 0.14);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+}
+
+/* On hover the glass clears a little, so the card under the cursor is the
+   clearest thing on the page. */
+.feature-card:hover {
+  background: rgba(255, 255, 255, 0.78);
+  border-color: rgba(185, 214, 196, 0.9);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.75) inset,
+    0 24px 50px rgba(15, 56, 35, 0.20);
+}
+
+/* Text stays fully opaque on the glass — transparency that costs legibility
+   is a bug, not a style. */
+.feature-card h3,
+.feature-card p,
+.feature-card .card-link {
+  position: relative;
+  z-index: 1;
+}
+
+/* The same treatment for the other card surfaces, so the whole page agrees. */
+.patron-value {
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px) saturate(1.2);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+}
+
+/* Browsers without backdrop-filter get a solid-but-soft card instead of an
+   unreadable see-through panel. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .feature-card,
+  .patron-value {
+    background: rgba(255, 255, 255, 0.92);
+  }
+}
+
+/* ---------- 3. Hover / touch drawer ----------------------------------- */
+/* A tab pinned to the right edge. Hovering (or tapping) it, or the drawer
+   itself, slides out the full list of the site's features. Moving away puts
+   it back, unless it was pinned by a click/tap. */
+.feature-drawer-tab {
+  position: fixed;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  z-index: 60;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 9px;
+  border: 0;
+  border-radius: 12px 0 0 12px;
+  background: linear-gradient(180deg, var(--green-700), var(--green-900));
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: -6px 8px 26px rgba(6, 35, 26, 0.28);
+  transition: background 0.2s var(--ease), padding 0.2s var(--ease);
+}
+
+.feature-drawer-tab .icon {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.feature-drawer-tab:hover,
+.feature-drawer-tab[aria-expanded="true"] {
+  background: linear-gradient(180deg, var(--green-600), var(--green-800));
+  padding-left: 12px;
+}
+
+/* Rotate the label so it reads vertically down the tab. */
+.feature-drawer-tab .drawer-tab-label {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+.feature-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 59;
+  height: 100vh;
+  height: 100dvh;
+  width: min(380px, 86vw);
+  padding: 30px 26px 40px;
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.82);
+  border-left: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: -22px 0 60px rgba(6, 35, 26, 0.22);
+  backdrop-filter: blur(18px) saturate(1.3);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  transform: translateX(102%);
+  transition: transform 0.34s var(--ease);
+  will-change: transform;
+}
+
+.feature-drawer.is-open {
+  transform: translateX(0);
+}
+
+.feature-drawer-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 16px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.feature-drawer-head h2 {
+  margin: 4px 0 0;
+  font-size: 22px;
+  color: var(--green-800);
+}
+
+.feature-drawer-close {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.2s var(--ease), transform 0.2s var(--ease);
+}
+
+.feature-drawer-close:hover {
+  background: var(--green-50);
+  transform: rotate(90deg);
+}
+
+.feature-drawer-group {
+  margin: 18px 0 8px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--green-600);
+}
+
+.feature-drawer-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.feature-drawer-list a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  text-decoration: none;
+  font-weight: 600;
+  transition: background 0.18s var(--ease), transform 0.18s var(--ease), color 0.18s var(--ease);
+}
+
+.feature-drawer-list a .icon {
+  width: 18px;
+  height: 18px;
+  fill: var(--green-700);
+  flex: 0 0 auto;
+}
+
+.feature-drawer-list a:hover {
+  background: rgba(18, 121, 76, 0.10);
+  color: var(--green-800);
+  transform: translateX(4px);
+}
+
+/* A dimming scrim behind the drawer, only while it is open on a small screen. */
+.feature-drawer-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 58;
+  background: rgba(6, 35, 26, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s var(--ease);
+}
+
+.feature-drawer-scrim.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feature-drawer,
+  .feature-drawer-scrim,
+  .feature-drawer-tab {
+    transition: none;
+  }
+}
+
+/* On a phone the tab stays reachable but slimmer. */
+@media (max-width: 560px) {
+  .feature-drawer-tab {
+    top: auto;
+    bottom: 22px;
+    transform: none;
+    border-radius: 12px 0 0 12px;
+    flex-direction: row;
+    padding: 12px 14px;
+  }
+
+  .feature-drawer-tab .drawer-tab-label {
+    writing-mode: horizontal-tb;
+  }
+}

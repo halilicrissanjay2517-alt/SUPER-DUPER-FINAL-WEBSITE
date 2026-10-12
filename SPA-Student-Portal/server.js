@@ -49,7 +49,6 @@ const DB_FILE = path.join(DB_DIR, "database.xlsx");
 // Student profile pictures live beside the workbook, on the same persistent
 // volume. Only the filename is recorded in the sheet; the bytes stay on disk so
 // the workbook never balloons and an image is never inlined into a spreadsheet.
-const AVATAR_DIR = path.join(DB_DIR, "avatars");
 const PORT = process.env.PORT || 3000;
 
 const SHEETS = {
@@ -92,9 +91,6 @@ const STUDENT_COLUMNS = [
   "guardianContact",
   "lastSchool",
   "note",
-  // The profile-picture filename travels with the account so the office can see
-  // at a glance whether a student has set one. Blank means "no picture".
-  "avatar",
 ];
 
 /** Default tuition by grade level, used when a student is added without a fee. */
@@ -269,11 +265,6 @@ const ACCOUNT_COLUMNS = [
   // "new" when the applicant's own answers become the record once an
   // administrator approves the account. Either way the account starts pending.
   "rosterMatch",
-  // The filename of the student's own profile picture, stored under
-  // DB_DIR/avatars. Blank when they have not uploaded one, in which case the
-  // page falls back to the initials square. Only the name is kept here — the
-  // image itself lives on the volume beside the workbook, never in the sheet.
-  "avatar",
 ];
 
 /** Human-readable names for the account fields, used to build an audit line. */
@@ -289,7 +280,6 @@ const ACCOUNT_FIELD_LABELS = {
   guardian: "guardian",
   guardianContact: "guardian's contact",
   lastSchool: "last school",
-  avatar: "profile picture",
 };
 
 function hashPassword(password, salt) {
@@ -476,12 +466,12 @@ function createSeedDb() {
 function applySheetFormatting(db) {
   applyColumnWidths(db, SHEETS.students, [
     11, 22, 10, 16, 12, 12, 12, 16, 18, 16, 26,
-    13, 13, 16, 22, 16, 22, 12, 7, 30, 18, 22, 30, 26,
+    13, 13, 16, 22, 16, 22, 12, 7, 30, 18, 22, 30,
   ]);
   applyColumnWidths(db, SHEETS.payments, [12, 11, 11, 20, 11, 15, 13, 28]);
   applyColumnWidths(db, SHEETS.admins, [14, 20, 12, 66, 34, 8]);
   applyColumnWidths(db, SHEETS.logs, [26, 14, 16, 12, 70]);
-  applyColumnWidths(db, SHEETS.accounts, [12, 22, 26, 66, 34, 10, 22, 16, 22, 28, 20, 26]);
+  applyColumnWidths(db, SHEETS.accounts, [12, 22, 26, 66, 34, 10, 22, 16, 22, 28, 20]);
 }
 
 /**
@@ -584,7 +574,6 @@ const ACCOUNT_LINK_FIELDS = [
   "lastSchool",
   "note",
   "passwordNote",
-  "avatar",
 ];
 
 /** One student row and one credential row, joined into the account shape. */
@@ -865,10 +854,6 @@ function publicAccount(account) {
     guardian: account.guardian || "",
     guardianContact: account.guardianContact || "",
     lastSchool: account.lastSchool || "",
-    // The stored filename of their profile picture ("" when none). The office
-    // reads this to know whether a student has set one; the image itself is
-    // served through the avatar route, never inlined into this JSON.
-    avatar: account.avatar || "",
   };
 }
 
@@ -909,10 +894,6 @@ function studentProfileFor(db, account) {
     guardian: account.guardian || "",
     guardianContact: account.guardianContact || "",
     lastSchool: account.lastSchool || "",
-    // The stored filename of their profile picture ("" when none). The office
-    // reads this to know whether the student has set one; the image itself is
-    // served through the avatar route, never inlined here.
-    avatar: account.avatar || "",
   };
 }
 
@@ -1149,28 +1130,6 @@ function getSession(req) {
   return session;
 }
 
-/**
- * The session for a ?token= on the URL. Used only by the avatar route, whose
- * image is loaded by an <img> tag that cannot carry an Authorization header.
- * The route still checks ownership, so this exposes nothing beyond one picture.
- */
-function sessionFromQueryToken(req) {
-  let token = null;
-  try {
-    token = new URL(req.url, "http://localhost").searchParams.get("token");
-  } catch (err) {
-    return null;
-  }
-  if (!token) return null;
-  const session = sessions.get(token);
-  if (!session) return null;
-  if (session.expires < Date.now()) {
-    sessions.delete(token);
-    return null;
-  }
-  return session;
-}
-
 /* -------------------------------------------------------------------- Server */
 
 const MIME = {
@@ -1213,98 +1172,6 @@ function readBody(req, maxBytes = 1e6) {
   });
 }
 
-/* ------------------------------------------------------------ Profile photos
-   A student's picture is kept as a plain image file under AVATAR_DIR, named
-   after their Student ID, and the Accounts sheet remembers only that filename.
-   Re-uploading overwrites in place (and clears any older extension), so a
-   student can never accumulate stray files. */
-
-const AVATAR_MAX_BYTES = 2 * 1024 * 1024; // 2 MB — generous for a portrait
-const AVATAR_MIME = {
-  "image/png": "png",
-  "image/jpeg": "jpg",
-  "image/webp": "webp",
-  "image/gif": "gif",
-};
-
-/** A Student ID safe to use as a filename: no slashes, no dots, no surprises. */
-function safeAvatarKey(studentId) {
-  return String(studentId || "").replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 60);
-}
-
-/**
- * Decode a "data:image/...;base64,..." URL into a validated image buffer.
- * Returns { ext, buffer } or throws with a message fit to show the student.
- */
-function decodeAvatarDataUrl(dataUrl) {
-  const match = /^data:(image\/(?:png|jpeg|webp|gif));base64,([A-Za-z0-9+/=]+)$/.exec(
-    String(dataUrl || "")
-  );
-  if (!match) {
-    throw new Error("Choose a PNG, JPG, WEBP or GIF image.");
-  }
-  const mime = match[1];
-  const buffer = Buffer.from(match[2], "base64");
-  if (!buffer.length) throw new Error("That image came through empty — try another.");
-  if (buffer.length > AVATAR_MAX_BYTES) {
-    throw new Error("That image is too large. Please use one under 2 MB.");
-  }
-  // Trust the bytes, not the label: confirm the decoded data really is the image
-  // it claims to be, so a renamed file cannot smuggle something else onto disk.
-  const isPng = buffer.length > 8 && buffer[0] === 0x89 && buffer[1] === 0x50;
-  const isJpg = buffer.length > 3 && buffer[0] === 0xff && buffer[1] === 0xd8;
-  const isGif = buffer.length > 3 && buffer.toString("ascii", 0, 3) === "GIF";
-  const isWebp =
-    buffer.length > 12 &&
-    buffer.toString("ascii", 0, 4) === "RIFF" &&
-    buffer.toString("ascii", 8, 12) === "WEBP";
-  const looksReal =
-    (mime === "image/png" && isPng) ||
-    (mime === "image/jpeg" && isJpg) ||
-    (mime === "image/gif" && isGif) ||
-    (mime === "image/webp" && isWebp);
-  if (!looksReal) throw new Error("That file is not a valid image.");
-  return { ext: AVATAR_MIME[mime], buffer, mime };
-}
-
-/** Write the decoded image to disk and return its stored filename. */
-function storeAvatar(studentId, ext, buffer) {
-  fs.mkdirSync(AVATAR_DIR, { recursive: true });
-  const key = safeAvatarKey(studentId);
-  // Clear any previous picture first so a PNG replacing a JPG cannot leave the
-  // old file behind to be served by a stale link.
-  removeAvatarFiles(studentId);
-  const filename = key + "." + ext;
-  fs.writeFileSync(path.join(AVATAR_DIR, filename), buffer);
-  return filename;
-}
-
-/** Delete every stored picture for a Student ID, whatever its extension. */
-function removeAvatarFiles(studentId) {
-  const key = safeAvatarKey(studentId);
-  if (!key) return;
-  let entries = [];
-  try {
-    entries = fs.readdirSync(AVATAR_DIR);
-  } catch (err) {
-    return; // No directory yet: nothing to remove.
-  }
-  entries.forEach((name) => {
-    if (name === key || name.startsWith(key + ".")) {
-      try { fs.unlinkSync(path.join(AVATAR_DIR, name)); } catch (err) { /* best effort */ }
-    }
-  });
-}
-
-/** Resolve a stored avatar filename to a real path inside AVATAR_DIR. */
-function avatarPath(filename) {
-  const name = path.basename(String(filename || ""));
-  if (!name || name !== String(filename || "")) return null;
-  const full = path.join(AVATAR_DIR, name);
-  if (!full.startsWith(AVATAR_DIR + path.sep)) return null;
-  return full;
-}
-
 /** Guard an API route. Returns the session or sends 401 and returns null. */
 function requireAuth(req, res, roles) {
   const session = getSession(req);
@@ -1320,20 +1187,6 @@ function requireAuth(req, res, roles) {
   }
   if (roles && !roles.includes(session.role)) {
     sendJson(res, 403, { error: "Your role cannot perform this action" });
-    return null;
-  }
-  return session;
-}
-
-/**
- * Guard a route open to a signed-in student OR administrator. Used by the avatar
- * route, where a student reads only their own picture and an administrator may
- * read any — the per-row ownership check happens at the call site.
- */
-function requireStudentOrAdmin(req, res) {
-  const session = getSession(req);
-  if (!session) {
-    sendJson(res, 401, { error: "Not signed in" });
     return null;
   }
   return session;
@@ -1931,113 +1784,6 @@ async function handleApi(req, res, pathname) {
     });
   }
 
-  /* ---- POST /api/student/avatar  (a student sets their own picture) ----
-     The body carries a data URL, which is decoded, checked to be a real image,
-     and written to disk. The sheet keeps only the filename, so this route both
-     stores the bytes and records the pointer in one step. */
-  if (pathname === "/api/student/avatar" && req.method === "POST") {
-    const session = requireStudent(req, res);
-    if (!session) return;
-    // A 2 MB picture is ~2.7 MB once base64-wrapped, plus JSON overhead — allow
-    // generous headroom so a legitimate photo is never bounced as "too large".
-    const body = await readBody(req, 4 * 1024 * 1024);
-
-    let decoded;
-    try {
-      decoded = decodeAvatarDataUrl(body.image);
-    } catch (err) {
-      return sendJson(res, 400, { error: err.message });
-    }
-
-    const db = loadDb();
-    const accounts = readAccounts(db);
-    const index = accounts.findIndex(
-      (a) => String(a.studentId) === String(session.studentId)
-    );
-    if (index === -1) return sendJson(res, 404, { error: "Account not found" });
-
-    // Discard the previous picture, write the new one, then remember its name.
-    removeAvatarFiles(session.studentId);
-    const filename = storeAvatar(session.studentId, decoded.ext, decoded.buffer);
-    accounts[index].avatar = filename;
-    writeAccounts(db, accounts);
-    appendLog(
-      db,
-      session.studentId,
-      "avatar-set",
-      session.studentId,
-      "Student set a profile picture"
-    );
-    saveDb(db);
-    return sendJson(res, 200, {
-      profile: studentProfileFor(db, findAccount(db, session.studentId)),
-      message: "Your profile picture was updated.",
-    });
-  }
-
-  /* ---- DELETE /api/student/avatar  (a student removes their own picture) ---- */
-  if (pathname === "/api/student/avatar" && req.method === "DELETE") {
-    const session = requireStudent(req, res);
-    if (!session) return;
-    const db = loadDb();
-    const accounts = readAccounts(db);
-    const index = accounts.findIndex(
-      (a) => String(a.studentId) === String(session.studentId)
-    );
-    if (index === -1) return sendJson(res, 404, { error: "Account not found" });
-    removeAvatarFiles(session.studentId);
-    accounts[index].avatar = "";
-    writeAccounts(db, accounts);
-    appendLog(
-      db,
-      session.studentId,
-      "avatar-clear",
-      session.studentId,
-      "Student removed their profile picture"
-    );
-    saveDb(db);
-    return sendJson(res, 200, {
-      profile: studentProfileFor(db, findAccount(db, session.studentId)),
-      message: "Your profile picture was removed.",
-    });
-  }
-
-  /* ---- GET /api/avatar/:studentId  (serve a stored profile picture) ----
-     A student may fetch only their OWN picture; an administrator may fetch any,
-     so the office can see who they are dealing with. The image is never public. */
-  const avatarMatch = pathname.match(/^\/api\/avatar\/([^/]+)$/);
-  if (avatarMatch && req.method === "GET") {
-    // An <img> tag cannot send an Authorization header, so the token may also
-    // ride in the query string for this read-only route. The picture is still
-    // owner-checked below, so a leaked URL exposes nothing but that one image.
-    const session = getSession(req) || sessionFromQueryToken(req);
-    if (!session) return sendJson(res, 401, { error: "Not signed in" });
-    const studentId = decodeURIComponent(avatarMatch[1]);
-    if (session.kind === "student" && String(session.studentId) !== String(studentId)) {
-      return sendJson(res, 403, { error: "You may only view your own picture" });
-    }
-    const db = loadDb();
-    const account = readAccounts(db).find(
-      (a) => String(a.studentId).trim().toLowerCase() === String(studentId).trim().toLowerCase()
-    );
-    if (!account || !account.avatar) {
-      return sendJson(res, 404, { error: "No picture on file" });
-    }
-    const full = avatarPath(account.avatar);
-    if (!full || !fs.existsSync(full)) {
-      return sendJson(res, 404, { error: "No picture on file" });
-    }
-    const data = fs.readFileSync(full);
-    res.writeHead(200, {
-      "Content-Type": MIME[path.extname(full).toLowerCase()] || "application/octet-stream",
-      "Content-Length": data.length,
-      // Private to the signed-in viewer, and short-lived so a changed picture
-      // shows up promptly instead of being served from a stale cache.
-      "Cache-Control": "private, max-age=60",
-    });
-    return res.end(data);
-  }
-
   /* ================= Administrator: account approvals ================= */
 
   /* ---- GET /api/accounts  (all student accounts, optional ?status=) ----
@@ -2256,9 +2002,6 @@ async function handleApi(req, res, pathname) {
     );
     if (index === -1) return sendJson(res, 404, { error: "Account not found" });
     const [removed] = accounts.splice(index, 1);
-    // Erase their stored picture too — deleting the account should not leave an
-    // orphaned image sitting on the volume forever.
-    removeAvatarFiles(removed.studentId);
     // Purge the credential row itself. writeAccounts only writes the accounts it
     // is handed, so dropping this one from the list would leave its password row
     // in the Accounts sheet untouched — and readAccounts treats any row with a

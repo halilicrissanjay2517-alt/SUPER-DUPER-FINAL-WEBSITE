@@ -90,7 +90,6 @@
 
     if ($("#dashName")) $("#dashName").textContent = s.name || "—";
     if ($("#dashHeroAvatar")) $("#dashHeroAvatar").textContent = initials(s.name);
-    if ($("#dashCornerAvatarInitials")) $("#dashCornerAvatarInitials").textContent = initials(s.name);
     if ($("#dashSubtitle")) {
       $("#dashSubtitle").textContent =
         "Student ID " + (s.id || "—") + " · " + (s.grade || "") +
@@ -257,7 +256,6 @@
     if (!profile) return;
     if ($("#dashProfileAvatar"))
       $("#dashProfileAvatar").textContent = initials(profile.fullname);
-    renderAvatar(profile);
     if ($("#dashProfileName"))
       $("#dashProfileName").textContent = profile.fullname || "—";
     if ($("#dashProfileMeta")) {
@@ -272,67 +270,6 @@
       statusEl.className = "badge " + badgeFor(profile.status);
     }
     fillProfileForm(profile);
-  }
-
-  /**
-   * Show the student's uploaded picture, or fall back to the initials square.
-   * The picture is fetched from the avatar route (which only ever answers for
-   * the signed-in student), and a cache-busting stamp makes a fresh upload show
-   * up at once rather than the old image lingering.
-   */
-  function renderAvatar(profile) {
-    var pickers = document.querySelectorAll(".avatar-picker");
-    var imgs = [
-      { el: $("#dashProfileAvatarImg") },
-      { el: $("#dashHeroAvatarImg") },
-      { el: $("#dashCornerAvatarImg") },
-    ];
-    var removeBtn = $("#dashAvatarRemoveBtn");
-    var corner = $("#dashCornerAvatar");
-    var hasPhoto = !!(profile && profile.avatar);
-
-    Array.prototype.forEach.call(pickers, function (p) {
-      p.classList.toggle("has-photo", hasPhoto);
-    });
-    if (corner) corner.classList.toggle("has-photo", hasPhoto);
-    if (removeBtn) removeBtn.hidden = !hasPhoto;
-
-    // An <img> cannot send an Authorization header, so the read-only avatar
-    // route also accepts the session token on the query string.
-    var src = hasPhoto
-      ? "/api/avatar/" + encodeURIComponent(profile.studentId) +
-        "?v=" + encodeURIComponent(profile.avatar) +
-        (token ? "&token=" + encodeURIComponent(token) : "")
-      : "";
-    imgs.forEach(function (item) {
-      var img = item.el;
-      if (!img) return;
-      if (src) {
-        img.src = src;
-        img.hidden = false;
-      } else {
-        img.removeAttribute("src");
-        img.hidden = true;
-      }
-    });
-  }
-
-  function setAvatarStatus(message, kind) {
-    var el = $("#dashAvatarStatus");
-    if (!el) return;
-    el.textContent = message || "";
-    el.classList.remove("is-success", "is-error", "is-busy");
-    if (kind) el.classList.add(kind === "ok" ? "is-success" : kind === "busy" ? "is-busy" : "is-error");
-  }
-
-  /** Read a chosen file as a data URL, so it can ride a plain JSON POST. */
-  function readFileAsDataUrl(file) {
-    return new Promise(function (resolve, reject) {
-      var reader = new FileReader();
-      reader.onload = function () { resolve(reader.result); };
-      reader.onerror = function () { reject(new Error("Could not read that file.")); };
-      reader.readAsDataURL(file);
-    });
   }
 
   /** Put the current values into the edit fields, so Edit never shows blanks. */
@@ -377,66 +314,6 @@
       setProfileEditing(false);
       setStatus($("#dashProfileFormStatus"), "", "");
       if ($("#dashProfileEditBtn")) $("#dashProfileEditBtn").focus();
-    });
-  }
-
-  /* ---------- Profile picture: choose, upload, remove ---------- */
-  var avatarInput = $("#dashAvatarInput");
-
-  if ($("#dashAvatarUploadBtn") && avatarInput) {
-    $("#dashAvatarUploadBtn").addEventListener("click", function () {
-      setAvatarStatus("", "");
-      avatarInput.click();
-    });
-  }
-
-  if (avatarInput) {
-    avatarInput.addEventListener("change", function () {
-      var file = avatarInput.files && avatarInput.files[0];
-      // Clear the input either way, so choosing the same file twice still fires.
-      avatarInput.value = "";
-      if (!file) return;
-
-      if (!/^image\/(png|jpe?g|webp|gif)$/i.test(file.type)) {
-        setAvatarStatus("Choose a PNG, JPG, WEBP or GIF image.", "error");
-        return;
-      }
-      if (file.size > 2 * 1024 * 1024) {
-        setAvatarStatus("That image is too large. Please use one under 2 MB.", "error");
-        return;
-      }
-
-      setAvatarStatus("Uploading your photo…", "busy");
-      readFileAsDataUrl(file)
-        .then(function (dataUrl) {
-          return studentApi("/api/student/avatar", {
-            method: "POST",
-            body: { image: dataUrl },
-          });
-        })
-        .then(function (data) {
-          profileSnapshot = data.profile;
-          renderProfile(data.profile);
-          setAvatarStatus("Your profile picture was updated.", "ok");
-        })
-        .catch(function (err) {
-          setAvatarStatus(err.message || "We could not save that photo.", "error");
-        });
-    });
-  }
-
-  if ($("#dashAvatarRemoveBtn")) {
-    $("#dashAvatarRemoveBtn").addEventListener("click", function () {
-      setAvatarStatus("Removing…", "busy");
-      studentApi("/api/student/avatar", { method: "DELETE" })
-        .then(function (data) {
-          profileSnapshot = data.profile;
-          renderProfile(data.profile);
-          setAvatarStatus("Your profile picture was removed.", "ok");
-        })
-        .catch(function (err) {
-          setAvatarStatus(err.message || "We could not remove that photo.", "error");
-        });
     });
   }
 

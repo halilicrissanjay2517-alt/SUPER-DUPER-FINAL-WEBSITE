@@ -122,6 +122,86 @@
     });
   }
 
+  /* ---------- Features drawer ----------
+     A right-edge tab reveals the whole site's features. It opens on hover for
+     a mouse, on tap for a touch screen, and pins open when clicked so it does
+     not slide shut the moment the pointer leaves. Escape and the close button
+     put it back. */
+  var drawer = $("#featureDrawer");
+  var drawerTab = $("#featureDrawerTab");
+  var drawerClose = $("#featureDrawerClose");
+  var drawerScrim = $("#featureDrawerScrim");
+
+  if (drawer && drawerTab) {
+    var pinned = false;
+    var closeTimer = null;
+
+    var openDrawer = function () {
+      drawer.classList.add("is-open");
+      drawer.setAttribute("aria-hidden", "false");
+      drawerTab.setAttribute("aria-expanded", "true");
+      if (drawerScrim) {
+        drawerScrim.hidden = false;
+        // A frame's delay so the fade-in transition actually runs.
+        requestAnimationFrame(function () { drawerScrim.classList.add("is-open"); });
+      }
+    };
+
+    var closeDrawer = function () {
+      pinned = false;
+      drawer.classList.remove("is-open");
+      drawer.setAttribute("aria-hidden", "true");
+      drawerTab.setAttribute("aria-expanded", "false");
+      if (drawerScrim) {
+        drawerScrim.classList.remove("is-open");
+        window.setTimeout(function () { drawerScrim.hidden = true; }, 300);
+      }
+    };
+
+    // Hover open/close, but never fight a pinned-open drawer.
+    var hoverOpen = function () {
+      if (closeTimer) { window.clearTimeout(closeTimer); closeTimer = null; }
+      openDrawer();
+    };
+    var hoverClose = function () {
+      if (pinned) return;
+      closeTimer = window.setTimeout(closeDrawer, 220);
+    };
+
+    drawerTab.addEventListener("mouseenter", hoverOpen);
+    drawerTab.addEventListener("mouseleave", hoverClose);
+    drawer.addEventListener("mouseenter", hoverOpen);
+    drawer.addEventListener("mouseleave", hoverClose);
+
+    // Click/tap pins it open (and a second tap closes it).
+    drawerTab.addEventListener("click", function () {
+      if (drawer.classList.contains("is-open") && pinned) {
+        closeDrawer();
+      } else {
+        pinned = true;
+        openDrawer();
+      }
+    });
+
+    if (drawerClose) drawerClose.addEventListener("click", closeDrawer);
+    if (drawerScrim) drawerScrim.addEventListener("click", closeDrawer);
+
+    // Choosing a destination closes it, so the target is not hidden behind it.
+    $$("[data-drawer-link]", drawer).forEach(function (link) {
+      link.addEventListener("click", closeDrawer);
+    });
+
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && drawer.classList.contains("is-open")) {
+        closeDrawer();
+        drawerTab.focus();
+      }
+    });
+
+    // A touch screen has no hover: the first interaction is a tap, handled above.
+    drawerTab.addEventListener("touchstart", function () { pinned = true; }, { passive: true });
+  }
+
   /* ---------- Announcement filtering ---------- */
   var list = $("#announcementList");
   var emptyMsg = $("#announcementEmpty");

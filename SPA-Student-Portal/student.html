@@ -21,12 +21,6 @@
     <header class="dash-header">
         <div class="dash-header-inner">
             <div class="dash-header-left">
-                <!-- The account avatar sits in the left corner: the student's own
-                     picture (or their initials) and a tap-friendly way into the page. -->
-                <a class="dash-corner-avatar" href="#dashTop" id="dashCornerAvatar" title="My account">
-                    <span class="profile-avatar" id="dashCornerAvatarInitials" aria-hidden="true">—</span>
-                    <img class="profile-avatar-img" id="dashCornerAvatarImg" alt="" hidden>
-                </a>
                 <a class="dash-brand" href="studentportal.html">
                     <img src="logo.png" alt="Saint Patrick's Academy, Inc. logo">
                     <span class="dash-brand-text">
@@ -90,10 +84,7 @@
         <div class="dash-content" id="dashContent" hidden>
             <section class="dash-hero" id="dashTop">
                 <div class="dash-hero-id">
-                    <div class="avatar-picker avatar-picker-hero">
-                        <span class="profile-avatar dash-hero-avatar" id="dashHeroAvatar" aria-hidden="true">—</span>
-                        <img class="profile-avatar-img" id="dashHeroAvatarImg" alt="" hidden>
-                    </div>
+                    <span class="profile-avatar dash-hero-avatar" id="dashHeroAvatar" aria-hidden="true">—</span>
                     <div class="dash-hero-text">
                         <span class="eyebrow eyebrow-dark">My Account</span>
                         <h1 class="dash-title" id="dashName">—</h1>
@@ -141,22 +132,11 @@
                     </header>
 
                     <div class="profile-ident">
-                        <div class="avatar-picker">
-                            <span class="profile-avatar" id="dashProfileAvatar" aria-hidden="true">—</span>
-                            <img class="profile-avatar-img" id="dashProfileAvatarImg" alt="" hidden>
-                        </div>
+                        <span class="profile-avatar" id="dashProfileAvatar" aria-hidden="true">—</span>
                         <div class="profile-ident-text">
                             <strong class="profile-name" id="dashProfileName">—</strong>
                             <span class="profile-line" id="dashProfileMeta"></span>
                             <span class="badge" id="dashProfileStatus">—</span>
-                            <div class="avatar-actions">
-                                <button type="button" class="btn btn-secondary btn-sm" id="dashAvatarUploadBtn">Upload photo</button>
-                                <button type="button" class="btn btn-ghost btn-sm" id="dashAvatarRemoveBtn" hidden>Remove</button>
-                                <input type="file" id="dashAvatarInput" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
-                            </div>
-                            <p class="avatar-hint" id="dashAvatarStatus" role="status" aria-live="polite">
-                                PNG, JPG, WEBP or GIF, up to 2 MB.
-                            </p>
                         </div>
                     </div>
 

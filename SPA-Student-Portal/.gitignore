@@ -59,11 +59,6 @@ _srv2_err.log
 # hash.
 data/
 
-# Uploaded student profile pictures. These are photos of minors and belong on
-# the server's disk only, never in a repo. The folder lives beside the workbook
-# (DB_DIR/avatars).
-avatars/
-
 # OS / editor noise
 Thumbs.db
 .DS_Store
