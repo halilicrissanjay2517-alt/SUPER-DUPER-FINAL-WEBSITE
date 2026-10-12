@@ -59,7 +59,10 @@
         <div class="dash-content" id="dashContent" hidden>
             <section class="dash-hero">
                 <div class="dash-hero-id">
-                    <span class="profile-avatar dash-hero-avatar" id="dashHeroAvatar" aria-hidden="true">—</span>
+                    <div class="avatar-picker avatar-picker-hero">
+                        <span class="profile-avatar dash-hero-avatar" id="dashHeroAvatar" aria-hidden="true">—</span>
+                        <img class="profile-avatar-img" id="dashHeroAvatarImg" alt="" hidden>
+                    </div>
                     <div class="dash-hero-text">
                         <span class="eyebrow eyebrow-dark">My Account</span>
                         <h1 class="dash-title" id="dashName">—</h1>
@@ -107,11 +110,22 @@
                     </header>
 
                     <div class="profile-ident">
-                        <span class="profile-avatar" id="dashProfileAvatar" aria-hidden="true">—</span>
+                        <div class="avatar-picker">
+                            <span class="profile-avatar" id="dashProfileAvatar" aria-hidden="true">—</span>
+                            <img class="profile-avatar-img" id="dashProfileAvatarImg" alt="" hidden>
+                        </div>
                         <div class="profile-ident-text">
                             <strong class="profile-name" id="dashProfileName">—</strong>
                             <span class="profile-line" id="dashProfileMeta"></span>
                             <span class="badge" id="dashProfileStatus">—</span>
+                            <div class="avatar-actions">
+                                <button type="button" class="btn btn-secondary btn-sm" id="dashAvatarUploadBtn">Upload photo</button>
+                                <button type="button" class="btn btn-ghost btn-sm" id="dashAvatarRemoveBtn" hidden>Remove</button>
+                                <input type="file" id="dashAvatarInput" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+                            </div>
+                            <p class="avatar-hint" id="dashAvatarStatus" role="status" aria-live="polite">
+                                PNG, JPG, WEBP or GIF, up to 2 MB.
+                            </p>
                         </div>
                     </div>
 

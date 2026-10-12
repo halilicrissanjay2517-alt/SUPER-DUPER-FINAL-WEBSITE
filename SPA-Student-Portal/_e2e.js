@@ -28,8 +28,20 @@ if (hadDb) fs.renameSync(dbFile, backup);
 
 let restored = false;
 function restoreRealDb() {
-  if (!hadDb || restored) return;
+  if (restored) return;
   restored = true;
+  // The suite uploads a profile picture, which the server stores under
+  // avatars/. Remove anything it left so the run is truly non-destructive.
+  try {
+    const avatars = path.join(__dirname, "avatars");
+    if (fs.existsSync(avatars)) {
+      fs.readdirSync(avatars).forEach((f) => fs.unlinkSync(path.join(avatars, f)));
+      fs.rmdirSync(avatars);
+    }
+  } catch (err) {
+    // Best effort — a leftover folder is harmless and gitignored.
+  }
+  if (!hadDb) return;
   try {
     fs.renameSync(backup, dbFile);
   } catch (err) {
@@ -578,6 +590,62 @@ function waitForServer(attempts = 40) {
     check("the new student password works",
       (await call("/api/student/login", { method: "POST", body: { studentId: SIGNUP_ID, password: "newstudentpass2" } })).status === 200,
       "new password accepted");
+
+    // 46b. A student can set, read back and remove their own profile picture.
+    // A 1x1 transparent PNG, so the upload path is exercised with real image
+    // bytes rather than a fake string.
+    const ONE_PX_PNG =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC";
+
+    const noPicYet = await call("/api/avatar/" + SIGNUP_ID, { token: studentToken });
+    check("an avatar is absent until the student uploads one",
+      noPicYet.status === 404, `status=${noPicYet.status}`);
+
+    const setPic = await call("/api/student/avatar", {
+      method: "POST", token: studentToken, body: { image: ONE_PX_PNG },
+    });
+    check("a student can upload a profile picture",
+      setPic.status === 200 && !!(setPic.body.profile && setPic.body.profile.avatar),
+      `status=${setPic.status} avatar=${setPic.body.profile && setPic.body.profile.avatar}`);
+
+    const picBack = await fetch(BASE + "/api/avatar/" + SIGNUP_ID, {
+      headers: { Authorization: "Bearer " + studentToken },
+    });
+    check("the uploaded picture is served back as an image",
+      picBack.status === 200 && (picBack.headers.get("content-type") || "").startsWith("image/"),
+      `status=${picBack.status} type=${picBack.headers.get("content-type")}`);
+
+    // A student must not be able to fetch someone else's picture.
+    const otherPic = await call("/api/avatar/2024-001", { token: studentToken });
+    check("a student cannot fetch another student's picture",
+      otherPic.status === 403, `status=${otherPic.status}`);
+
+    // A file that merely claims to be an image is refused.
+    const fakeImg = await call("/api/student/avatar", {
+      method: "POST", token: studentToken,
+      body: { image: "data:image/png;base64,SGVsbG8sIG5vdCBhbiBpbWFnZQ==" },
+    });
+    check("a non-image upload is refused", fakeImg.status === 400, `status=${fakeImg.status}`);
+
+    const wbHeaderPic = XLSX.readFile(dbFile);
+    const stuHeader = XLSX.utils.sheet_to_json(wbHeaderPic.Sheets["Students"], { header: 1 })[0] || [];
+    check("the Students sheet gained the avatar column",
+      stuHeader.includes("avatar"), "header has avatar");
+
+    // The avatar filename is persisted to the workbook (on the student's own
+    // row, where the account metadata lives), never the image bytes themselves.
+    const wbPic = XLSX.readFile(dbFile);
+    const picRows = XLSX.utils.sheet_to_json(wbPic.Sheets["Students"]);
+    const picRow = picRows.find((a) => String(a.id) === SIGNUP_ID);
+    check("the avatar filename is written to the workbook, not the image",
+      !!picRow && String(picRow.avatar || "").length > 0 &&
+        !String(picRow.avatar).startsWith("data:"),
+      `avatar=${picRow && picRow.avatar}`);
+
+    const clearPic = await call("/api/student/avatar", { method: "DELETE", token: studentToken });
+    check("a student can remove their profile picture",
+      clearPic.status === 200 && !(clearPic.body.profile && clearPic.body.profile.avatar),
+      `status=${clearPic.status}`);
 
     // 47. Withdrawing access signs the student out and blocks them again.
     const revoke = await call("/api/accounts/" + SIGNUP_ID, {

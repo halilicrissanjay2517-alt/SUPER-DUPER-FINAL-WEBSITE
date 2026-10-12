@@ -219,13 +219,24 @@
     return AVATAR_TONES[hash % AVATAR_TONES.length];
   }
 
-  /** A name cell: initials disc, full name, and the Student ID underneath. */
-  function nameCell(name, sub, key) {
+  /**
+   * A name cell: avatar, full name, and the Student ID underneath.
+   *
+   * When the student has uploaded a picture (`avatar` is the stored filename)
+   * the photo is shown instead of the initials disc, so the office sees who they
+   * are looking at. The initials disc remains for everyone else.
+   */
+  function nameCell(name, sub, key, avatar) {
+    var disc = avatar
+      ? '<span class="avatar avatar-photo">' +
+        '<img src="/api/avatar/' + encodeURIComponent(key) + '?v=' + encodeURIComponent(avatar) +
+        '" alt="" loading="lazy"></span>'
+      : '<span class="avatar" style="background:' + avatarTone(key) + '" aria-hidden="true">' +
+        escapeHtml(initials(name, key)) +
+        "</span>";
     return (
       '<div class="acct-cell">' +
-      '<span class="avatar" style="background:' + avatarTone(key) + '" aria-hidden="true">' +
-      escapeHtml(initials(name, key)) +
-      "</span>" +
+      disc +
       '<span class="acct-meta"><span class="acct-name">' + escapeHtml(name || "—") + "</span>" +
       (sub ? '<span class="acct-sub">' + escapeHtml(sub) + "</span>" : "") +
       "</span></div>"
@@ -308,7 +319,7 @@
 
       tr.innerHTML =
         '<td data-label="Student ID"><span class="id-chip">' + escapeHtml(a.studentId) + "</span></td>" +
-        '<td data-label="Registered as">' + nameCell(a.fullname, "Sign-in: " + (a.username || a.studentId), a.studentId) + "</td>" +
+        '<td data-label="Registered as">' + nameCell(a.fullname, "Sign-in: " + (a.username || a.studentId), a.studentId, a.avatar) + "</td>" +
         '<td data-label="Email" class="acct-meta"><span class="acct-name">' + escapeHtml(a.email || "—") + "</span>" +
           (a.contact ? '<span class="acct-sub">' + escapeHtml(a.contact) + "</span>" : "") + "</td>" +
         '<td data-label="On roster">' + rosterCell + "</td>" +
@@ -484,9 +495,13 @@
     cell.innerHTML =
       '<div class="review-panel">' +
       '<div class="review-head">' +
-      '<span class="avatar avatar-lg" style="background:' + avatarTone(account.studentId) + '" aria-hidden="true">' +
-      escapeHtml(initials(account.fullname, account.studentId)) +
-      "</span>" +
+      (account.avatar
+        ? '<span class="avatar avatar-lg avatar-photo">' +
+          '<img src="/api/avatar/' + encodeURIComponent(account.studentId) + '?v=' +
+          encodeURIComponent(account.avatar) + '" alt=""></span>'
+        : '<span class="avatar avatar-lg" style="background:' + avatarTone(account.studentId) + '" aria-hidden="true">' +
+          escapeHtml(initials(account.fullname, account.studentId)) +
+          "</span>") +
       '<div class="review-head-meta">' +
       '<strong>' + escapeHtml(account.fullname || "Application") + "</strong>" +
       '<span>Student ID <b>' + escapeHtml(account.studentId) + "</b> · " +

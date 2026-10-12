@@ -507,6 +507,20 @@
   font-size: 17px;
 }
 
+/* A student who has uploaded a picture shows it here instead of the initials
+   disc. The image is clipped to the same circle so the column stays tidy. */
+.avatar-photo {
+  overflow: hidden;
+  background: var(--green-50, #e8f3ec);
+}
+
+.avatar-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 .acct-meta {
   display: flex;
   flex-direction: column;

@@ -712,3 +712,90 @@
     flex: 1 1 0;
   }
 }
+
+/* ---------- Profile picture ----------
+   The student's own photo replaces the initials square once they upload one.
+   Both live in the same box so nothing shifts when a picture appears or is
+   removed; the initials are simply hidden underneath. */
+.avatar-picker {
+  position: relative;
+  flex: 0 0 auto;
+  width: 62px;
+  height: 62px;
+}
+
+.avatar-picker .profile-avatar,
+.avatar-picker .profile-avatar-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 16px;
+}
+
+.avatar-picker .profile-avatar-img {
+  object-fit: cover;
+  display: block;
+  background: var(--green-50);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06), var(--shadow-sm);
+}
+
+/* The hero avatar is the larger one; match its box so the picture fills it. */
+.avatar-picker-hero,
+.avatar-picker-hero .profile-avatar,
+.avatar-picker-hero .profile-avatar-img {
+  width: 70px;
+  height: 70px;
+  border-radius: 18px;
+}
+
+/* While a picture is showing, the initials square beneath it is pointless. */
+.avatar-picker.has-photo .profile-avatar {
+  visibility: hidden;
+}
+
+.avatar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.avatar-actions .btn-sm {
+  padding: 7px 14px;
+  font-size: 13px;
+}
+
+.avatar-hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 600;
+  min-height: 16px;
+}
+
+.avatar-hint.is-success { color: var(--green-700); }
+.avatar-hint.is-error { color: #c0392b; }
+
+.avatar-hint.is-busy { color: var(--amber); }
+
+/* ---------- Responsive: profile picture ---------- */
+@media (max-width: 560px) {
+  .avatar-picker {
+    width: 56px;
+    height: 56px;
+  }
+
+  .avatar-picker .profile-avatar,
+  .avatar-picker .profile-avatar-img {
+    border-radius: 14px;
+  }
+
+  .avatar-picker-hero,
+  .avatar-picker-hero .profile-avatar,
+  .avatar-picker-hero .profile-avatar-img {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+  }
+}
