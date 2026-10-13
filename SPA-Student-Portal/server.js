@@ -2425,6 +2425,29 @@ async function handleApi(req, res, pathname) {
   return sendJson(res, 404, { error: "Unknown API route" });
 }
 
+/** The one place a static 404 is written, so the format cannot drift. */
+function notFound(res) {
+  res.writeHead(404, { "Content-Type": "text/plain" });
+  res.end("Not found");
+}
+
+/**
+ * Liveness probe for the host (Render and Railway health checks point here).
+ * It only reports whether the workbook is readable, so a broken database fails
+ * the check loudly instead of serving pages that cannot save.
+ */
+function handleHealth(res) {
+  try {
+    loadDb();
+    res.writeHead(200, { "Content-Type": "application/json" });
+    return res.end(JSON.stringify({ ok: true }));
+  } catch (err) {
+    console.error("Health check failed:", err.message);
+    res.writeHead(503, { "Content-Type": "application/json" });
+    return res.end(JSON.stringify({ ok: false, error: "database unreadable" }));
+  }
+}
+
 function serveStatic(req, res, pathname) {
   // pathname arrives already decoded by the caller; decode again only if it
   // still contains percent-escapes, and never more than once.
@@ -2459,37 +2482,34 @@ function serveStatic(req, res, pathname) {
     "package-lock.json",
   ];
   if (!PUBLIC_EXT.includes(ext) || PRIVATE_FILES.includes(base) || base.startsWith("_")) {
-    res.writeHead(404, { "Content-Type": "text/plain" });
-    return res.end("Not found");
+    return notFound(res);
   }
 
-  fs.readFile(full, (err, data) => {
-    if (err) {
-      res.writeHead(404, { "Content-Type": "text/plain" });
-      return res.end("Not found");
-    }
-    res.writeHead(200, { "Content-Type": MIME[path.extname(full)] || "application/octet-stream" });
-    res.end(data);
+  // A path can carry a public extension and still point at a directory; reading
+  // one throws EISDIR, which would surface as a read failure instead of a 404.
+  fs.stat(full, (statErr, stats) => {
+    if (statErr || !stats.isFile()) return notFound(res);
+
+    fs.readFile(full, (err, data) => {
+      if (err) return notFound(res);
+      res.writeHead(200, { "Content-Type": MIME[path.extname(full)] || "application/octet-stream" });
+      res.end(data);
+    });
   });
 }
 
 const server = http.createServer((req, res) => {
-  const pathname = decodeURIComponent(req.url.split("?")[0]);
-
-  // Liveness probe for the host (Render and Railway health checks point here).
-  // It only reports whether the workbook is readable, so a broken database fails
-  // the check loudly instead of serving pages that cannot save.
-  if (pathname === "/healthz") {
-    try {
-      loadDb();
-      res.writeHead(200, { "Content-Type": "application/json" });
-      return res.end(JSON.stringify({ ok: true }));
-    } catch (err) {
-      console.error("Health check failed:", err.message);
-      res.writeHead(503, { "Content-Type": "application/json" });
-      return res.end(JSON.stringify({ ok: false, error: "database unreadable" }));
-    }
+  // decodeURIComponent throws on a stray percent (e.g. "/%zz"), which would
+  // abort the request with no response at all; a malformed path is a 400.
+  let pathname;
+  try {
+    pathname = decodeURIComponent(req.url.split("?")[0]);
+  } catch (err) {
+    res.writeHead(400, { "Content-Type": "text/plain" });
+    return res.end("Bad request");
   }
+
+  if (pathname === "/healthz") return handleHealth(res);
 
   if (pathname.startsWith("/api/")) {
     handleApi(req, res, pathname).catch((err) => {
@@ -2506,9 +2526,11 @@ if (!fs.existsSync(DB_FILE)) {
   loadDb();
   console.log("Created database.xlsx with starter data.");
   console.log("  Workbook: " + DB_FILE);
-  console.log("Seed admin logins — change these before exposing this to the internet:");
-  console.log("  admin     / " + (process.env.SPA_ADMIN_PASSWORD || "ChangeMe!Admin2025"));
-  console.log("  registrar / " + (process.env.SPA_REGISTRAR_PASSWORD || "ChangeMe!Records2025"));
+  // Never print the passwords themselves: host logs persist and are readable
+  // long after the seed passwords have been changed.
+  console.log("Seed admin logins were created — set the real passwords before exposing this to the internet:");
+  console.log("  admin     — password from SPA_ADMIN_PASSWORD");
+  console.log("  registrar — password from SPA_REGISTRAR_PASSWORD");
 }
 
 server.listen(PORT, () => {
@@ -2526,8 +2548,10 @@ server.listen(PORT, () => {
   // Compare resolved paths, never raw strings: __dirname and path.resolve() can
   // disagree on Windows (trailing separator, drive/folder casing), and a false
   // "same path" comparison here would either hide the warning or print it when
-  // a volume IS in use.
-  const onVolume = DB_DIR !== path.resolve(ROOT);
+  // a volume IS in use. ROOT_RESOLVED normalises ROOT so the comparison is
+  // genuinely resolved-vs-resolved.
+  const ROOT_RESOLVED = path.resolve(ROOT);
+  const onVolume = DB_DIR !== ROOT_RESOLVED;
   if (!onVolume && (process.env.PORT || process.env.SPA_PUBLIC_URL)) {
     console.log("");
     console.log("  !! WARNING: no volume is mounted, so data is on the host's temporary");
@@ -2539,12 +2563,24 @@ server.listen(PORT, () => {
   // Say plainly, at every start, whether the seeded passwords are still in use.
   try {
     const admins = readSheet(loadDb(), SHEETS.admins);
-    const weak = admins.filter(function (a) {
+    const usable = admins.filter(function (a) {
+      return a.salt && a.passwordHash;
+    });
+    const unusable = admins.filter(function (a) {
+      return !a.salt || !a.passwordHash;
+    });
+    const weak = usable.filter(function (a) {
       return (
         a.passwordHash === hashPassword("ChangeMe!Admin2025", a.salt) ||
         a.passwordHash === hashPassword("ChangeMe!Records2025", a.salt)
       );
     });
+    if (unusable.length) {
+      console.log("");
+      console.log("  !! WARNING: these admin rows have no usable password hash:");
+      console.log("     " + unusable.map(function (a) { return a.username; }).join(", "));
+      console.log("     They cannot sign in. Reset them in the dashboard (Administrators).");
+    }
     if (weak.length) {
       console.log("");
       console.log("  !! SECURITY: these logins still use the default password:");

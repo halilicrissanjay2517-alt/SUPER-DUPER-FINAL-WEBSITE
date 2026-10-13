@@ -23,6 +23,7 @@ database.xlsx
 # a backup tool naming its own copies is exactly how one gets committed by
 # accident.
 database.*.xlsx
+database.*.manualbackup
 _dbtools_*.xlsx
 _db_*.xlsx
 _backup_*.xlsx
@@ -36,6 +37,14 @@ _fixline.cjs
 _repair.cjs
 _seed.json
 _check.cjs
+_audit*.mjs
+
+# QA screenshots and proof images. These are byproducts of a probe run, not
+# part of the site, and OneDrive can silently restore a deleted one into the
+# working tree — so ignore them by name as well.
+audit-*.png
+final-portal.png
+proof-*.png
 
 # The live database (repeated here so the rule is impossible to miss)
 database.xlsx

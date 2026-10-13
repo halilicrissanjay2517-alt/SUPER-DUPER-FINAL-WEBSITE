@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="Saint Patrick's Academy, Inc. — student portal, faculty and staff information, announcements, enrollment, records, and payments.">
-    <title>Student Portal — Saint Patrick's Academy, Inc.</title>
+    <meta name="theme-color" content="#04231a">
+    <title>Portal Services &amp; Help — Saint Patrick's Academy, Inc.</title>
     <link rel="icon" href="logo.png">
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -39,30 +40,53 @@
                 </span>
             </a>
             <div class="nav-links">
-                <a href="studentportal.html#patron">Our Patron</a>
-                <a href="features.html" class="is-current" aria-current="page">Features</a>
-                <a href="studentportal.html">Student Portal</a>
-                <a href="faculty.html">Faculty &amp; Staff</a>
+                <a href="studentportal.html#features">Features</a>
                 <a href="studentportal.html#announcements-list">Announcements</a>
-                <a href="studentportal.html#directory">Directory</a>
                 <a href="studentportal.html#contact">Contact</a>
-                <button type="button" class="btn btn-ghost nav-toggle" data-menu-toggle aria-expanded="false" aria-controls="mobileMenu">
-                    <span class="sr-only">Toggle menu</span>
+                <button type="button" class="btn btn-ghost nav-toggle" data-menu-toggle aria-expanded="false" aria-controls="siteMenu">
+                    <span class="sr-only">Open menu</span>
                     <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6Zm0 5h18v2H3v-2Zm0 5h18v2H3v-2Z"/></svg>
                 </button>
             </div>
         </nav>
     </header>
 
-    <div class="mobile-menu" id="mobileMenu" hidden>
-        <a href="studentportal.html#patron">Our Patron</a>
-        <a href="features.html">Features</a>
-        <a href="studentportal.html">Student Portal</a>
-        <a href="faculty.html">Faculty &amp; Staff</a>
-        <a href="studentportal.html#announcements-list">Announcements</a>
-        <a href="studentportal.html#directory">Directory</a>
-        <a href="studentportal.html#contact">Contact</a>
-    </div>
+    <div class="menu-scrim" id="menuScrim" hidden></div>
+
+    <aside class="side-menu" id="siteMenu" aria-label="Site menu" aria-hidden="true">
+        <div class="side-menu-head">
+            <a class="side-menu-brand" href="studentportal.html" data-menu-link>
+                <img src="logo.png" alt="Saint Patrick's Academy, Inc. logo">
+                <span class="side-menu-brand-text">
+                    <strong>Saint Patrick's Academy, Inc.</strong>
+                    <small>Student Portal</small>
+                </span>
+            </a>
+            <button type="button" class="side-menu-close" id="menuClose" aria-label="Close menu">&times;</button>
+        </div>
+
+        <nav class="side-menu-nav" aria-label="Site">
+            <a href="studentportal.html" data-menu-link>Home</a>
+            <a href="studentportal.html#patron" data-menu-link>Our Patron</a>
+            <a href="features.html" class="is-current" aria-current="page" data-menu-link>Features</a>
+            <a href="studentportal.html" data-menu-link>Student Portal</a>
+            <a href="faculty.html" data-menu-link>Faculty &amp; Staff</a>
+            <a href="studentportal.html#announcements-list" data-menu-link>Announcements</a>
+            <a href="studentportal.html#directory" data-menu-link>Directory</a>
+            <a href="studentportal.html#contact" data-menu-link>Contact</a>
+        </nav>
+
+        <div class="side-menu-foot">
+            <a class="side-menu-admin" href="admin.html" data-menu-link>
+                <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z"/></svg>
+                Admin sign-in
+            </a>
+            <p class="side-menu-contact">
+                Yakal 1, Paltic, Dingalan, Aurora<br>
+                (042) 555-0168 &middot; Mon–Fri, 8:00 AM – 5:00 PM
+            </p>
+        </div>
+    </aside>
 
     <main id="main">
 

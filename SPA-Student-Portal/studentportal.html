@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Saint Patrick's Academy, Inc. — student portal for announcements, enrollment, records, and payments.">
+    <meta name="theme-color" content="#04231a">
     <title>Saint Patrick's Academy, Inc. — Student Portal</title>
+    <link rel="icon" href="logo.png">
     <link rel="stylesheet" href="styles.css">
     <script>
         /* Mark the document as "booting" before the first paint, so the intro
@@ -73,34 +75,61 @@
                 </span>
             </a>
             <div class="nav-links">
-                <a href="#patron">Our Patron</a>
+                <!-- The header stays quiet: the wide-screen menu carries a few
+                     top-level links, everything else lives in the side menu. -->
                 <a href="#features">Features</a>
-                <a href="studentportal.html">Student Portal</a>
-                <a href="faculty.html">Faculty &amp; Staff</a>
                 <a href="#announcements-list">Announcements</a>
-                <a href="#directory">Directory</a>
                 <a href="#contact">Contact</a>
-                <!-- Direct way into the staff dashboard. Without this the only
-                     route to admin.html was buried on the Faculty & Staff page. -->
-                <a class="nav-admin" href="admin.html">Admin</a>
-                <button type="button" class="btn btn-ghost nav-toggle" data-menu-toggle aria-expanded="false" aria-controls="mobileMenu">
-                    <span class="sr-only">Toggle menu</span>
+                <button type="button" class="btn btn-ghost nav-toggle" data-menu-toggle aria-expanded="false" aria-controls="siteMenu">
+                    <span class="sr-only">Open menu</span>
                     <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6Zm0 5h18v2H3v-2Zm0 5h18v2H3v-2Z"/></svg>
                 </button>
             </div>
         </nav>
     </header>
 
-    <div class="mobile-menu" id="mobileMenu" hidden>
-        <a href="#patron">Our Patron</a>
-        <a href="#features">Features</a>
-        <a href="studentportal.html">Student Portal</a>
-        <a href="faculty.html">Faculty &amp; Staff</a>
-        <a href="#announcements-list">Announcements</a>
-        <a href="#directory">Directory</a>
-        <a href="#contact">Contact</a>
-        <a class="nav-admin" href="admin.html">Admin sign-in</a>
-    </div>
+    <!-- ================= SIDE MENU =================
+         A clean, school-style drawer: one hamburger button in the header opens
+         the full navigation from the right. It works at every width, so there
+         is a single place to find every page. -->
+    <div class="menu-scrim" id="menuScrim" hidden></div>
+
+    <aside class="side-menu" id="siteMenu" aria-label="Site menu" aria-hidden="true">
+        <div class="side-menu-head">
+            <a class="side-menu-brand" href="#top" data-menu-link>
+                <img src="logo.png" alt="Saint Patrick's Academy, Inc. logo">
+                <span class="side-menu-brand-text">
+                    <strong>Saint Patrick's Academy, Inc.</strong>
+                    <small>Student Portal</small>
+                </span>
+            </a>
+            <button type="button" class="side-menu-close" id="menuClose" aria-label="Close menu">&times;</button>
+        </div>
+
+        <nav class="side-menu-nav" aria-label="Site">
+            <a href="#top" data-menu-link>Home</a>
+            <a href="#patron" data-menu-link>Our Patron</a>
+            <a href="#features" data-menu-link>Features</a>
+            <a href="studentportal.html" data-menu-link>Student Portal</a>
+            <a href="faculty.html" data-menu-link>Faculty &amp; Staff</a>
+            <a href="#announcements-list" data-menu-link>Announcements</a>
+            <a href="#directory" data-menu-link>Directory</a>
+            <a href="#contact" data-menu-link>Contact</a>
+        </nav>
+
+        <div class="side-menu-foot">
+            <!-- Direct way into the staff dashboard, kept apart from the
+                 student-facing links above. -->
+            <a class="side-menu-admin" href="admin.html" data-menu-link>
+                <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z"/></svg>
+                Admin sign-in
+            </a>
+            <p class="side-menu-contact">
+                Yakal 1, Paltic, Dingalan, Aurora<br>
+                (042) 555-0168 &middot; Mon–Fri, 8:00 AM – 5:00 PM
+            </p>
+        </div>
+    </aside>
 
     <!-- The features drawer. A tab pinned to the right edge reveals the whole
          site's features on hover (desktop) or tap (touch). The list is plain
@@ -146,7 +175,7 @@
             <li><a href="studentportal.html" data-drawer-link>
                 <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M6 2h9l5 5v15H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm8 1.5V8h4.5L14 3.5Z"/></svg>
                 Student records</a></li>
-            <li><a href="records.html" data-drawer-link>
+            <li><a href="features.html#records" data-drawer-link>
                 <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M4 4h16v3H4V4Zm0 6h16v3H4v-3Zm0 6h10v3H4v-3Z"/></svg>
                 Enrollment &amp; tuition</a></li>
             <li><a href="faculty.html" data-drawer-link>

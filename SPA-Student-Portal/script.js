@@ -101,24 +101,77 @@
   var yearEl = $("#year");
   if (yearEl) yearEl.textContent = String(new Date().getFullYear());
 
-  /* ---------- Mobile menu ---------- */
+  /* ---------- Side menu ----------
+     One hamburger button opens the full site navigation from the right. The
+     scrim, the close button, Escape, a chosen link, and a resize back to the
+     desktop layout all put it away. Focus is kept inside while it is open. */
   var menuToggle = $("[data-menu-toggle]");
-  var mobileMenu = $("#mobileMenu");
-  if (menuToggle && mobileMenu) {
-    var closeMenu = function () {
-      mobileMenu.hidden = true;
-      menuToggle.setAttribute("aria-expanded", "false");
+  var siteMenu = $("#siteMenu");
+  var menuScrim = $("#menuScrim");
+  var menuClose = $("#menuClose");
+  if (menuToggle && siteMenu) {
+    var openMenu = function () {
+      siteMenu.classList.add("is-open");
+      siteMenu.setAttribute("aria-hidden", "false");
+      menuToggle.setAttribute("aria-expanded", "true");
+      document.body.classList.add("menu-open", "no-scroll");
+      if (menuScrim) {
+        menuScrim.hidden = false;
+        requestAnimationFrame(function () { menuScrim.classList.add("is-open"); });
+      }
+      var first = siteMenu.querySelector("a, button");
+      if (first) first.focus();
     };
+
+    var closeMenu = function (returnFocus) {
+      siteMenu.classList.remove("is-open");
+      siteMenu.setAttribute("aria-hidden", "true");
+      menuToggle.setAttribute("aria-expanded", "false");
+      document.body.classList.remove("menu-open", "no-scroll");
+      if (menuScrim) {
+        menuScrim.classList.remove("is-open");
+        window.setTimeout(function () { menuScrim.hidden = true; }, 300);
+      }
+      if (returnFocus) menuToggle.focus();
+    };
+
     menuToggle.addEventListener("click", function () {
-      var open = mobileMenu.hidden;
-      mobileMenu.hidden = !open;
-      menuToggle.setAttribute("aria-expanded", open ? "true" : "false");
+      if (siteMenu.classList.contains("is-open")) closeMenu(true);
+      else openMenu();
     });
-    $$("a", mobileMenu).forEach(function (link) {
-      link.addEventListener("click", closeMenu);
+
+    if (menuClose) menuClose.addEventListener("click", function () { closeMenu(true); });
+    if (menuScrim) menuScrim.addEventListener("click", function () { closeMenu(true); });
+
+    // Choosing a destination closes the menu so the target is not hidden.
+    $$("[data-menu-link]", siteMenu).forEach(function (link) {
+      link.addEventListener("click", function () { closeMenu(false); });
     });
+
+    document.addEventListener("keydown", function (e) {
+      if (!siteMenu.classList.contains("is-open")) return;
+      if (e.key === "Escape") {
+        closeMenu(true);
+        return;
+      }
+      // Keep Tab inside the open menu.
+      if (e.key === "Tab") {
+        var focusables = $$("a, button", siteMenu);
+        if (!focusables.length) return;
+        var firstEl = focusables[0];
+        var lastEl = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === firstEl) {
+          e.preventDefault();
+          lastEl.focus();
+        } else if (!e.shiftKey && document.activeElement === lastEl) {
+          e.preventDefault();
+          firstEl.focus();
+        }
+      }
+    });
+
     window.addEventListener("resize", function () {
-      if (window.innerWidth > 900) closeMenu();
+      if (window.innerWidth > 900 && siteMenu.classList.contains("is-open")) closeMenu(false);
     });
   }
 
@@ -779,6 +832,27 @@
     }, { threshold: 0.5 });
     counters.forEach(function (el) { counterObserver.observe(el); });
   }
+
+  /* ---------- Reveal a hidden section before jumping to it ----------
+     Announcements and the record look-up start hidden and are meant to appear
+     when their link is used. The browser cannot scroll to a hidden element — it
+     has no layout — so an anchor click simply did nothing and the section stayed
+     unreachable. Un-hide the target first, then let the jump happen. */
+  $$("a[href^='#']").forEach(function (link) {
+    link.addEventListener("click", function () {
+      var hash = link.getAttribute("href");
+      if (!hash || hash === "#") return;
+      var target = document.getElementById(hash.slice(1));
+      if (!target) return;
+      if (target.hidden) target.hidden = false;
+      // A frame's delay so the revealing reflow happens before the scroll,
+      // otherwise the browser jumps to where the element was not yet measured.
+      requestAnimationFrame(function () {
+        try { target.scrollIntoView({ behavior: "smooth", block: "start" }); }
+        catch (err) { target.scrollIntoView(); }
+      });
+    });
+  });
 
   /* ---------- Active section in the header nav ---------- */
   var navMap = $$(".nav-links > a[href^='#']").map(function (link) {
