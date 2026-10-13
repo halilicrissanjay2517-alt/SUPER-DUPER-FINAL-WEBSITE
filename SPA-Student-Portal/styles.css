@@ -667,16 +667,20 @@ body.menu-open .feature-drawer-tab {
 .hero-inner {
   position: relative;
   z-index: 2;
+  width: 100%;
   max-width: min(1560px, 100%);
   margin: 0 auto;
   padding: 84px 24px 96px;
   display: block;
+  /* Keep the hero copy on the left, the way a school front page reads. */
+  text-align: left;
 }
 
-/* The copy now spans the full width of the hero, with the lead and stats
-   held to a comfortable reading measure rather than a narrow column. */
+/* The copy owns the full width of the hero and stays hard against the left
+   edge — no centred column, so the headline and buttons start at the same
+   left line as the header and the sections below. */
 .intro {
-  max-width: 900px;
+  max-width: none;
 }
 
 .eyebrow {
@@ -3049,9 +3053,10 @@ section {
   padding-bottom: clamp(78px, 9vw, 140px);
 }
 
-/* The copy fills the wide hero, held only to a generous reading measure. */
+/* The copy fills the whole hero width, flush to the left edge. */
 .intro {
-  max-width: min(1000px, 100%);
+  max-width: none;
+  text-align: left;
 }
 
 /* The features grid fills the width instead of sitting in the middle. */
