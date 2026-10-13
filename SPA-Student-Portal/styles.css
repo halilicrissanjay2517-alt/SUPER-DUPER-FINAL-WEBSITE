@@ -2656,6 +2656,262 @@ body.no-scroll {
   font-size: 14px;
 }
 
+/* ============================================================
+   About page (about.html)
+   History, patron, timeline, achievements and the marching
+   band record. Reuses the shared palette, type scale and the
+   sub-page shells; adds the fact strip, timeline and awards.
+   ============================================================ */
+
+/* ---------- Quick facts strip ---------- */
+.fact-strip {
+  background: var(--green-900);
+  color: #fff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.fact-strip-inner {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+  padding-top: 26px;
+  padding-bottom: 26px;
+}
+
+.fact-stat {
+  text-align: center;
+  padding: 6px 10px;
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.fact-stat:first-child {
+  border-left: 0;
+}
+
+.fact-stat strong {
+  display: block;
+  font-size: 28px;
+  line-height: 1.1;
+  color: var(--gold-400);
+}
+
+.fact-stat span {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #cfe6da;
+}
+
+/* ---------- Timeline ---------- */
+.timeline {
+  position: relative;
+  list-style: none;
+  margin: 0;
+  padding: 4px 0 4px 34px;
+}
+
+/* The vertical spine the dots sit on. */
+.timeline::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 12px;
+  bottom: 12px;
+  width: 2px;
+  background: linear-gradient(180deg, var(--green-600), var(--line));
+  border-radius: 999px;
+}
+
+.timeline-item {
+  position: relative;
+  padding: 0 0 26px;
+}
+
+.timeline-item:last-child {
+  padding-bottom: 0;
+}
+
+.timeline-dot {
+  position: absolute;
+  left: -34px;
+  top: 4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 3px solid var(--green-600);
+  box-shadow: 0 0 0 4px rgba(18, 121, 76, 0.12);
+}
+
+.timeline-year {
+  display: inline-block;
+  margin-bottom: 6px;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: var(--green-50);
+  color: var(--green-700);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.timeline-body h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  color: var(--green-800);
+}
+
+.timeline-body p {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.65;
+}
+
+/* ---------- Achievements ---------- */
+.award-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+}
+
+.award-card {
+  padding: 24px 24px 22px;
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(10px) saturate(1.2);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
+  transition: transform 0.25s var(--ease), box-shadow 0.25s var(--ease);
+}
+
+.award-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+.award-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  margin-bottom: 14px;
+  border-radius: 14px;
+  background: var(--green-50);
+  color: var(--green-700);
+}
+
+.award-icon .icon {
+  width: 24px;
+  height: 24px;
+}
+
+.award-card h3 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  color: var(--green-800);
+}
+
+.award-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+/* ---------- Marching band spotlight ---------- */
+.band-spotlight {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 22px;
+  margin-bottom: 22px;
+  padding: 26px 28px;
+  border-radius: var(--radius-lg);
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.04) 0 12px, transparent 12px 24px),
+    linear-gradient(150deg, var(--green-800), var(--green-900));
+  color: #fff;
+  box-shadow: var(--shadow-lg);
+}
+
+.band-headline {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 150px;
+  padding: 16px 22px;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  text-align: center;
+}
+
+.band-headline strong {
+  font-size: 46px;
+  line-height: 1;
+  color: var(--gold-400);
+}
+
+.band-headline span {
+  margin-top: 6px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #cfe6da;
+}
+
+.band-note {
+  flex: 1 1 320px;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.7;
+  color: #dcefe4;
+}
+
+.band-table-wrap {
+  margin-bottom: 18px;
+}
+
+@media (max-width: 900px) {
+  .fact-strip-inner {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .fact-stat:nth-child(3) {
+    border-left: 0;
+  }
+
+  .award-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .fact-strip-inner {
+    gap: 10px;
+    padding-top: 20px;
+    padding-bottom: 20px;
+  }
+
+  .fact-stat strong {
+    font-size: 22px;
+  }
+
+  .band-spotlight {
+    padding: 22px 20px;
+  }
+
+  .band-headline {
+    width: 100%;
+  }
+}
+
 @media (max-width: 900px) {
   .detail-body {
     grid-template-columns: 1fr;
