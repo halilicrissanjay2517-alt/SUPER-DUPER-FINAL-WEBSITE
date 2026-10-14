@@ -879,6 +879,47 @@
       acctBtn.addEventListener("click", function () { openAccountModal(s.id); });
       wrap.appendChild(acctBtn);
 
+      // Peek at the sign-in password straight from the roster. A password the
+      // office set is readable so it can be handed over again when a student
+      // says they cannot get in; one the student chose is never stored in the
+      // clear, so the chip says so instead.
+      var pwBtn = document.createElement("button");
+      pwBtn.type = "button";
+      pwBtn.className = "icon-btn";
+      pwBtn.title = "Show the password the office set for " + s.name;
+      pwBtn.innerHTML =
+        '<svg class="icon" viewBox="0 0 24 24"><path d="M12 5c-5 0-9 4.5-10 7 1 2.5 5 7 10 7s9-4.5 10-7c-1-2.5-5-7-10-7Zm0 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10Zm0-2a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg>';
+      pwBtn.addEventListener("click", function () {
+        var chip = wrap.querySelector(".pw-chip");
+        var showing = pwBtn.classList.toggle("is-open");
+        if (showing) {
+          if (!chip) {
+            chip = document.createElement("span");
+            chip.className = "pw-chip";
+            wrap.appendChild(chip);
+          }
+          chip.textContent = s.passwordNote
+            ? "Password: " + s.passwordNote
+            : "Set by student — not stored here";
+          pwBtn.title = "Hide the password";
+        } else {
+          if (chip) chip.remove();
+          pwBtn.title = "Show the password the office set for " + s.name;
+        }
+      });
+      wrap.appendChild(pwBtn);
+
+      if (state.admin && state.admin.role === "superadmin") {
+        var delAcctBtn = document.createElement("button");
+        delAcctBtn.type = "button";
+        delAcctBtn.className = "icon-btn danger";
+        delAcctBtn.title = "Delete the portal account for " + s.name + " (in case it is broken or vanished)";
+        delAcctBtn.innerHTML =
+          '<svg class="icon" viewBox="0 0 24 24"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-4 0-8 2-8 5v3h16v-3c0-3-4-5-8-5Zm11-9h-2.6l-1-2h-4.8l-1 2H8v2h12Z"/></svg>';
+        delAcctBtn.addEventListener("click", function () { removeStudentAccount(s); });
+        wrap.appendChild(delAcctBtn);
+      }
+
       if (state.admin && state.admin.role === "superadmin") {
         var delBtn = document.createElement("button");
         delBtn.type = "button";
@@ -966,6 +1007,28 @@
         renderStudents();
         loadLogs();
         toast("Deleted " + student.name);
+      })
+      .catch(function (err) { toast(err.message, true); });
+  }
+
+  /**
+   * Delete ONLY the portal login for a student, leaving their roster record
+   * and payment history untouched. This is the recovery button for an account
+   * that has vanished, will not sign in, or needs to be rebuilt from scratch:
+   * after it, "Create account" can write a fresh login in its place.
+   */
+  function removeStudentAccount(student) {
+    if (!window.confirm(
+      "Delete the portal ACCOUNT for " + student.name + " (" + student.id + ")?\n\n" +
+      "The student's record and payment history are NOT affected.\n" +
+      "You can create a fresh account for them right afterwards."
+    )) return;
+    api("/api/accounts/" + encodeURIComponent(student.id), { method: "DELETE" })
+      .then(function () {
+        toast("Account deleted for " + student.name);
+        loadStudents();
+        loadApprovals();
+        loadLogs();
       })
       .catch(function (err) { toast(err.message, true); });
   }

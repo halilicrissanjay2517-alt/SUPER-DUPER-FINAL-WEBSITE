@@ -104,17 +104,41 @@
 
             <!-- ---- Students view ---- -->
             <section class="admin-view" id="viewStudents">
+                <!-- Stat cards: the five numbers the office reads first. -->
+                <div class="stat-cards">
+                    <div class="stat-card">
+                        <span class="stat-label">Total students</span>
+                        <strong id="statTotal">0</strong>
+                        <span class="stat-sub">on the roster</span>
+                    </div>
+                    <div class="stat-card is-green">
+                        <span class="stat-label">Collected</span>
+                        <strong id="statPaid">₱0</strong>
+                        <span class="stat-sub">total received</span>
+                    </div>
+                    <div class="stat-card is-amber">
+                        <span class="stat-label">Outstanding</span>
+                        <strong id="statBalance">₱0</strong>
+                        <span class="stat-sub">still to collect</span>
+                    </div>
+                    <div class="stat-card is-blue">
+                        <span class="stat-label">Unpaid</span>
+                        <strong id="statPending">0</strong>
+                        <span class="stat-sub">students with a balance</span>
+                    </div>
+                    <div class="stat-card is-red">
+                        <span class="stat-label">Overdue</span>
+                        <strong id="statOverdue">0</strong>
+                        <span class="stat-sub">past their due date</span>
+                    </div>
+                </div>
+
                 <div class="admin-toolbar">
                     <label class="field inline-field">
                         <span class="sr-only">Search</span>
                         <input type="search" id="adminSearch" placeholder="Search by ID, name, grade, or section…">
                     </label>
                     <div class="toolbar-stats">
-                        <span class="pill"><strong id="statTotal">0</strong> students</span>
-                        <span class="pill pill-green"><strong id="statPaid">₱0</strong> collected</span>
-                        <span class="pill pill-amber"><strong id="statBalance">₱0</strong> outstanding</span>
-                        <span class="pill pill-blue"><strong id="statPending">0</strong> unpaid</span>
-                        <span class="pill pill-red"><strong id="statOverdue">0</strong> overdue</span>
                         <button type="button" class="btn btn-secondary btn-mini" id="downloadDbBtn"
                                 title="Download every student as database.xlsx">
                             Open Excel database
@@ -166,6 +190,25 @@
                         <span class="pill pill-red">
                             <strong id="approvalRejectedCount">0</strong> rejected
                         </span>
+                    </div>
+                </div>
+                <!-- Overview strip: a quick picture of every account on file,
+                     regardless of which filter chip is currently active. -->
+                <div class="stat-cards stat-cards-compact">
+                    <div class="stat-card is-amber">
+                        <span class="stat-label">Awaiting approval</span>
+                        <strong id="accountStatPending">0</strong>
+                        <span class="stat-sub">blocked from signing in</span>
+                    </div>
+                    <div class="stat-card is-green">
+                        <span class="stat-label">Active</span>
+                        <strong id="accountStatActive">0</strong>
+                        <span class="stat-sub">can sign in now</span>
+                    </div>
+                    <div class="stat-card is-red">
+                        <span class="stat-label">Rejected</span>
+                        <strong id="accountStatRejected">0</strong>
+                        <span class="stat-sub">turned down</span>
                     </div>
                 </div>
 
