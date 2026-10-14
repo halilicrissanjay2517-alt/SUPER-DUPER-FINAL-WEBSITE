@@ -323,6 +323,32 @@
       var wrap = document.createElement("div");
       wrap.className = "row-actions";
 
+      // The office-only peek at the sign-in password. A password the office set
+      // is readable here so it can be handed over again; one the student chose
+      // is never stored in the clear, so the chip says so instead.
+      var pwBtn = document.createElement("button");
+      pwBtn.type = "button";
+      pwBtn.className = "btn btn-ghost btn-mini";
+      pwBtn.title = "Show the password the office set for this account";
+      pwBtn.textContent = "Show password";
+      pwBtn.addEventListener("click", function () {
+        var chip = wrap.querySelector(".pw-chip");
+        var showing = pwBtn.classList.toggle("is-open");
+        if (showing) {
+          if (!chip) {
+            chip = document.createElement("span");
+            chip.className = "pw-chip";
+            wrap.appendChild(chip);
+          }
+          chip.textContent = a.password ? "Password: " + a.password : "Set by student — not stored here";
+          pwBtn.textContent = "Hide password";
+        } else {
+          if (chip) chip.remove();
+          pwBtn.textContent = "Show password";
+        }
+      });
+      wrap.appendChild(pwBtn);
+
       if (status === "pending") {
         // The office approves by checking the student's own answers against the
         // roster, so an approval starts with a look at the full application.
@@ -491,6 +517,9 @@
       '<strong>' + escapeHtml(account.fullname || "Application") + "</strong>" +
       '<span>Student ID <b>' + escapeHtml(account.studentId) + "</b> · " +
       escapeHtml(account.email || "no email") + "</span>" +
+      '<span class="pw-line">Password: <b>' +
+      (account.password ? escapeHtml(account.password) : "set by the student (not stored here)") +
+      "</b></span>" +
       '</div><div class="review-head-badges">' +
       accountStatusBadge(account.status) +
       '<span class="badge ' + (account.onRoster ? "badge-green" : "badge-blue") + '">' +

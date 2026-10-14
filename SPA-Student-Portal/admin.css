@@ -1330,3 +1330,42 @@ tr.review-row > td {
 .review-bad {
   color: #b42318;
 }
+
+/* ---------- Office-only password peek (Student Accounts view) ----------
+   The chip that appears beside "Show password" when an administrator opens
+   the sign-in password for an account the office set itself. */
+.pw-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #f2f7f4;
+  border: 1px solid rgba(47, 109, 79, 0.25);
+  color: #1e4d35;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+/* The password line inside the expanded application review panel. */
+.review-head-meta .pw-line {
+  display: block;
+  font-size: 12.5px;
+  color: #4a5a52;
+}
+
+.review-head-meta .pw-line b {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-weight: 700;
+  color: #1e4d35;
+}
+
+/* Mark the "Show password" toggle while its chip is open, so the two
+   controls read as a pair. */
+.row-actions .btn-mini.is-open {
+  border-color: rgba(47, 109, 79, 0.45);
+  color: #1e4d35;
+  font-weight: 700;
+}
