@@ -2569,6 +2569,109 @@ body.no-scroll {
   background: linear-gradient(180deg, var(--gold-400), var(--gold-500));
 }
 
+/* ---------- Faculty & staff gallery (black background) ----------
+   A dark roster so the portraits carry the section. Photographs are dropped
+   into folder `faculty/` and named after each person, so a new member only
+   needs one line of HTML (see faculty.html). */
+.faculty-band {
+  scroll-margin-top: 140px;
+  background: #050706;
+  color: #eef2ef;
+  border: 1px solid #1d2723;
+  border-radius: var(--radius-lg);
+  padding: 34px;
+  box-shadow: var(--shadow);
+}
+
+.faculty-band .detail-head {
+  border-bottom-color: rgba(255, 255, 255, 0.12);
+}
+
+.faculty-band .detail-head .muted {
+  color: rgba(238, 242, 239, 0.62);
+}
+
+.faculty-band .detail-num {
+  color: rgba(255, 255, 255, 0.18);
+}
+
+.faculty-band .section-title {
+  color: #fff;
+}
+
+.faculty-group-title {
+  margin: 30px 0 16px;
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold-400);
+}
+
+.faculty-group-title:first-child {
+  margin-top: 0;
+}
+
+.faculty-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 22px;
+}
+
+.faculty-card {
+  margin: 0;
+  background: #0d1311;
+  border: 1px solid #1f2a26;
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: transform 0.25s var(--ease), border-color 0.25s var(--ease), box-shadow 0.25s var(--ease);
+}
+
+.faculty-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(212, 167, 44, 0.55);
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.55);
+}
+
+/* Fixed ratio frame so portraits of different shapes line up in the grid. */
+.faculty-photo {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  background: #101815;
+  filter: saturate(0.95);
+}
+
+/* Shown until the real photograph is dropped into the faculty/ folder. */
+.faculty-photo.is-missing {
+  object-fit: contain;
+  padding: 26px;
+  background: #101815;
+  opacity: 0.75;
+}
+
+.faculty-meta {
+  padding: 14px 16px 16px;
+}
+
+.faculty-meta h4 {
+  margin: 0 0 3px;
+  font-size: 15px;
+  color: #fff;
+}
+
+.faculty-meta .role {
+  margin: 0;
+  font-size: 13px;
+  color: var(--gold-400);
+}
+
+.faculty-meta .dept {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: rgba(238, 242, 239, 0.55);
+}
+
 /* ---------- Closing call to action ---------- */
 .cta-strip {
   display: flex;
