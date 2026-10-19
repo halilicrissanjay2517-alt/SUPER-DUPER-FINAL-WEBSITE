@@ -1,13 +1,17 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#04231a">
-    <title>Admin Dashboard — Saint Patrick's Academy, Inc.</title>
+    <title>Admin Dashboard â€” Saint Patrick's Academy, Inc.</title>
     <link rel="icon" href="logo.png">
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="admin.css">
+    <!-- Class-based style hooks for admin.js. The Content-Security-Policy
+         forbids inline style, so runtime appearance changes are class names
+         defined in admin.css rather than style attributes set by script. -->
+    <script src="dom-styles.js"></script>
 </head>
 <body class="admin-body">
     <!-- ================= LOGIN GATE ================= -->
@@ -15,7 +19,7 @@
         <form class="login-card" id="loginForm">
             <img src="logo.png" alt="" class="login-logo">
             <h1>Administrator Sign In</h1>
-            <p class="muted">Saint Patrick's Academy, Inc. — Portal Management</p>
+            <p class="muted">Saint Patrick's Academy, Inc. â€” Portal Management</p>
 
             <label class="field">
                 <span>Username</span>
@@ -24,7 +28,7 @@
             <label class="field">
                 <span>Password</span>
                 <div class="password-field">
-                    <input type="password" name="password" required autocomplete="current-password" placeholder="••">
+                    <input type="password" name="password" required autocomplete="current-password" placeholder="â€¢â€¢">
                     <button type="button" class="password-toggle" aria-label="Show password" aria-pressed="false">Show</button>
                 </div>
             </label>
@@ -35,7 +39,7 @@
             <p class="login-hint">
                 First run seeds two accounts: <strong>admin</strong> (superadmin) and
                 <strong>registrar</strong> (registrar). Their passwords are printed when
-                the server starts — change them before this site is on a public network.
+                the server starts â€” change them before this site is on a public network.
             </p>
         </form>
     </div>
@@ -79,8 +83,8 @@
                 <div class="who">
                     <span class="avatar" id="userInitial">A</span>
                     <div>
-                        <strong id="userName">—</strong>
-                        <small id="userRole">—</small>
+                        <strong id="userName">â€”</strong>
+                        <small id="userRole">â€”</small>
                     </div>
                 </div>
                 <button type="button" class="btn btn-ghost btn-block" id="logoutBtn">Sign out</button>
@@ -95,6 +99,7 @@
                 </div>
                 <div class="topbar-actions">
                     <a class="btn btn-secondary" href="studentportal.html" target="_blank" rel="noopener">View site</a>
+                    <button type="button" class="btn btn-secondary" id="syncDatabaseBtn" title="Write every student shown here into database.xlsx">Sync to Excel</button>
                     <button type="button" class="btn btn-secondary" id="openDatabaseBtn" title="Download database.xlsx with every student">Excel database</button>
                     <button type="button" class="btn btn-secondary" id="createAccountBtn">+ Create student account</button>
                     <button type="button" class="btn btn-secondary" id="addStudentBtn">+ Add student</button>
@@ -113,12 +118,12 @@
                     </div>
                     <div class="stat-card is-green">
                         <span class="stat-label">Collected</span>
-                        <strong id="statPaid">₱0</strong>
+                        <strong id="statPaid">â‚±0</strong>
                         <span class="stat-sub">total received</span>
                     </div>
                     <div class="stat-card is-amber">
                         <span class="stat-label">Outstanding</span>
-                        <strong id="statBalance">₱0</strong>
+                        <strong id="statBalance">â‚±0</strong>
                         <span class="stat-sub">still to collect</span>
                     </div>
                     <div class="stat-card is-blue">
@@ -136,7 +141,7 @@
                 <div class="admin-toolbar">
                     <label class="field inline-field">
                         <span class="sr-only">Search</span>
-                        <input type="search" id="adminSearch" placeholder="Search by ID, name, grade, or section…">
+                        <input type="search" id="adminSearch" placeholder="Search by ID, name, grade, or sectionâ€¦">
                     </label>
                     <div class="toolbar-stats">
                         <button type="button" class="btn btn-secondary btn-mini" id="downloadDbBtn"
@@ -166,7 +171,7 @@
                             </tr>
                         </thead>
                         <tbody id="adminRows">
-                            <tr><td colspan="13" class="table-empty">Loading…</td></tr>
+                            <tr><td colspan="13" class="table-empty">Loadingâ€¦</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -221,7 +226,7 @@
                     </div>
                     <label class="field inline-field">
                         <span class="sr-only">Search accounts</span>
-                        <input type="search" id="accountSearch" placeholder="Search by Student ID, name, or email…">
+                        <input type="search" id="accountSearch" placeholder="Search by Student ID, name, or emailâ€¦">
                     </label>
                 </div>
 
@@ -239,7 +244,7 @@
                             </tr>
                         </thead>
                         <tbody id="approvalRows">
-                            <tr><td colspan="7" class="table-empty">Loading…</td></tr>
+                            <tr><td colspan="7" class="table-empty">Loadingâ€¦</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -253,11 +258,11 @@
                 <div class="admin-toolbar">
                     <label class="field inline-field">
                         <span class="sr-only">Search payments</span>
-                        <input type="search" id="paymentSearch" placeholder="Search by receipt no, student, or method…">
+                        <input type="search" id="paymentSearch" placeholder="Search by receipt no, student, or methodâ€¦">
                     </label>
                     <div class="toolbar-stats">
                         <span class="pill"><strong id="payCount">0</strong> payments</span>
-                        <span class="pill pill-amber"><strong id="payTotal">₱0</strong> collected</span>
+                        <span class="pill pill-amber"><strong id="payTotal">â‚±0</strong> collected</span>
                         <span class="pill pill-blue">
                             Next receipt <strong id="nextReceipt">R-1001</strong>
                         </span>
@@ -279,7 +284,7 @@
                             </tr>
                         </thead>
                         <tbody id="paymentRows">
-                            <tr><td colspan="8" class="table-empty">Loading…</td></tr>
+                            <tr><td colspan="8" class="table-empty">Loadingâ€¦</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -306,7 +311,7 @@
                             </tr>
                         </thead>
                         <tbody id="adminList">
-                            <tr><td colspan="5" class="table-empty">Loading…</td></tr>
+                            <tr><td colspan="5" class="table-empty">Loadingâ€¦</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -318,7 +323,7 @@
                     <p class="muted">Every change made by every administrator, newest first.</p>
                 </div>
                 <ul class="log-list" id="logList">
-                    <li class="table-empty">Loading…</li>
+                    <li class="table-empty">Loadingâ€¦</li>
                 </ul>
             </section>
         </main>
@@ -356,21 +361,21 @@
 
                 <h3 class="form-section-title">Tuition</h3>
                 <p class="muted form-note">
-                    The balance is calculated as <strong>Tuition Fee − Total Paid</strong>, so it always
+                    The balance is calculated as <strong>Tuition Fee âˆ’ Total Paid</strong>, so it always
                     matches the payment history. Record payments in <strong>Record payment</strong>;
                     they cannot be typed in here.
                 </p>
                 <div class="form-grid">
                     <label class="field">
-                        <span>Tuition Fee (₱)</span>
+                        <span>Tuition Fee (â‚±)</span>
                         <input name="totalFee" type="number" min="0" step="1" placeholder="0" id="studentFee">
                     </label>
                     <label class="field">
                         <span>Payment Due Date</span>
                         <input name="dueDate" type="date" id="studentDue">
                     </label>
-                    <label class="field"><span>Total Paid (₱)</span><input name="amountPaid" readonly class="field-readonly"></label>
-                    <label class="field"><span>Remaining Balance (₱)</span><input name="balance" readonly class="field-readonly"></label>
+                    <label class="field"><span>Total Paid (â‚±)</span><input name="amountPaid" readonly class="field-readonly"></label>
+                    <label class="field"><span>Remaining Balance (â‚±)</span><input name="balance" readonly class="field-readonly"></label>
                     <label class="field full"><span>Last Payment Date</span><input name="lastPaymentDate" readonly class="field-readonly"></label>
                 </div>
                 <p class="balance-preview" id="studentBillingPreview" hidden></p>
@@ -395,7 +400,7 @@
                 <label class="field">
                     <span>Student</span>
                     <select name="studentId" required id="paymentStudent">
-                        <option value="">Select a student…</option>
+                        <option value="">Select a studentâ€¦</option>
                     </select>
                 </label>
 
@@ -403,7 +408,7 @@
 
                 <div class="form-grid">
                     <label class="field">
-                        <span>Amount (₱)</span>
+                        <span>Amount (â‚±)</span>
                         <input name="amount" type="number" min="1" step="1" required placeholder="0">
                     </label>
                     <label class="field">
@@ -467,9 +472,9 @@
                 <label class="field">
                     <span>Role</span>
                     <select name="role">
-                        <option value="staff">Staff — edit students only</option>
-                        <option value="registrar">Registrar — edit students</option>
-                        <option value="superadmin">Superadmin — full control</option>
+                        <option value="staff">Staff â€” edit students only</option>
+                        <option value="registrar">Registrar â€” edit students</option>
+                        <option value="superadmin">Superadmin â€” full control</option>
                     </select>
                 </label>
                 <label class="field"><span>Password</span>
@@ -518,8 +523,8 @@
                         <button type="button" class="btn btn-secondary" id="generatePasswordBtn" title="Make a ready-to-hand-over password">Generate</button>
                     </div>
                 </label>
-                <p class="muted" style="font-size:13px">
-                    Only the password is needed — the Student ID is already the
+                <p class="muted modal-hint">
+                    Only the password is needed â€” the Student ID is already the
                     sign-in name, and the email can stay blank. Hit Generate to get a
                     ready password. Whoever creates the account is recorded on it in
                     the workbook.
@@ -534,5 +539,6 @@
     </div>
 
     <script src="admin.js"></script>
+    <script src="cookie-consent.js" defer></script>
 </body>
 </html>

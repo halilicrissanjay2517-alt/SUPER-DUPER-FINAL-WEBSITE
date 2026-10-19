@@ -26,6 +26,7 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
+const zlib = require("zlib");
 const XLSX = require("xlsx");
 
 const ROOT = __dirname;
@@ -50,6 +51,112 @@ const DB_FILE = path.join(DB_DIR, "database.xlsx");
 // volume. Only the filename is recorded in the sheet; the bytes stay on disk so
 // the workbook never balloons and an image is never inlined into a spreadsheet.
 const PORT = process.env.PORT || 3000;
+
+/* ------------------------------------------------------------------ Security */
+
+/**
+ * Session cookies.
+ *
+ * The browser used to keep the session token in localStorage, where any
+ * injected script can read it. Sessions now live in an HttpOnly cookie, so a
+ * script on the page cannot read them at all. `SameSite=Lax` stops another
+ * site from sending it on a forged cross-site POST, and `Secure` keeps it off
+ * plain HTTP once the site is served over HTTPS.
+ *
+ * The Bearer header still works, because the end-to-end test drives the API
+ * directly and any API client may prefer a header over a cookie.
+ */
+const SESSION_COOKIES = { admin: "spa_admin_sid", student: "spa_student_sid" };
+
+/** Cookies are Secure whenever the site is actually served over HTTPS. */
+function cookiesUseSecure(req) {
+  if (process.env.SPA_COOKIE_SECURE === "0") return false;
+  if (process.env.SPA_COOKIE_SECURE === "1") return true;
+  const proto = String(req.headers["x-forwarded-proto"] || "")
+    .split(",")[0]
+    .trim()
+    .toLowerCase();
+  return proto === "https" || !!req.socket.encrypted;
+}
+
+function sessionCookie(req, kind, token, maxAgeSeconds) {
+  const parts = [
+    SESSION_COOKIES[kind] + "=",
+    token,
+    "; Path=/",
+    "; HttpOnly",
+    "; SameSite=Lax",
+    "; Max-Age=" + maxAgeSeconds,
+  ];
+  if (cookiesUseSecure(req)) parts.push("; Secure");
+  return parts.join("");
+}
+
+/** The same cookie, expired, so the browser forgets the session at once. */
+function clearSessionCookie(req, kind) {
+  const base = SESSION_COOKIES[kind] + "=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0";
+  return cookiesUseSecure(req) ? base + "; Secure" : base;
+}
+
+function readCookies(req) {
+  const out = {};
+  String(req.headers.cookie || "")
+    .split(";")
+    .forEach(function (part) {
+      const at = part.indexOf("=");
+      if (at < 0) return;
+      const name = part.slice(0, at).trim();
+      if (!name) return;
+      try {
+        out[name] = decodeURIComponent(part.slice(at + 1).trim());
+      } catch (err) {
+        out[name] = part.slice(at + 1).trim();
+      }
+    });
+  return out;
+}
+
+/**
+ * Headers sent on every response. They are what turns a working site into a
+ * hard-to-attack one: no framing, no executable injected markup, no caching of
+ * someone else's data, and no capability the page does not need.
+ */
+function securityHeaders(req) {
+  const headers = {
+    // Do not let a browser second-guess a declared type (an "image" that runs).
+    "X-Content-Type-Options": "nosniff",
+    // The portal must never be wrapped in another site's frame (clickjacking).
+    "X-Frame-Options": "DENY",
+    "Content-Security-Policy": "frame-ancestors 'none'; base-uri 'self'; object-src 'none'",
+    // Full URL off to other origins; own origin still gets the path.
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    "Cross-Origin-Opener-Policy": "same-origin",
+    "X-XSS-Protection": "0",
+  };
+  // HSTS only over HTTPS: sending it on plain HTTP does nothing useful and
+  // would lock a localhost developer out of http:// for months.
+  if (cookiesUseSecure(req)) {
+    headers["Strict-Transport-Security"] = "max-age=15552000; includeSubDomains";
+  }
+  return headers;
+}
+
+/**
+ * A cross-site form POST carries an Origin belonging to another site. The JSON
+ * API only ever needs to be called by our own pages, so anything else is
+ * refused before a single byte of the request body is trusted.
+ */
+function crossSiteRequest(req) {
+  const origin = req.headers.origin;
+  if (!origin) return false; // same-origin GETs and non-browser clients
+  const host = req.headers.host || "";
+  try {
+    return new URL(origin).host !== host;
+  } catch (err) {
+    return true;
+  }
+}
 
 const SHEETS = {
   students: "Students",
@@ -82,7 +189,13 @@ const STUDENT_COLUMNS = [
   "accountStatus",
   "username",
   "passwordNote",
+  // When the account was requested. Signing up stamps this field, and
+  // readAccounts treats any row carrying it as an account to review — so it has
+  // to be a real column here. Without it a sign-up's timestamp was stripped by
+  // writeSheet, the row never looked like an account, and the applicant simply
+  // never appeared in the dashboard or the Excel database.
   "registeredAt",
+  "rosterMatch",
   "approvedBy",
   "approvedAt",
   "birthdate",
@@ -370,6 +483,17 @@ function saveDb(db) {
   XLSX.writeFile(db, DB_FILE);
 }
 
+/**
+ * Rewrite database.xlsx from the live data, right now.
+ *
+ * Called after a self-registration and after an approval, so the file on disk
+ * reflects the dashboard the moment the office looks at it instead of waiting
+ * for some later write.
+ */
+function saveWorkbook() {
+  saveDb(loadDb());
+}
+
 /** Next receipt number, so every payment is uniquely identifiable. */
 function nextReceiptNo(db) {
   const payments = readSheet(db, SHEETS.payments);
@@ -466,7 +590,7 @@ function createSeedDb() {
 function applySheetFormatting(db) {
   applyColumnWidths(db, SHEETS.students, [
     11, 22, 10, 16, 12, 12, 12, 16, 18, 16, 26,
-    13, 13, 16, 22, 16, 22, 12, 7, 30, 18, 22, 30,
+    13, 13, 16, 22, 16, 22, 12, 7, 30, 18, 22, 30, 12, 14,
   ]);
   applyColumnWidths(db, SHEETS.payments, [12, 11, 11, 20, 11, 15, 13, 28]);
   applyColumnWidths(db, SHEETS.admins, [14, 20, 12, 66, 34, 8]);
@@ -565,6 +689,10 @@ const ACCOUNT_LINK_FIELDS = [
   "username",
   "accountStatus",
   "registeredAt",
+  // Tells the office, and the approval screen, whether this person was already
+  // on the roster or is a brand-new applicant. It used to stay on the hidden
+  // Accounts sheet, so the visible Students row never said which it was.
+  "rosterMatch",
   "approvedBy",
   "approvedAt",
   "birthdate",
@@ -574,6 +702,10 @@ const ACCOUNT_LINK_FIELDS = [
   "lastSchool",
   "note",
   "passwordNote",
+  // The visible row records WHEN the login was requested, because that is what
+  // readAccounts looks for to recognise a self-registration. The Accounts sheet
+  // spells the same value `createdAt`, so it has to be copied across explicitly.
+  "registeredAt",
 ];
 
 /** One student row and one credential row, joined into the account shape. */
@@ -784,6 +916,14 @@ function syncStudentAccountRows(db, accounts) {
       changed = true;
     }
     const row = students[index];
+    // `createdAt` is the credential's name for the registration time and lives
+    // on the Accounts sheet, so it never reached the visible row. Copy it over
+    // as `registeredAt` or a pending applicant reads as a student with no
+    // account until an administrator happens to approve them.
+    if (!row.registeredAt && account.createdAt) {
+      row.registeredAt = account.createdAt;
+      changed = true;
+    }
     ACCOUNT_LINK_FIELDS.forEach(function (col) {
       if (account[col] === undefined) return;
       const next = account[col] === null ? "" : account[col];
@@ -1033,6 +1173,9 @@ function studentRecordFor(db, studentId) {
 
 const sessions = new Map(); // token -> { kind, username, name, role|studentId, expires }
 
+const SESSION_HOURS = 8;
+const SESSION_MS = SESSION_HOURS * 60 * 60 * 1000;
+
 function createSession(admin) {
   const token = crypto.randomBytes(24).toString("hex");
   sessions.set(token, {
@@ -1040,7 +1183,7 @@ function createSession(admin) {
     username: admin.username,
     name: admin.name,
     role: admin.role,
-    expires: Date.now() + 1000 * 60 * 60 * 8,
+    expires: Date.now() + SESSION_MS,
   });
   return token;
 }
@@ -1054,9 +1197,14 @@ function createStudentSession(account) {
     studentId: account.studentId,
     name: account.fullname,
     role: "student",
-    expires: Date.now() + 1000 * 60 * 60 * 8,
+    expires: Date.now() + SESSION_MS,
   });
   return token;
+}
+
+/** One Set-Cookie value for whichever kind of session just signed in. */
+function sessionSetCookie(req, kind, token) {
+  return sessionCookie(req, kind, token, Math.floor(SESSION_MS / 1000));
 }
 
 /* --------------------------------------------------- Login rate limiting */
@@ -1117,9 +1265,26 @@ function retryAfterMinutes(req, scope) {
   return Math.max(Math.ceil((entry.resetAt - Date.now()) / 60000), 1);
 }
 
-function getSession(req) {
+/**
+ * Find the caller's session.
+ *
+ * Order matters: an explicit Bearer token wins (API clients and the tests
+ * send one), otherwise the HttpOnly cookie the browser holds. A student page
+ * and an admin page can therefore never share a session by accident: each
+ * cookie name carries its own kind, and the guard on the route checks `kind`.
+ */
+function requestToken(req, kind) {
   const header = req.headers.authorization || "";
-  const token = header.startsWith("Bearer ") ? header.slice(7) : null;
+  if (header.startsWith("Bearer ")) return header.slice(7).trim() || null;
+  const cookieName = SESSION_COOKIES[kind];
+  if (cookieName) {
+    const fromCookie = readCookies(req)[cookieName];
+    if (fromCookie) return fromCookie;
+  }
+  return null;
+}
+
+function sessionFor(req, token, kind) {
   if (!token) return null;
   const session = sessions.get(token);
   if (!session) return null;
@@ -1127,7 +1292,19 @@ function getSession(req) {
     sessions.delete(token);
     return null;
   }
+  // A cookie is scoped to one kind of sign-in, so a stale admin cookie must
+  // never authenticate a student route or the other way round.
+  if (kind && session.kind !== kind) return null;
   return session;
+}
+
+function getSession(req, kind) {
+  const fromHeader = String(req.headers.authorization || "").startsWith("Bearer ");
+  // Without a header, try both cookie kinds and let the guard reject the
+  // wrong one — that keeps a single getSession() call usable from everywhere.
+  if (fromHeader || kind) return sessionFor(req, requestToken(req, kind), kind);
+  const admin = sessionFor(req, requestToken(req, "admin"), "admin");
+  return admin || sessionFor(req, requestToken(req, "student"), "student");
 }
 
 /* -------------------------------------------------------------------- Server */
@@ -1144,12 +1321,61 @@ const MIME = {
   ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 };
 
-function sendJson(res, status, payload) {
-  const body = JSON.stringify(payload);
-  res.writeHead(status, {
+/**
+ * Compress a text payload when the browser says it can read gzip, and say so
+ * in the headers. JSON lists are repetitive and shrink about 80%, so the
+ * dashboard's student list arrives in a fraction of the bytes.
+ */
+function sendMaybeCompressed(req, res, status, type, body, headers) {
+  const buffer = Buffer.isBuffer(body) ? body : Buffer.from(body, "utf8");
+  const acceptsGzip = /\bgzip\b/i.test(String(req.headers["accept-encoding"] || ""));
+  const out = headers || {};
+  out["Content-Type"] = type;
+  out["Vary"] = "Accept-Encoding";
+
+  if (acceptsGzip && buffer.length > 512) {
+    zlib.gzip(buffer, function (err, gz) {
+      if (err) {
+        out["Content-Length"] = buffer.length;
+        res.writeHead(status, out);
+        return res.end(buffer);
+      }
+      out["Content-Encoding"] = "gzip";
+      out["Content-Length"] = gz.length;
+      res.writeHead(status, out);
+      res.end(gz);
+    });
+    return;
+  }
+  out["Content-Length"] = buffer.length;
+  res.writeHead(status, out);
+  res.end(buffer);
+}
+
+/**
+ * Write a JSON response.
+ *
+ * `cookie` may be one Set-Cookie string (or several), and `cache` is the
+ * Cache-Control to send — API answers default to `no-store` so a signed-in
+ * student's own figures are never left in a shared browser cache.
+ */
+function sendJson(res, status, payload, cookie, cache) {
+  let body = JSON.stringify(payload);
+  const headers = {
     "Content-Type": "application/json; charset=utf-8",
-    "Content-Length": Buffer.byteLength(body),
-  });
+    "Cache-Control": cache || "no-store",
+  };
+  if (cookie) headers["Set-Cookie"] = cookie;
+
+  // Compress before the headers are written: a header cannot be set or
+  // removed once writeHead() has run.
+  if (res.spaAcceptsGzip && body.length > 512) {
+    body = zlib.gzipSync(Buffer.from(body, "utf8"));
+    headers["Content-Encoding"] = "gzip";
+    headers["Vary"] = "Accept-Encoding";
+  }
+  headers["Content-Length"] = Buffer.byteLength(body);
+  res.writeHead(status, headers);
   res.end(body);
 }
 
@@ -1162,8 +1388,13 @@ function readBody(req, maxBytes = 1e6) {
     });
     req.on("end", () => {
       if (!raw) return resolve({});
+      // Whatever a client posts must be a JSON object. An array or a bare
+      // string would otherwise slip through and break every route that reads
+      // `body.username` on it.
       try {
-        resolve(JSON.parse(raw));
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return resolve(parsed);
+        reject(new Error("Body must be a JSON object"));
       } catch (err) {
         reject(new Error("Invalid JSON body"));
       }
@@ -1174,7 +1405,7 @@ function readBody(req, maxBytes = 1e6) {
 
 /** Guard an API route. Returns the session or sends 401 and returns null. */
 function requireAuth(req, res, roles) {
-  const session = getSession(req);
+  const session = getSession(req, "admin");
   if (!session) {
     sendJson(res, 401, { error: "Not signed in" });
     return null;
@@ -1194,7 +1425,7 @@ function requireAuth(req, res, roles) {
 
 /** Guard a student-only route. Returns the session or sends an error. */
 function requireStudent(req, res) {
-  const session = getSession(req);
+  const session = getSession(req, "student");
   if (!session) {
     sendJson(res, 401, { error: "Not signed in" });
     return null;
@@ -1233,10 +1464,19 @@ async function handleApi(req, res, pathname) {
     const token = createSession(admin);
     appendLog(db, admin.username, "login", "-", "Signed in");
     saveDb(db);
-    return sendJson(res, 200, {
-      token,
-      admin: { username: admin.username, name: admin.name, role: admin.role },
-    });
+    // The browser keeps the session in an HttpOnly cookie (the 4th argument),
+    // so no script can read it. The token is still returned in the body for
+    // API clients that prefer a Bearer header, but the page no longer stores
+    // it anywhere.
+    return sendJson(
+      res,
+      200,
+      {
+        token,
+        admin: { username: admin.username, name: admin.name, role: admin.role },
+      },
+      sessionSetCookie(req, "admin", token)
+    );
   }
 
   /* ---- GET /api/me ---- */
@@ -1248,10 +1488,19 @@ async function handleApi(req, res, pathname) {
 
   /* ---- POST /api/logout ---- */
   if (pathname === "/api/logout" && req.method === "POST") {
-    const header = req.headers.authorization || "";
-    const token = header.startsWith("Bearer ") ? header.slice(7) : null;
-    if (token) sessions.delete(token);
-    return sendJson(res, 200, { ok: true });
+    const cookies = readCookies(req);
+    const adminToken = requestToken(req, "admin");
+    const studentToken = cookies[SESSION_COOKIES.student] || null;
+    if (adminToken) sessions.delete(adminToken);
+    if (studentToken) sessions.delete(studentToken);
+    // Expire both cookies: signing out of one page must not leave the other
+    // tab silently signed in.
+    return sendJson(
+      res,
+      200,
+      { ok: true },
+      [clearSessionCookie(req, "admin"), clearSessionCookie(req, "student")]
+    );
   }
 
   /* ================= Student self-service accounts =================
@@ -1389,6 +1638,9 @@ async function handleApi(req, res, pathname) {
         : "New-student application: Student ID not on the roster yet (pending approval)"
     );
     saveDb(db);
+    // Rebuild the workbook once the log line is in it too, so database.xlsx is
+    // complete the moment the sign-up succeeds.
+    saveWorkbook();
     clearLoginAttempts(req, "signup");
 
     // The student is told the same thing either way: the account exists and is
@@ -1450,10 +1702,12 @@ async function handleApi(req, res, pathname) {
     const token = createStudentSession(account);
     appendLog(db, account.studentId, "student-login", account.studentId, "Student signed in");
     saveDb(db);
-    return sendJson(res, 200, {
-      token,
-      student: { studentId: account.studentId, fullname: account.fullname },
-    });
+    return sendJson(
+      res,
+      200,
+      { token, student: { studentId: account.studentId, fullname: account.fullname } },
+      sessionSetCookie(req, "student", token)
+    );
   }
 
   /* ---- GET /api/student/me  (the signed-in student's own record) ---- */
@@ -1637,6 +1891,7 @@ async function handleApi(req, res, pathname) {
       "Approved the account for " + student.name + " — written to database.xlsx"
     );
     saveDb(db);
+    saveWorkbook();
     return sendJson(res, 200, {
       student: studentForApi(student),
       credentials: student.passwordNote
@@ -1662,6 +1917,18 @@ async function handleApi(req, res, pathname) {
       "Cache-Control": "no-store",
     });
     return res.end(data);
+  }
+
+  /* ---- POST /api/database/sync  (write the dashboard state into the workbook) ---- */
+  if (pathname === "/api/database/sync" && req.method === "POST") {
+    const session = requireAuth(req, res);
+    if (!session) return;
+    saveWorkbook();
+    const db = loadDb();
+    appendLog(db, session.username, "database-sync", "database.xlsx",
+      "Excel database refreshed from the dashboard");
+    saveDb(db);
+    return sendJson(res, 200, { ok: true, file: path.basename(DB_FILE), savedAt: new Date().toISOString() });
   }
 
   /* ---- POST /api/student/password  (a student changes their own password) ---- */
@@ -2427,8 +2694,91 @@ async function handleApi(req, res, pathname) {
 
 /** The one place a static 404 is written, so the format cannot drift. */
 function notFound(res) {
-  res.writeHead(404, { "Content-Type": "text/plain" });
+  res.writeHead(404, { "Content-Type": "text/plain", "Cache-Control": "no-store" });
   res.end("Not found");
+}
+
+/**
+ * Files already read and compressed once, keyed by path.
+ *
+ * The site is a handful of CSS/JS/images that never change while the server
+ * is running, so reading them from disk on every request is wasted work.
+ * Caching them at boot makes a first visit cost a map lookup instead of a
+ * `stat` + `readFile` per asset. The key includes size and mtime, so editing a
+ * file (or the dev restarting) drops the old entry instead of serving stale
+ * output. HTML is deliberately NOT preloaded: it is the thing most likely to
+ * change, and it is tiny.
+ */
+const assetCache = new Map();
+const ASSET_CACHE_TTL_MS = 60 * 1000;
+const COMPRESSIBLE_EXT = [".html", ".css", ".js", ".json", ".svg", ".txt"];
+
+/**
+ * The policy for HTML documents.
+ *
+ * A page may only load script and style from this site — no inline <script>,
+ * no eval, no third-party CDN. So even if a student's name or a note ever
+ * reached the DOM unescaped, the injected markup has no way to run. Images may
+ * come from this site or from data: URIs (used by the stylesheet).
+ *
+ * Pushed as a header, not a <meta>, so it cannot be stripped by an injected
+ * fragment and applies before the first byte of the document is parsed.
+ */
+const DOCUMENT_CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self'",
+  "img-src 'self' data:",
+  "font-src 'self' data:",
+  "connect-src 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "object-src 'none'",
+].join("; ");
+
+function cachedAsset(full, stats) {
+  const stamp = full + "|" + stats.size + "|" + stats.mtimeMs;
+  const hit = assetCache.get(stamp);
+  if (hit && Date.now() - hit.at < ASSET_CACHE_TTL_MS) return hit.data;
+  const data = fs.readFileSync(full);
+  assetCache.set(stamp, { data, at: Date.now() });
+  // Keep the map from growing as files are edited over a long run.
+  if (assetCache.size > 200) {
+    const oldest = assetCache.keys().next().value;
+    assetCache.delete(oldest);
+  }
+  return data;
+}
+
+/**
+ * How long a browser may reuse a file.
+ *
+ * Images are effectively immutable, so they get a week. CSS and JS get a
+ * revalidation window (the browser asks, and gets a 304, which costs a few
+ * bytes instead of re-downloading the file). HTML is always revalidated so a
+ * deploy is visible on the next refresh rather than a day later.
+ */
+function cacheControlFor(ext) {
+  if ([".png", ".jpg", ".jpeg", ".webp", ".svg", ".ico"].includes(ext)) {
+    return "public, max-age=604800";
+  }
+  if ([".css", ".js"].includes(ext)) return "public, max-age=3600, must-revalidate";
+  return "no-cache";
+}
+
+/** Weak ETag from size + mtime: changes exactly when the file changes. */
+function etagFor(stats) {
+  return 'W/"' + stats.size.toString(16) + "-" + Math.floor(stats.mtimeMs).toString(16) + '"';
+}
+
+function ifNoneMatch(req, etag) {
+  const header = String(req.headers["if-none-match"] || "");
+  if (!header) return false;
+  return header.split(",").some(function (part) {
+    const value = part.trim();
+    return value === "*" || value === etag || value.replace(/^W\//, "") === etag.replace(/^W\//, "");
+  });
 }
 
 /**
@@ -2439,13 +2789,43 @@ function notFound(res) {
 function handleHealth(res) {
   try {
     loadDb();
-    res.writeHead(200, { "Content-Type": "application/json" });
+    res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
     return res.end(JSON.stringify({ ok: true }));
   } catch (err) {
     console.error("Health check failed:", err.message);
-    res.writeHead(503, { "Content-Type": "application/json" });
+    res.writeHead(503, { "Content-Type": "application/json", "Cache-Control": "no-store" });
     return res.end(JSON.stringify({ ok: false, error: "database unreadable" }));
   }
+}
+
+/**
+ * Read the front-end files into memory at boot.
+ *
+ * Called once when the server starts, so the first visitor after a deploy is
+ * not the one who pays for the disk reads. Failures are ignored: a file that
+ * cannot be read now is still served (or 404s) correctly on demand.
+ */
+function warmAssetCache() {
+  let count = 0;
+  ["html", "css", "js", "png", "jpg", "jpeg", "svg", "webp", "ico"].forEach(function (ext) {
+    fs.readdirSync(ROOT)
+      .filter(function (name) {
+        return path.extname(name).toLowerCase() === "." + ext && !name.startsWith("_");
+      })
+      .forEach(function (name) {
+        try {
+          const full = path.join(ROOT, name);
+          const stats = fs.statSync(full);
+          if (stats.isFile()) {
+            cachedAsset(full, stats);
+            count += 1;
+          }
+        } catch (err) {
+          // A half-copied file is not a reason to refuse to boot.
+        }
+      });
+  });
+  console.log("  Assets : " + count + " files cached in memory");
 }
 
 function serveStatic(req, res, pathname) {
@@ -2490,31 +2870,98 @@ function serveStatic(req, res, pathname) {
   fs.stat(full, (statErr, stats) => {
     if (statErr || !stats.isFile()) return notFound(res);
 
-    fs.readFile(full, (err, data) => {
-      if (err) return notFound(res);
-      res.writeHead(200, { "Content-Type": MIME[path.extname(full)] || "application/octet-stream" });
-      res.end(data);
-    });
+    const headers = {
+      "Content-Type": MIME[path.extname(full)] || "application/octet-stream",
+      "Cache-Control": cacheControlFor(ext),
+      ETag: etagFor(stats),
+      "Last-Modified": stats.mtime.toUTCString(),
+      "Vary": "Accept-Encoding",
+    };
+
+    // The browser already has this exact version: 304, no body, a few bytes.
+    if (ifNoneMatch(req, headers.ETag)) {
+      res.writeHead(304, headers);
+      return res.end();
+    }
+
+    let data;
+    try {
+      data = cachedAsset(full, stats);
+    } catch (err) {
+      return notFound(res);
+    }
+
+    // Compress markup and code on the way out. Images are already compressed,
+    // so they are sent as they are.
+    if (!COMPRESSIBLE_EXT.includes(ext)) {
+      headers["Content-Length"] = data.length;
+      res.writeHead(200, headers);
+      return res.end(req.method === "HEAD" ? undefined : data);
+    }
+    // HTML is a document, so it gets the full policy. Assets are scripts,
+    // styles and images — the strict policy governs what they may load, not
+    // the asset response itself, so it belongs on the document only.
+    if (ext === ".html") {
+      headers["Content-Security-Policy"] = DOCUMENT_CSP;
+      headers["X-Robots-Tag"] = "noindex, nofollow";
+    }
+    sendMaybeCompressed(req, res, 200, headers["Content-Type"], data, headers);
   });
 }
 
 const server = http.createServer((req, res) => {
+  // Every response — page, API, error — carries the security headers before
+  // any route gets a chance to forget one.
+  const sec = securityHeaders(req);
+  Object.keys(sec).forEach(function (name) {
+    res.setHeader(name, sec[name]);
+  });
+
   // decodeURIComponent throws on a stray percent (e.g. "/%zz"), which would
   // abort the request with no response at all; a malformed path is a 400.
   let pathname;
   try {
     pathname = decodeURIComponent(req.url.split("?")[0]);
   } catch (err) {
-    res.writeHead(400, { "Content-Type": "text/plain" });
+    res.writeHead(400, { "Content-Type": "text/plain", "Cache-Control": "no-store" });
     return res.end("Bad request");
   }
 
   if (pathname === "/healthz") return handleHealth(res);
 
   if (pathname.startsWith("/api/")) {
+    // A page on another site must not be able to drive this API with the
+    // visitor's cookie attached.
+    if (crossSiteRequest(req)) {
+      return sendJson(res, 403, { error: "Cross-site requests are not allowed" });
+    }
+    // The API speaks JSON only. A form post or text body is refused outright.
+    if (req.method === "POST" || req.method === "PATCH" || req.method === "PUT") {
+      const type = String(req.headers["content-type"] || "").toLowerCase();
+      if (type && type.indexOf("application/json") !== 0) {
+        return sendJson(res, 415, { error: "Send JSON with Content-Type: application/json" });
+      }
+      const length = Number(req.headers["content-length"] || 0);
+      if (length > 1e6) {
+        return sendJson(res, 413, { error: "Request body is too large" });
+      }
+    }
+    // API answers are JSON and compress very well. Record on the response
+    // whether this client asked for gzip, and sendJson() honours it.
+    res.spaAcceptsGzip = /\bgzip\b/i.test(String(req.headers["accept-encoding"] || ""));
     handleApi(req, res, pathname).catch((err) => {
+      // Log the detail for the operator, but never hand an internal message
+      // (file paths, stack-shaped text) to the caller.
       console.error("API error:", err);
-      sendJson(res, 500, { error: err.message || "Server error" });
+      const tooLarge = /Payload too large/.test(err.message || "");
+      const badJson = /JSON/.test(err.message || "");
+      sendJson(res, tooLarge ? 413 : badJson ? 400 : 500, {
+        error: tooLarge
+          ? "Request body is too large"
+          : badJson
+            ? err.message
+            : "Something went wrong. Please try again.",
+      });
     });
     return;
   }
@@ -2541,6 +2988,7 @@ server.listen(PORT, () => {
   console.log("Saint Patrick's Academy portal running at " + base);
   console.log("  Portal : " + base + "/");
   console.log("  Admin  : " + base + "/admin.html");
+  warmAssetCache();
   // Print where the data came from. If this path is inside the repo instead of
   // on the mounted volume, every change is lost on the next restart — the
   // single most common way to get this deployment wrong.

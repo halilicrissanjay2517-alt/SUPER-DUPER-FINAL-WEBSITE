@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="How the Saint Patrick's Academy Student Portal handles personal information, the one cookie it uses, and the security measures that protect your account.">
+    <meta name="theme-color" content="#04231a">
+    <title>Privacy &amp; Cookies — Saint Patrick's Academy, Inc.</title>
+    <link rel="icon" href="logo.png">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="page-sub">
+
+    <a class="skip-link" href="#main">Skip to main content</a>
+    <div class="reading-progress" aria-hidden="true"><span id="readingProgress"></span></div>
+
+    <div class="utility-bar">
+        <div class="utility-inner">
+            <span class="utility-item">Yakal 1, Paltic, Dingalan, Aurora, Philippines</span>
+            <span class="utility-item">(042) 555-0168</span>
+            <span class="utility-item utility-note">Office hours: Mon–Fri, 8:00 AM – 5:00 PM</span>
+        </div>
+    </div>
+
+    <header class="site-header" id="top">
+        <nav class="nav" aria-label="Primary">
+            <a class="brand" href="studentportal.html">
+                <img src="logo.png" alt="Saint Patrick's Academy, Inc. logo">
+                <span class="brand-text">
+                    <strong>Saint Patrick's Academy, Inc.</strong>
+                    <small>Student Portal</small>
+                </span>
+            </a>
+            <div class="nav-links">
+                <a href="studentportal.html#features">Features</a>
+                <a href="studentportal.html#announcements-list">Announcements</a>
+                <a href="studentportal.html#contact">Contact</a>
+                <button type="button" class="btn btn-ghost nav-toggle" data-menu-toggle aria-expanded="false" aria-controls="siteMenu">
+                    <span class="sr-only">Open menu</span>
+                    <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6Zm0 5h18v2H3v-2Zm0 5h18v2H3v-2Z"/></svg>
+                </button>
+            </div>
+        </nav>
+    </header>
+
+    <div class="menu-scrim" id="menuScrim" hidden></div>
+
+    <aside class="side-menu" id="siteMenu" aria-label="Site menu" aria-hidden="true">
+        <div class="side-menu-head">
+            <a class="side-menu-brand" href="studentportal.html" data-menu-link>
+                <img src="logo.png" alt="Saint Patrick's Academy, Inc. logo">
+                <span class="side-menu-brand-text">
+                    <strong>Saint Patrick's Academy, Inc.</strong>
+                    <small>Student Portal</small>
+                </span>
+            </a>
+            <button type="button" class="side-menu-close" id="menuClose" aria-label="Close menu">&times;</button>
+        </div>
+
+        <nav class="side-menu-nav" aria-label="Site">
+            <a href="studentportal.html" data-menu-link>Home</a>
+            <a href="about.html" data-menu-link>About</a>
+            <a href="features.html" data-menu-link>Features</a>
+            <a href="studentportal.html" data-menu-link>Student Portal</a>
+            <a href="faculty.html" data-menu-link>Faculty &amp; Staff</a>
+            <a href="studentportal.html#announcements-list" data-menu-link>Announcements</a>
+            <a href="studentportal.html#directory" data-menu-link>Directory</a>
+            <a href="studentportal.html#contact" data-menu-link>Contact</a>
+            <a href="privacy.html" class="is-current" aria-current="page" data-menu-link>Privacy &amp; cookies</a>
+        </nav>
+
+        <div class="side-menu-foot">
+            <a class="side-menu-admin" href="admin.html" data-menu-link>Admin sign-in</a>
+            <p class="side-menu-contact">
+                Yakal 1, Paltic, Dingalan, Aurora<br>
+                (042) 555-0168 &middot; Mon–Fri, 8:00 AM – 5:00 PM
+            </p>
+        </div>
+    </aside>
+
+    <main id="main">
+
+        <section class="sub-hero">
+            <div class="sub-hero-bg" aria-hidden="true"></div>
+            <div class="section-inner sub-hero-inner">
+                <nav class="crumbs" aria-label="Breadcrumb">
+                    <a href="studentportal.html">Home</a>
+                    <span aria-hidden="true">/</span>
+                    <span aria-current="page">Privacy &amp; cookies</span>
+                </nav>
+                <span class="eyebrow eyebrow-light">Data protection</span>
+                <h1>Privacy &amp; cookies</h1>
+                <p class="lead">
+                    What the student portal stores, why it stores it, and the measures that keep
+                    it safe. Written plainly, so a student or a parent can read it in full.
+                </p>
+            </div>
+        </section>
+
+        <nav class="sub-nav" aria-label="On this page">
+            <div class="section-inner sub-nav-inner">
+                <a href="#cookies">Cookies</a>
+                <a href="#information">Information we hold</a>
+                <a href="#security">Security</a>
+                <a href="#your-rights">Your choices</a>
+            </div>
+        </nav>
+
+        <div class="section-inner stack">
+
+            <!-- 1. Cookies -->
+            <section class="detail" id="cookies">
+                <div class="detail-head">
+                    <span class="detail-num" aria-hidden="true">01</span>
+                    <div>
+                        <span class="eyebrow eyebrow-dark">Cookies</span>
+                        <h2 class="section-title">One cookie, and only when you sign in</h2>
+                        <p class="muted">No advertising cookies. No analytics cookies. No third-party cookies.</p>
+                    </div>
+                </div>
+
+                <div class="detail-body">
+                    <div class="detail-copy">
+                        <h3>What is set</h3>
+                        <p>
+                            When you sign in, the server sets a single session cookie — <code>spa_student_sid</code>
+                            for a student account, <code>spa_admin_sid</code> for an office account. It holds a random
+                            identifier that tells the server who you are for the rest of the visit.
+                        </p>
+
+                        <h3>How it is protected</h3>
+                        <ul class="check-list">
+                            <li><strong>HttpOnly</strong> — scripts on the page cannot read it, so a bad link or an injected script cannot copy your session.</li>
+                            <li><strong>Secure</strong> — sent only over HTTPS once the site is served that way.</li>
+                            <li><strong>SameSite=Lax</strong> — another website cannot make a browser send it with a forged request.</li>
+                            <li><strong>Expires after 8 hours</strong> — and is deleted the moment you sign out.</li>
+                        </ul>
+
+                        <p class="callout">
+                            <strong>Strictly necessary.</strong> This cookie is what keeps you signed in; the portal
+                            cannot work without it. That is why the notice on each page does not turn analytics on
+                            or off — there is nothing optional to turn on.
+                        </p>
+
+                        <h3>Small preferences</h3>
+                        <p>
+                            One small value lives in your browser's own storage, not in a cookie: whether you
+                            have acknowledged this notice, so it does not reappear on every page. It stays on your
+                            device and is never sent to the school. Anything you type into a search box is sent
+                            with that one look-up and is not stored by your browser.
+                        </p>
+                    </div>
+
+                    <aside class="detail-side">
+                        <h3>At a glance</h3>
+                        <dl class="fact-list">
+                            <div><dt>Cookies set</dt><dd>1 (session only)</dd></div>
+                            <div><dt>Advertising</dt><dd>None</dd></div>
+                            <div><dt>Analytics</dt><dd>None</dd></div>
+                            <div><dt>Lifetime</dt><dd>8 hours</dd></div>
+                        </dl>
+                    </aside>
+                </div>
+            </section>
+
+            <!-- 2. Information -->
+            <section class="detail" id="information">
+                <div class="detail-head">
+                    <span class="detail-num" aria-hidden="true">02</span>
+                    <div>
+                        <span class="eyebrow eyebrow-dark">Records</span>
+                        <h2 class="section-title">What the school holds about you</h2>
+                        <p class="muted">Only what the registrar's office needs to run enrollment and tuition.</p>
+                    </div>
+                </div>
+
+                <div class="detail-body">
+                    <div class="detail-copy">
+                        <h3>Student record</h3>
+                        <p>
+                            Student ID, name, grade and section, enrollment status, guardian and contact details,
+                            and the tuition figures — total fee, amount paid, remaining balance and payment history.
+                        </p>
+                        <h3>Account</h3>
+                        <p>
+                            The email you sign up with and a salted hash of your password. Your password itself is
+                            never stored or shown back to anyone. The office may also record whether an account was
+                            approved, by whom, and when.
+                        </p>
+                        <h3>Activity log</h3>
+                        <p>
+                            Who signed in and which record was changed — kept so a mistake or a disputed payment
+                            can be traced.
+                        </p>
+                        <p>
+                            All of this lives in one school-owned spreadsheet on the school's own server. It is not
+                            sold, shared with advertisers, or sent to any outside service.
+                        </p>
+                    </div>
+
+                    <aside class="detail-side">
+                        <h3>What is public</h3>
+                        <ul class="check-list">
+                            <li>School announcements</li>
+                            <li>Grade and section for a Student ID you know</li>
+                            <li>A count of enrolled students</li>
+                            <li><strong>Never</strong> fees or balances</li>
+                        </ul>
+                    </aside>
+                </div>
+            </section>
+
+            <!-- 3. Security -->
+            <section class="detail" id="security">
+                <div class="detail-head">
+                    <span class="detail-num" aria-hidden="true">03</span>
+                    <div>
+                        <span class="eyebrow eyebrow-dark">Protection</span>
+                        <h2 class="section-title">How your account is protected</h2>
+                        <p class="muted">Defences that apply to every request, not just the ones that look suspicious.</p>
+                    </div>
+                </div>
+
+                <div class="detail-body">
+                    <div class="detail-copy">
+                        <ul class="check-list">
+                            <li>Sessions are kept in a cookie no script can read, and end when you sign out.</li>
+                            <li>Passwords are stored only as salted hashes.</li>
+                            <li>Repeated wrong passwords are throttled, per address and per route, to stop guessing.</li>
+                            <li>Every response forbids framing, type sniffing and plugin content, and states exactly which scripts the page may run.</li>
+                            <li>Requests that did not come from this site are refused.</li>
+                            <li>Fees and balances are returned only to the signed-in student they belong to.</li>
+                            <li>The office can withdraw an account at any moment, which ends its open sessions immediately.</li>
+                        </ul>
+                    </div>
+
+                    <aside class="detail-side">
+                        <h3>If something looks wrong</h3>
+                        <p class="muted">
+                            Sign out, then contact the registrar's office at (042) 555-0168 so the
+                            account can be reviewed.
+                        </p>
+                    </aside>
+                </div>
+            </section>
+
+            <!-- 4. Rights -->
+            <section class="detail" id="your-rights">
+                <div class="detail-head">
+                    <span class="detail-num" aria-hidden="true">04</span>
+                    <div>
+                        <span class="eyebrow eyebrow-dark">Your choices</span>
+                        <h2 class="section-title">Seeing, correcting, and leaving</h2>
+                        <p class="muted">Your record is yours to check.</p>
+                    </div>
+                </div>
+
+                <div class="detail-body">
+                    <div class="detail-copy">
+                        <p>
+                            Sign in at any time to see your own record and payment history, and to change your
+                            password. To correct a name, grade, section or contact detail, ask the registrar's
+                            office — school records are changed there so the office's copy stays the authoritative one.
+                        </p>
+                        <p>
+                            To have your account closed, ask the office. Your student record remains part of the
+                            school's academic history, but the login is removed and its sessions end at once.
+                        </p>
+                    </div>
+
+                    <aside class="detail-side">
+                        <h3>Questions</h3>
+                        <p class="muted">
+                            Registrar's office<br>
+                            (042) 555-0168<br>
+                            Mon–Fri, 8:00 AM – 5:00 PM
+                        </p>
+                    </aside>
+                </div>
+            </section>
+
+            <section class="cta-strip">
+                <div>
+                    <h2>Back to the portal</h2>
+                    <p class="muted">Your records are waiting after you sign in.</p>
+                </div>
+                <div class="cta-actions">
+                    <a class="btn btn-primary" href="studentportal.html">Go to home page</a>
+                    <a class="btn btn-secondary" href="studentportal.html#contact">Contact the office</a>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="footer-inner">
+            <div>
+                <strong>Saint Patrick's Academy, Inc.</strong>
+                <p class="muted">Non-stock, non-profit Catholic institution &middot; Founded 1968</p>
+            </div>
+            <nav class="footer-links" aria-label="Footer">
+                <a href="about.html">About</a>
+                <a href="features.html">Features</a>
+                <a href="studentportal.html">Student Portal</a>
+                <a href="faculty.html">Faculty &amp; Staff</a>
+                <a href="privacy.html">Privacy &amp; cookies</a>
+                <a href="studentportal.html#contact">Contact</a>
+            </nav>
+        </div>
+        <p class="copyright">&copy; <span id="year">2025</span> Saint Patrick's Academy, Inc. All rights reserved.</p>
+    </footer>
+
+    <button type="button" class="back-to-top" data-back-to-top aria-label="Back to top">
+        <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 6l6 6h-4v6h-4v-6H6l6-6Z"/></svg>
+    </button>
+
+    <script src="script.js"></script>
+    <script src="cookie-consent.js" defer></script>
+</body>
+</html>

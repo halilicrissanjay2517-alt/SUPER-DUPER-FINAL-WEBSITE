@@ -507,6 +507,19 @@
   font-size: 17px;
 }
 
+/* The initials disc palette. admin.js hashes the Student ID to one of these
+   classes (avatar-tone-0 … avatar-tone-7) instead of writing an inline
+   `background:` — the Content-Security-Policy forbids inline style, and the
+   disc would simply render blank. Keep this list and AVATAR_TONES in step. */
+.avatar-tone-0 { background: #0b5c34; }
+.avatar-tone-1 { background: #1d6fb8; }
+.avatar-tone-2 { background: #8a5a00; }
+.avatar-tone-3 { background: #7a3f8f; }
+.avatar-tone-4 { background: #b23a48; }
+.avatar-tone-5 { background: #0e7490; }
+.avatar-tone-6 { background: #4d7c0f; }
+.avatar-tone-7 { background: #9a3412; }
+
 
 .acct-meta {
   display: flex;
@@ -1368,4 +1381,42 @@ tr.review-row > td {
   border-color: rgba(47, 109, 79, 0.45);
   color: #1e4d35;
   font-weight: 700;
+}
+
+/* ---------------------------------------------------------------------------
+   Runtime appearance changes, as classes.
+
+   The page is served with a Content-Security-Policy of style-src 'self', which
+   refuses any inline `style` attribute — including one written by script. So
+   every appearance change admin.js makes is expressed here and toggled by
+   class name (see dom-styles.js). Values match what the script used to set.
+   --------------------------------------------------------------------------- */
+
+/* Status dropdown: a coloured left bar that matches the status badge. */
+.admin-table select.cell-input {
+  border-left-style: solid;
+}
+.admin-table select.cell-input.status-tone-green { border-left-color: #158a54; }
+.admin-table select.cell-input.status-tone-amber { border-left-color: #b7791f; }
+.admin-table select.cell-input.status-tone-blue  { border-left-color: #1e6fd9; }
+
+/* A cell flashes mint for a moment after its value is saved. */
+.admin-table .is-saved-flash {
+  background-color: #d7f2e2;
+  transition: background-color 0.3s ease;
+}
+
+/* A round icon button that carries a word as well as an icon
+   (the Enable / Disable control in Administrators). */
+.icon-btn.icon-btn-label {
+  width: auto;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Small explanatory line inside a modal. A class rather than an inline
+   `style="font-size:13px"`, which the Content-Security-Policy refuses. */
+.modal-hint {
+  font-size: 13px;
 }

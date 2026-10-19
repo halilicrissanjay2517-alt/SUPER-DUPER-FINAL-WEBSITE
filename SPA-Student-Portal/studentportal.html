@@ -1,19 +1,18 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Saint Patrick's Academy, Inc. — student portal for announcements, enrollment, records, and payments.">
+    <meta name="description" content="Saint Patrick's Academy, Inc. â€” student portal for announcements, enrollment, records, and payments.">
     <meta name="theme-color" content="#04231a">
-    <title>Saint Patrick's Academy, Inc. — Student Portal</title>
+    <title>Saint Patrick's Academy, Inc. â€” Student Portal</title>
     <link rel="icon" href="logo.png">
     <link rel="stylesheet" href="styles.css">
-    <script>
-        /* Mark the document as "booting" before the first paint, so the intro
-           splash covers the page from the very first frame instead of the raw
-           content flashing in. Removed by script.js once the site is ready. */
-        document.documentElement.classList.add("is-booting");
-    </script>
+    <!-- The boot marker that used to be inline here lives in boot.js. The
+         server's Content-Security-Policy forbids inline script, which is what
+         stops injected markup from running at all; this file keeps the very
+         first frame identical. -->
+    <script src="boot.js"></script>
 </head>
 <body>
     <!-- ================= INTRO SPLASH =================
@@ -61,7 +60,7 @@
                 <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2Z"/></svg>
                 (042) 555-0168
             </span>
-            <span class="utility-item utility-note">Office hours: Mon–Fri, 8:00 AM – 5:00 PM</span>
+            <span class="utility-item utility-note">Office hours: Monâ€“Fri, 8:00 AM â€“ 5:00 PM</span>
         </div>
     </div>
 
@@ -80,16 +79,16 @@
                 <a href="#features">Features</a>
                 <a href="#announcements-list">Announcements</a>
                 <a href="#contact">Contact</a>
-                <button type="button" class="btn btn-ghost nav-toggle" data-menu-toggle aria-expanded="false" aria-controls="siteMenu">
-                    <span class="sr-only">Open menu</span>
-                    <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6Zm0 5h18v2H3v-2Zm0 5h18v2H3v-2Z"/></svg>
-                </button>
             </div>
             <!-- CASPI (Catholic Association of Schools in the Prelature of Infanta)
                  seal, mirroring the SPA logo on the left of the header. -->
             <span class="nav-partner" title="Catholic Association of Schools in the Prelature of Infanta">
                 <img src="CASPI LOGO.jpg" alt="Catholic Association of Schools in the Prelature of Infanta logo">
             </span>
+            <button type="button" class="btn btn-ghost nav-toggle" data-menu-toggle aria-expanded="false" aria-controls="siteMenu">
+                <span class="sr-only">Open menu</span>
+                <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6Zm0 5h18v2H3v-2Zm0 5h18v2H3v-2Z"/></svg>
+            </button>
         </nav>
     </header>
 
@@ -131,7 +130,7 @@
             </a>
             <p class="side-menu-contact">
                 Yakal 1, Paltic, Dingalan, Aurora<br>
-                (042) 555-0168 &middot; Mon–Fri, 8:00 AM – 5:00 PM
+                (042) 555-0168 &middot; Monâ€“Fri, 8:00 AM â€“ 5:00 PM
             </p>
         </div>
     </aside>
@@ -251,7 +250,7 @@
                         Saint Patrick's Academy, Inc. is named for the missionary bishop who
                         brought the Christian faith to Ireland. Captured as a young man and held
                         in slavery, he escaped and later returned to the land of his captivity to
-                        serve the people who had enslaved him — a life that stands, above all,
+                        serve the people who had enslaved him â€” a life that stands, above all,
                         for perseverance, service, and forgiveness.
                     </p>
 
@@ -261,7 +260,7 @@
                             Founded in 1968 as a non-stock, non-profit Catholic institution, Saint
                             Patrick's Academy has served the families of Dingalan and the wider
                             province of Aurora for more than half a century. What began as a small
-                            parish school grew, class by class, into the academy it is today —
+                            parish school grew, class by class, into the academy it is today â€”
                             formed by the parishes, teachers, and parents who gave it their time.
                         </p>
                         <p>
@@ -409,7 +408,7 @@
             <div class="records-toolbar">
                 <label class="field">
                     <span class="sr-only">Student ID</span>
-                    <input type="search" id="studentSearch" placeholder="Enter your Student ID, e.g. 2024-001…" autocomplete="off">
+                    <input type="search" id="studentSearch" placeholder="Enter your Student ID, e.g. 2024-001â€¦" autocomplete="off">
                 </label>
                 <button type="button" class="btn btn-primary" id="studentLookupBtn">Look up</button>
                 <span class="result-count" id="resultCount"></span>
@@ -553,6 +552,7 @@
                 <a href="#announcements-list">Announcements</a>
                 <a href="#directory">Directory</a>
                 <a href="#contact">Contact</a>
+                <a href="privacy.html">Privacy &amp; cookies</a>
             </nav>
         </div>
         <p class="copyright">&copy; <span id="year">2025</span> Saint Patrick's Academy, Inc. All rights reserved.</p>
@@ -672,5 +672,6 @@
     </div>
 
     <script src="script.js"></script>
+    <script src="cookie-consent.js" defer></script>
 </body>
 </html>

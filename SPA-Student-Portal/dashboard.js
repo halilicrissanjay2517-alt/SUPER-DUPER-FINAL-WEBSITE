@@ -6,8 +6,10 @@
 
   var $ = function (sel, scope) { return (scope || document).querySelector(sel); };
 
-  var TOKEN_KEY = "spa_student_token";
-  var token = localStorage.getItem(TOKEN_KEY) || null;
+  /* The session is an HttpOnly cookie set by the server, so this page holds no
+     token at all and `hasSession` is only a hint. The cookie cannot be read by
+     a script, which is what stops an injected script from stealing it. */
+  var hasSession = true;
 
   /* ---------- Helpers ---------- */
   function peso(value) {
@@ -57,13 +59,22 @@
     return { text: niceDate(day), note: "", overdue: false, soon: false };
   }
 
+  /** The API of THIS site only — never send a session anywhere else. */
+  function apiUrl(pathname) {
+    var url = new URL(pathname, window.location.href);
+    if (url.origin !== window.location.origin) {
+      throw new Error("Refusing to send credentials to another site");
+    }
+    return url.href;
+  }
+
   function studentApi(pathname, options) {
     options = options || {};
     var headers = { "Content-Type": "application/json" };
-    if (token) headers.Authorization = "Bearer " + token;
-    return fetch(pathname, {
+    return fetch(apiUrl(pathname), {
       method: options.method || "GET",
       headers: headers,
+      credentials: "same-origin",
       body: options.body ? JSON.stringify(options.body) : undefined,
     }).then(function (res) {
       return res.json().catch(function () { return {}; }).then(function (data) {
@@ -371,9 +382,10 @@
   }
 
   function signOut() {
+    // The server expires the cookie, so even a copied URL cannot reopen this
+    // page as the student afterwards.
     studentApi("/api/logout", { method: "POST" }).catch(function () {});
-    token = null;
-    localStorage.removeItem(TOKEN_KEY);
+    hasSession = false;
     window.location.href = "studentportal.html";
   }
 
@@ -397,7 +409,7 @@
   }
 
   function boot() {
-    if (!token) {
+    if (!hasSession) {
       showBlocked(
         "This page shows your own tuition and payment records, so it is only " +
         "available after you sign in."
@@ -406,8 +418,7 @@
     }
 
     loadAccount().catch(function (err) {
-      token = null;
-      localStorage.removeItem(TOKEN_KEY);
+      hasSession = false;
       if (err.status === 401 || err.status === 403) {
         showBlocked("Your session has ended. Please sign in again to see your account.");
       } else {
@@ -457,7 +468,7 @@
   var refreshBtn = $("#dashRefreshBtn");
   if (refreshBtn) {
     refreshBtn.addEventListener("click", function () {
-      if (!token) return;
+      if (!hasSession) return;
       refreshBtn.setAttribute("aria-busy", "true");
       refreshBtn.disabled = true;
       loadAccount()
@@ -466,8 +477,7 @@
         })
         .catch(function (err) {
           if (err.status === 401 || err.status === 403) {
-            token = null;
-            localStorage.removeItem(TOKEN_KEY);
+            hasSession = false;
             showBlocked("Your session has ended. Please sign in again to see your account.");
           } else {
             setStatus($("#dashProfileFormStatus"), err.message || "Could not refresh.", "error");

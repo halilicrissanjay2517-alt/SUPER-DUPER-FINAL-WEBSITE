@@ -610,10 +610,14 @@ body.menu-open .feature-drawer-tab {
    without dragging the text along with it.
    `cover` fills the whole area edge to edge — no letterbox strips. Pair it with
    a slightly larger inset so the parallax drift never exposes an edge. */
+/* The parallax offset is a custom property (`--hero-shift`), set by script.js.
+   An inline `transform` would be refused by the style-src policy. */
 .hero-bg {
   position: absolute;
   inset: -6% 0;
   background: url("bg.jpg") center/cover no-repeat;
+  transform: translateY(var(--hero-shift, 0px));
+  will-change: transform;
 }
 
 /* While a modal is open the page behind is inert, so nothing back there needs
@@ -633,7 +637,10 @@ body.menu-open .feature-drawer-tab {
 /* Nothing far from a dialog needs to animate while it is open. Settle the
    reveal layers so their permanent `will-change` is released exactly when the
    user is typing. */
-.modal-open .reveal {
+.modal-open .reveal,
+/* script.js marks a layer it has settled with this class, so releasing the GPU
+   layer needs no inline style (which the CSP forbids). */
+.reveal.is-settled {
   will-change: auto;
 }
 
@@ -799,11 +806,14 @@ body.menu-open .feature-drawer-tab {
   pointer-events: none;
 }
 
+/* The width is driven by script as a CSS custom property rather than an inline
+   style: the Content-Security-Policy (style-src 'self') refuses inline style
+   attributes. The fallback 0 keeps the bar invisible until the first scroll. */
 .reading-progress span {
   display: block;
   height: 100%;
   width: 100%;
-  transform: scaleX(0);
+  transform: scaleX(var(--read-progress, 0));
   transform-origin: left center;
   background: linear-gradient(90deg, var(--green-600), var(--green-800));
   transition: transform 0.1s linear;
@@ -3447,5 +3457,85 @@ section {
 
   .feature-drawer-tab .drawer-tab-label {
     writing-mode: horizontal-tb;
+  }
+}
+
+/* ============================================================ COOKIE NOTICE
+   A small, quiet panel in the corner: this portal has one essential cookie,
+   and the notice says so without blocking the page. Loaded on every page, so
+   the rules live here where the palette already is. */
+.cookie-notice {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 90;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 18px;
+  max-width: 560px;
+  padding: 16px 18px;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  box-shadow: 0 18px 40px rgba(4, 35, 26, 0.16);
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+.cookie-notice.is-visible {
+  opacity: 1;
+  transform: none;
+}
+.cookie-notice-text {
+  flex: 1 1 300px;
+  min-width: 0;
+}
+.cookie-notice-text strong {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+.cookie-notice-text p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+.cookie-notice-text a {
+  color: var(--green-700);
+  font-weight: 600;
+}
+.cookie-notice-actions {
+  display: flex;
+  gap: 8px;
+}
+.cookie-notice-actions .btn {
+  padding: 8px 16px;
+  font-size: 13px;
+}
+
+@media (max-width: 560px) {
+  .cookie-notice {
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    padding: 14px;
+  }
+  .cookie-notice-actions {
+    width: 100%;
+  }
+  .cookie-notice-actions .btn {
+    flex: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* No slide, but still visible: the fade is the only thing that moves. */
+  .cookie-notice {
+    transition: none;
+    transform: none;
+    opacity: 1;
   }
 }

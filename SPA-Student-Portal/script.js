@@ -101,6 +101,24 @@
   var yearEl = $("#year");
   if (yearEl) yearEl.textContent = String(new Date().getFullYear());
 
+  /* ---------- Live style values, without inline style ----------
+     The server's Content-Security-Policy (style-src 'self') refuses an inline
+     `style` attribute, including one written by script. Three bits of this page
+     need a value that changes every frame — the reading-progress width, the
+     hero photo's parallax offset, and the pointer spotlight's coordinates — so
+     script writes CUSTOM PROPERTIES instead.
+
+     A custom property is set as a plain property on top of the stylesheet's
+     own value, not as an inline style declaration, so the policy allows it. The
+     consumer reads it with var(), and every rule has a static fallback, so the
+     page is fully styled before this file runs.
+
+     (Kept in one place so the pattern is obvious: if you find yourself writing
+     `el.style.something =`, add a custom property here instead.) */
+  function setNumberVar(el, name, value) {
+    if (el) el.style.setProperty(name, String(value));
+  }
+
   /* ---------- Side menu ----------
      One hamburger button opens the full site navigation from the right. The
      scrim, the close button, Escape, a chosen link, and a resize back to the
@@ -291,22 +309,31 @@
   }
 
   /* ---------- Sign-in state ----------
-     The portal keeps the token in localStorage so a student is not asked to
-     sign in again on every visit. It is the student's OWN session: the server
-     only ever returns their record from it. */
-  var STUDENT_TOKEN_KEY = "spa_student_token";
+     The session lives in an HttpOnly cookie the server sets at sign-in, so a
+     student is not asked to sign in on every visit AND no script (including
+     an injected one) can read the session out of localStorage. This page only
+     keeps whether a session is likely to exist. */
   var studentState = {
-    token: localStorage.getItem(STUDENT_TOKEN_KEY) || null,
+    signedIn: false,
     student: null,
   };
+
+  /** Our own API only: the cookie must never travel to another origin. */
+  function studentApiUrl(pathname) {
+    var url = new URL(pathname, window.location.href);
+    if (url.origin !== window.location.origin) {
+      throw new Error("Refusing to send credentials to another site");
+    }
+    return url.href;
+  }
 
   function studentApi(pathname, options) {
     options = options || {};
     var headers = { "Content-Type": "application/json" };
-    if (studentState.token) headers.Authorization = "Bearer " + studentState.token;
-    return fetch(pathname, {
+    return fetch(studentApiUrl(pathname), {
       method: options.method || "GET",
       headers: headers,
+      credentials: "same-origin",
       body: options.body ? JSON.stringify(options.body) : undefined,
     }).then(function (res) {
       return res.json().catch(function () { return {}; }).then(function (data) {
@@ -350,16 +377,15 @@
    * the public page exactly as it was.
    */
   function resumeSession() {
-    if (!studentState.token) return;
+    // Always ask: without a cookie the server answers 401 and nothing happens,
+    // so the public page is unchanged for a first-time visitor.
     studentApi("/api/student/me")
       .then(function () {
+        studentState.signedIn = true;
         window.location.replace(DASHBOARD_URL);
       })
       .catch(function (err) {
-        if (err.status === 401 || err.status === 403) {
-          studentState.token = null;
-          localStorage.removeItem(STUDENT_TOKEN_KEY);
-        }
+        if (err.status === 401 || err.status === 403) studentState.signedIn = false;
       });
   }
 
@@ -634,9 +660,9 @@
           password: loginForm.password.value,
         },
       })
-        .then(function (data) {
-          studentState.token = data.token;
-          localStorage.setItem(STUDENT_TOKEN_KEY, data.token);
+        .then(function () {
+          // The server set the HttpOnly cookie; the page stores nothing.
+          studentState.signedIn = true;
           loginForm.reset();
           $$(".field input", loginForm).forEach(function (i) { i.classList.remove("is-invalid"); });
           setLoginStatus("", "");
@@ -737,10 +763,10 @@
 
   /* ---------- Sign out ---------- */
   function signOut() {
+    // The server expires the HttpOnly cookie; the page has no token to clear.
     studentApi("/api/logout", { method: "POST" }).catch(function () {});
-    studentState.token = null;
     studentState.student = null;
-    localStorage.removeItem(STUDENT_TOKEN_KEY);
+    studentState.signedIn = false;
     applySignedOut();
   }
 
@@ -763,7 +789,8 @@
     var doc = document.documentElement;
     var max = doc.scrollHeight - window.innerHeight;
     var ratio = max > 0 ? Math.min(window.scrollY / max, 1) : 0;
-    if (progressFill) progressFill.style.transform = "scaleX(" + ratio + ")";
+    // The stylesheet does the scaling: transform: scaleX(var(--read-progress)).
+    setNumberVar(progressFill, "--read-progress", ratio);
   };
 
   /* ---------- Scroll reveal ----------
@@ -792,9 +819,19 @@
     // open; it is only re-earned if the section then scrolls into view.
     document.addEventListener("modalopened", function () {
       $$(".reveal:not(.is-visible)").forEach(function (section) {
-        section.style.willChange = "auto";
+        section.classList.add("is-settled");
       });
     });
+    // The sign-in dialog can open without going through the modal helper, so
+    // settle the same layers whenever the page gains the modal-open class.
+    if (window.MutationObserver && document.body) {
+      new MutationObserver(function () {
+        if (!document.body.classList.contains("modal-open")) return;
+        $$(".reveal:not(.is-visible)").forEach(function (section) {
+          section.classList.add("is-settled");
+        });
+      }).observe(document.body, { attributes: true, attributeFilter: ["class"] });
+    }
   }
 
   /* ---------- Animated hero counters ----------
@@ -885,7 +922,8 @@
     // Only worth moving while the hero is anywhere near the viewport.
     if (rect.bottom < 0 || rect.top > window.innerHeight) return;
     // Move opposite the scroll, gently, so it never runs out of photo.
-    heroBg.style.transform = "translateY(" + (-rect.top * 0.18).toFixed(2) + "px)";
+    // The rule is `transform: translateY(var(--hero-shift, 0px))` in styles.css.
+    setNumberVar(heroBg, "--hero-shift", (-rect.top * 0.18).toFixed(2) + "px");
   };
 
   /* ---------- Hero spotlight ----------
@@ -898,8 +936,8 @@
         var rect = heroSection.getBoundingClientRect();
         var x = ((e.clientX - rect.left) / rect.width) * 100;
         var y = ((e.clientY - rect.top) / rect.height) * 100;
-        spot.style.setProperty("--spot-x", x.toFixed(1) + "%");
-        spot.style.setProperty("--spot-y", y.toFixed(1) + "%");
+        setNumberVar(spot, "--spot-x", x.toFixed(1) + "%");
+        setNumberVar(spot, "--spot-y", y.toFixed(1) + "%");
       }, { passive: true });
     }
   }
@@ -955,4 +993,42 @@
     }
     syncAllTables();
   }
+
+  /* ---------- Missing photos degrade gracefully ----------
+     The pages mark a missing portrait with an inline onerror="…". An inline
+     handler is executable markup, so the server's Content-Security-Policy
+     would silently stop it — the broken portrait would stay broken but the
+     placeholder class would never appear.
+
+     This listens for the same event instead. It runs in the CAPTURE phase, so
+     it sees the error before it reaches the <img>, which means the old inline
+     attribute is harmless while it is still there: the class is added first
+     and the later inline run simply adds it again. */
+  var MISSING_PHOTO = "is-missing";
+  var IMG_ERROR_CLASSES = ["is-placeholder", "is-missing"];
+  document.addEventListener(
+    "error",
+    function (event) {
+      var img = event.target;
+      if (!img || img.tagName !== "IMG") return;
+
+      // Faculty portraits: swap in the school logo and say what is missing.
+      if (img.classList.contains("faculty-photo")) {
+        if (img.classList.contains(MISSING_PHOTO)) return; // logo itself failed
+        img.classList.add(MISSING_PHOTO);
+        img.src = "logo.png";
+        var name = img.getAttribute("alt") || "Photo";
+        img.alt = name + " — portrait not uploaded yet";
+        return;
+      }
+
+      // The patron-saint portrait: show the typed placeholder instead.
+      var frame = img.closest && img.closest(".patron-frame");
+      var parent = img.parentElement;
+      if (frame && parent) {
+        IMG_ERROR_CLASSES.forEach(function (cls) { parent.classList.add(cls); });
+      }
+    },
+    true
+  );
 })();

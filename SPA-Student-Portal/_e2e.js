@@ -54,14 +54,24 @@ function check(name, pass, detail) {
 }
 
 async function call(pathname, options = {}) {
-  const res = await fetch(BASE + pathname, {
-    method: options.method || "GET",
-    headers: Object.assign(
-      { "Content-Type": "application/json" },
-      options.token ? { Authorization: "Bearer " + options.token } : {}
-    ),
-    body: options.body ? JSON.stringify(options.body) : undefined,
-  });
+  let res;
+  try {
+    res = await fetch(BASE + pathname, {
+      method: options.method || "GET",
+      headers: Object.assign(
+        { "Content-Type": "application/json" },
+        options.token ? { Authorization: "Bearer " + options.token } : {}
+      ),
+      body: options.body ? JSON.stringify(options.body) : undefined,
+    });
+  } catch (err) {
+    // A refused connection means the server process died. Say so with the
+    // reason from its own output, instead of a bare "fetch failed" that sends
+    // the next reader hunting through the test instead of the server.
+    throw new Error(
+      pathname + " could not connect (" + err.message + ")\n--- server output ---\n" + serverOutput
+    );
+  }
   const text = await res.text();
   let json;
   try { json = JSON.parse(text); } catch { json = { raw: text }; }
@@ -553,18 +563,21 @@ function waitForServer(attempts = 40) {
       me.status === 200 && Array.isArray(me.body.student.payments),
       `payments=${me.status === 200 ? me.body.student.payments.length : "n/a"}`);
 
-    // 44. A student session cannot reach any administrator route.
+    // 44. A student session cannot reach any administrator route. A session of
+    // the wrong kind is refused outright (401), which is the same answer an
+    // anonymous caller gets — never a hint that the token itself is valid.
+    const refused = (status) => status === 401 || status === 403;
     const studentOnAdmin = await call("/api/students", { token: studentToken });
     check("a student session cannot read the admin student list",
-      studentOnAdmin.status === 403, `status=${studentOnAdmin.status}`);
+      refused(studentOnAdmin.status), `status=${studentOnAdmin.status}`);
     const studentOnAccounts = await call("/api/accounts", { token: studentToken });
     check("a student session cannot read the accounts list",
-      studentOnAccounts.status === 403, `status=${studentOnAccounts.status}`);
+      refused(studentOnAccounts.status), `status=${studentOnAccounts.status}`);
 
     // 45. An administrator cannot use the student self-service route either.
     const adminOnStudent = await call("/api/student/me", { token });
     check("an admin session cannot use the student-only route",
-      adminOnStudent.status === 403, `status=${adminOnStudent.status}`);
+      refused(adminOnStudent.status), `status=${adminOnStudent.status}`);
 
     // 46. A student can change their own password, and the old one stops working.
     const pwChange = await call("/api/student/password", {
@@ -671,6 +684,129 @@ function waitForServer(attempts = 40) {
     const html = await fetch(BASE + "/");
     check("static assets still serve", css.status === 200 && html.status === 200,
       `css=${css.status} html=${html.status}`);
+
+    /* -------------------------- Security & speed ----------------
+       These lock in the hardening so a later edit cannot quietly undo it. */
+
+    // 23. The session arrives as an HttpOnly, SameSite cookie — never a script-
+    // readable token in localStorage. Read over a raw socket: fetch() hides
+    // Set-Cookie by design, and the wire is what the browser actually obeys.
+    const rawHeaders = (rawRequest) =>
+      new Promise((resolve) => {
+        const net = require("net");
+        const sock = net.connect(Number(PORT), "127.0.0.1", () => sock.write(rawRequest));
+        let buf = "";
+        sock.on("data", (d) => (buf += d));
+        sock.on("close", () => resolve(buf));
+        sock.on("error", () => resolve(""));
+        setTimeout(() => { sock.destroy(); resolve(buf); }, 3000);
+      });
+    const loginBody = JSON.stringify({ username: "admin", password: "ChangeMe!Admin2025" });
+    const rawLogin = await rawHeaders(
+      "POST /api/login HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\n" +
+        "Content-Length: " + loginBody.length + "\r\nConnection: close\r\n\r\n" + loginBody
+    );
+    const statusOf = (raw) => parseInt((raw.match(/^HTTP\/1\.1 (\d+)/) || [])[1], 10);
+    const setCookie = (rawLogin.match(/^Set-Cookie:.*$/im) || [""])[0];
+    // `setCookie` is the raw header line; a browser sends only what follows the
+    // colon, up to the first attribute.
+    const cookieValue = setCookie.replace(/^Set-Cookie:\s*/i, "").split(";")[0];
+    check("sign-in sets an HttpOnly session cookie",
+      statusOf(rawLogin) === 200 && /spa_admin_sid=/.test(setCookie) && /HttpOnly/i.test(setCookie),
+      setCookie.slice(0, 90) || rawLogin.slice(0, 90));
+    check("the session cookie is SameSite and scoped to the whole site",
+      /SameSite=Lax/i.test(setCookie) && /Path=\//.test(setCookie), setCookie.slice(0, 90));
+
+    // 24. The cookie alone authenticates a request (no Bearer header).
+    const cookieOnly = await fetch(BASE + "/api/me", {
+      headers: { Cookie: cookieValue },
+    });
+    check("the session cookie authenticates on its own", cookieOnly.status === 200,
+      `status=${cookieOnly.status}`);
+
+    // 25. An admin cookie must not unlock a student route.
+    const crossover = await fetch(BASE + "/api/student/me", {
+      headers: { Cookie: cookieValue },
+    });
+    check("an admin cookie cannot open a student route", refused(crossover.status),
+      `status=${crossover.status}`);
+
+    // 26. Logging out expires the cookie, so the browser forgets the session.
+    const rawLogout = await rawHeaders(
+      "POST /api/logout HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\n" +
+        "Cookie: " + cookieValue +
+        "\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+    );
+    const cleared = (rawLogout.match(/^Set-Cookie:.*Max-Age=0.*$/gim) || []).join(" | ");
+    check("sign-out expires the session cookies",
+      statusOf(rawLogout) === 200 && /Max-Age=0/.test(cleared),
+      cleared.slice(0, 120) || rawLogout.slice(0, 90));
+    const afterCookieLogout = await fetch(BASE + "/api/me", {
+      headers: { Cookie: cookieValue },
+    });
+    check("an expired session cookie no longer signs anyone in",
+      afterCookieLogout.status === 401, `status=${afterCookieLogout.status}`);
+
+    // 27. Security headers on both documents and API answers.
+    const page = await fetch(BASE + "/studentportal.html");
+    const apiHeaders = page.headers;
+    check("pages carry anti-framing and anti-sniffing headers",
+      apiHeaders.get("x-frame-options") === "DENY" &&
+        apiHeaders.get("x-content-type-options") === "nosniff",
+      `xfo=${apiHeaders.get("x-frame-options")} nosniff=${apiHeaders.get("x-content-type-options")}`);
+    const csp = apiHeaders.get("content-security-policy") || "";
+    check("pages send a content security policy that forbids inline script",
+      /script-src 'self'/.test(csp) && /frame-ancestors 'none'/.test(csp),
+      csp.slice(0, 120));
+    check("pages set a referrer policy and a permissions policy",
+      !!apiHeaders.get("referrer-policy") && !!apiHeaders.get("permissions-policy"),
+      `referrer=${apiHeaders.get("referrer-policy")} permissions=${apiHeaders.get("permissions-policy")}`);
+    const me401 = await fetch(BASE + "/api/me");
+    check("API answers are marked no-store and carry the security headers",
+      me401.headers.get("cache-control") === "no-store" &&
+        me401.headers.get("x-content-type-options") === "nosniff",
+      `cache=${me401.headers.get("cache-control")}`);
+
+    // 28. A request from another site is refused before any route runs.
+    const crossSite = await fetch(BASE + "/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: "https://evil.example" },
+      body: JSON.stringify({ username: "admin", password: "ChangeMe!Admin2025" }),
+    });
+    check("a cross-site request is refused", crossSite.status === 403, `status=${crossSite.status}`);
+
+    // 29. A non-JSON body is refused (a plain HTML form post cannot reach a route).
+    const formPost = await fetch(BASE + "/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: "username=admin&password=x",
+    });
+    check("a form-encoded body is refused", formPost.status === 415, `status=${formPost.status}`);
+
+    // 30. Speed: text answers are compressed, and re-requests get a cheap 304.
+    const gz = await fetch(BASE + "/styles.css", { headers: { "Accept-Encoding": "gzip" } });
+    const gzBody = Buffer.from(await gz.arrayBuffer());
+    check("stylesheets are served gzipped",
+      gz.headers.get("content-encoding") === "gzip" && gzBody.length < 100000,
+      `encoding=${gz.headers.get("content-encoding")} bytes=${gzBody.length}`);
+    const etag = page.headers.get("etag");
+    const notModified = await fetch(BASE + "/studentportal.html", { headers: { "If-None-Match": etag || "" } });
+    check("a cached page answers 304 instead of resending it",
+      !!etag && notModified.status === 304, `etag=${etag} status=${notModified.status}`);
+    check("images are cached in the browser for a week",
+      /max-age=604800/.test((await fetch(BASE + "/logo.png")).headers.get("cache-control") || ""),
+      "cache-control on logo.png");
+
+    // 31. The cookie notice and the privacy page ship with the site.
+    const consent = await fetch(BASE + "/cookie-consent.js");
+    const privacy = await fetch(BASE + "/privacy.html");
+    check("the cookie notice script and privacy page are served",
+      consent.status === 200 && privacy.status === 200,
+      `consent=${consent.status} privacy=${privacy.status}`);
+    const home = await (await fetch(BASE + "/studentportal.html")).text();
+    check("every public page loads the cookie notice",
+      home.includes("cookie-consent.js") && home.includes("privacy.html"),
+      "studentportal.html");
 
   } catch (err) {
     check("test runner completed without throwing", false, err.message);

@@ -8,23 +8,41 @@
     return Array.prototype.slice.call((scope || document).querySelectorAll(sel));
   };
 
-  var TOKEN_KEY = "spa_admin_token";
+  /* ------------------------------------------------------- Sign-in state
+     The session lives in an HttpOnly cookie set by the server at sign-in, so
+     NO token is kept in this page and there is nothing for an injected script
+     or another tab to read out of localStorage. `signedIn` only says whether
+     this tab believes it has a session; the server remains the judge. */
   var state = {
-    token: localStorage.getItem(TOKEN_KEY) || null,
+    signedIn: false,
     admin: null,
     students: [],
     term: "",
   };
 
+  /**
+   * Every call to our own API.
+   *
+   * Credentials are included so the HttpOnly cookie travels with the request,
+   * but only ever to this same origin — never forwarded to a third-party URL.
+   */
+  function apiUrl(pathname) {
+    var url = new URL(pathname, window.location.href);
+    if (url.origin !== window.location.origin) {
+      throw new Error("Refusing to send credentials to another site");
+    }
+    return url.href;
+  }
+
   /* ---------------------------------------------------------- API helper */
   function api(pathname, options) {
     options = options || {};
     var headers = { "Content-Type": "application/json" };
-    if (state.token) headers.Authorization = "Bearer " + state.token;
 
-    return fetch(pathname, {
+    return fetch(apiUrl(pathname), {
       method: options.method || "GET",
       headers: headers,
+      credentials: "same-origin",
       body: options.body ? JSON.stringify(options.body) : undefined,
     }).then(function (res) {
       return res.json().catch(function () { return {}; }).then(function (data) {
@@ -64,9 +82,10 @@
 
     api("/api/login", { method: "POST", body: { username: username, password: password } })
       .then(function (data) {
-        state.token = data.token;
+        // The server has set the HttpOnly session cookie; the page keeps only
+        // who is signed in, never the credential itself.
+        state.signedIn = true;
         state.admin = data.admin;
-        localStorage.setItem(TOKEN_KEY, data.token);
         loginForm.reset();
         loginStatus.textContent = "";
         enterDashboard();
@@ -109,7 +128,7 @@
    * somebody acts.
    */
   function loadApprovalBadge() {
-    if (!state.token) return;
+    if (!state.signedIn) return;
     api("/api/accounts/pending")
       .then(function (data) {
         var count = Number(data.pendingCount) || 0;
@@ -159,9 +178,8 @@
 
   $("#logoutBtn").addEventListener("click", function () {
     api("/api/logout", { method: "POST" }).catch(function () {});
-    state.token = null;
     state.admin = null;
-    localStorage.removeItem(TOKEN_KEY);
+    state.signedIn = false;
     if (badgeTimer) clearInterval(badgeTimer);
     badgeTimer = null;
     $("#adminShell").hidden = true;
@@ -210,20 +228,27 @@
     return (first + last).toUpperCase();
   }
 
+  /*
+   * The tone is a CLASS, not an inline `style` attribute. The server's
+   * Content-Security-Policy allows styles only from this site, so an inline
+   * style attribute is refused by the browser before it ever paints — the
+   * disc would come out blank. `avatar-tone-N` is declared in admin.css and
+   * picks from the same palette.
+   */
   function avatarTone(key) {
     var str = String(key || "");
     var hash = 0;
     for (var i = 0; i < str.length; i += 1) {
       hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
     }
-    return AVATAR_TONES[hash % AVATAR_TONES.length];
+    return "avatar-tone-" + (hash % AVATAR_TONES.length);
   }
 
   /** A name cell: initials disc, full name, and the Student ID underneath. */
   function nameCell(name, sub, key) {
     return (
       '<div class="acct-cell">' +
-      '<span class="avatar" style="background:' + avatarTone(key) + '" aria-hidden="true">' +
+      '<span class="avatar ' + avatarTone(key) + '" aria-hidden="true">' +
       escapeHtml(initials(name, key)) +
       "</span>" +
       '<span class="acct-meta"><span class="acct-name">' + escapeHtml(name || "—") + "</span>" +
@@ -510,7 +535,7 @@
     cell.innerHTML =
       '<div class="review-panel">' +
       '<div class="review-head">' +
-      '<span class="avatar avatar-lg" style="background:' + avatarTone(account.studentId) + '" aria-hidden="true">' +
+      '<span class="avatar avatar-lg ' + avatarTone(account.studentId) + '" aria-hidden="true">' +
       escapeHtml(initials(account.fullname, account.studentId)) +
       "</span>" +
       '<div class="review-head-meta">' +
@@ -796,13 +821,16 @@
         if (String(s.status) === opt) o.selected = true;
         select.appendChild(o);
       });
-      // Colour the select border to match the status, so the table reads at a glance.
+      // Colour the select border to match the status, so the table reads at a
+      // glance. The colour is a class (see admin.css); a script-set style would
+      // be refused by the Content-Security-Policy.
+      var STATUS_TONE = {
+        "badge-green": "status-tone-green",
+        "badge-amber": "status-tone-amber",
+        "badge-blue": "status-tone-blue",
+      };
       var paintStatus = function () {
-        select.style.borderLeft = "4px solid";
-        select.style.borderLeftColor =
-          badgeFor(s.status) === "badge-green" ? "#158a54"
-            : badgeFor(s.status) === "badge-amber" ? "#b7791f"
-              : "#1e6fd9";
+        SpaStyles.setVariant(select, STATUS_TONE, badgeFor(s.status));
       };
       paintStatus();
       select.addEventListener("change", function () {
@@ -986,11 +1014,7 @@
         var index = state.students.findIndex(function (s) { return String(s.id) === String(id); });
         if (index !== -1) state.students[index] = data.student;
         renderStats();
-        if (el) {
-          el.style.transition = "background 0.3s";
-          el.style.background = "#d7f2e2";
-          setTimeout(function () { el.style.background = ""; }, 700);
-        }
+        if (el) SpaStyles.flash(el, "is-saved-flash", 700);
         toast("Saved " + field + " for " + id);
       })
       .catch(function (err) {
@@ -1255,10 +1279,10 @@
      one the website is writing to — every student, every account, every figure. */
 
   function downloadDatabase(button) {
-    if (!state.token) return;
+    if (!state.signedIn) return;
     if (button) button.disabled = true;
     toast("Preparing database.xlsx…");
-    fetch("/api/database", { headers: { Authorization: "Bearer " + state.token } })
+    fetch(apiUrl("/api/database"), { credentials: "same-origin" })
       .then(function (res) {
         if (!res.ok) throw new Error("Could not build the database file");
         return res.blob();
@@ -1284,6 +1308,31 @@
     btn.addEventListener("click", function () { downloadDatabase(btn); });
   });
 
+  /* ------------------------------------------------ Write the dashboard to Excel
+     "Sync to Excel" saves the live data over database.xlsx straight away. A
+     self-registration and an approval already do this on their own, so the
+     workbook the office opens is never behind the dashboard. */
+  var syncBtn = $("#syncDatabaseBtn");
+  if (syncBtn) {
+    syncBtn.addEventListener("click", function () {
+      syncBtn.disabled = true;
+      fetch(apiUrl("/api/database/sync"), { method: "POST", credentials: "same-origin" })
+        .then(function (res) {
+          return res.json().then(function (data) {
+            if (!res.ok) throw new Error(data.error || "Could not update database.xlsx");
+            return data;
+          });
+        })
+        .then(function (data) {
+          toast(data.file + " updated from the dashboard");
+          loadStudents();
+          loadApprovals();
+        })
+        .catch(function (err) { toast(err.message, true); })
+        .then(function () { syncBtn.disabled = false; });
+    });
+  }
+
   /* ---------------------------------------------------------- Admins */
   function loadAdmins() {
     api("/api/admins")
@@ -1307,12 +1356,10 @@
 
           var toggle = document.createElement("button");
           toggle.type = "button";
-          toggle.className = "icon-btn" + (active ? " danger" : "");
+          // The trim that makes this a small text button is a class in
+          // admin.css, not four inline style assignments (see dom-styles.js).
+          toggle.className = "icon-btn icon-btn-label" + (active ? " danger" : "");
           toggle.textContent = active ? "Disable" : "Enable";
-          toggle.style.width = "auto";
-          toggle.style.padding = "0 12px";
-          toggle.style.fontSize = "13px";
-          toggle.style.fontWeight = "600";
           toggle.addEventListener("click", function () {
             api("/api/admins/" + encodeURIComponent(a.username), {
               method: "PATCH",
@@ -1650,8 +1697,8 @@
   });
 
   function forceLogout() {
-    state.token = null;
-    localStorage.removeItem(TOKEN_KEY);
+    state.signedIn = false;
+    state.admin = null;
     $("#adminShell").hidden = true;
     $("#adminLogin").hidden = false;
     loginStatus.textContent = "Your session expired. Please sign in again.";
@@ -1678,15 +1725,16 @@
     input.focus();
   });
 
-  if (state.token) {
-    api("/api/me")
-      .then(function (data) {
-        state.admin = data.admin;
-        enterDashboard();
-      })
-      .catch(function () {
-        state.token = null;
-        localStorage.removeItem(TOKEN_KEY);
-      });
-  }
+  /* A reload keeps the session: the cookie is still there, so ask the server
+     who it belongs to. No cookie means 401, and the sign-in form simply stays.
+     Nothing is stored client-side, so there is no stale token to clear. */
+  api("/api/me")
+    .then(function (data) {
+      state.signedIn = true;
+      state.admin = data.admin;
+      enterDashboard();
+    })
+    .catch(function () {
+      state.signedIn = false;
+    });
 })();
