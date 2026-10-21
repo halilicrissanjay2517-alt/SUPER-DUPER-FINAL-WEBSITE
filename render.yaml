@@ -26,6 +26,11 @@ services:
     # it is the real readiness probe. Pointing Render at "/" would test the
     # static HTML instead of the workbook.
     healthCheckPath: /healthz
+    # Exactly one instance. server.js keeps every student, payment and login in
+    # one database.xlsx; two instances would each hold their own copy and the
+    # last writer would silently erase the other's changes. Scaling is only
+    # possible on a paid plan anyway, so pin it rather than rely on that.
+    numInstances: 1
     autoDeployTrigger: commit
     envVars:
       # Persistent disk mount. RAILWAY_VOLUME_MOUNT_PATH does not exist here, so

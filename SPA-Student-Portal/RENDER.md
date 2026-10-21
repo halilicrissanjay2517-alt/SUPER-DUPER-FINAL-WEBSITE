@@ -78,6 +78,36 @@ git push origin main
 > `package.json` also carries `"engines": { "node": ">=20 <21" }` as a fallback
 > if you ever create the service without the Blueprint.
 
+### Settings to check (or change) after creation
+Everything below is already in `render.yaml`. Render applies it when the service
+is created and keeps it in sync — but the dashboard is also editable, and a few
+fields are worth eyeballing once so nothing fights the blueprint.
+
+| Dashboard location | Setting | Value | Why |
+| --- | --- | --- | --- |
+| **Settings → Build & Deploy** | **Root Directory** | `SPA-Student-Portal` | This repo's root is one folder above the app. If this is blank, the build fails (`no package.json`). |
+| **Settings → Source** | **Branch** | `main` | That is where the code was pushed. Deploys on every commit (`autoDeployTrigger: commit`); switch to **Off** in **Settings → Build & Deploy → Auto-Deploy** if you want to promote manually. |
+| **Settings → Build & Deploy** | **Build Command** | `npm install` | Nothing else to install — the single dependency is `xlsx`. Do **not** add `npm run build`; there is no build step. |
+| **Settings → Build & Deploy** | **Start Command** | `npm start` | Runs `node server.js`, which reads `PORT` from Render. |
+| **Environment** | `NODE_VERSION` | `20` | Render's default is now Node 24; the app is tested on 20. |
+| **Environment** | `DB_DIR` | `/var/data` | **The critical one.** Without it the workbook lives in the ephemeral checkout and is wiped on every deploy. |
+| **Environment** | `SPA_ADMIN_PASSWORD` | your own long random string | Server refuses to boot without it. |
+| **Environment** | `SPA_REGISTRAR_PASSWORD` | your own long random string | Same guard for the registrar login. |
+| **Environment** | `SPA_DB_UPLOAD_TOKEN` | your own long random string | Enables `push-db.ps1`. Keep it; you will want it after local edits. |
+| **Environment** | `SPA_PUBLIC_URL` | `https://<your-service>.onrender.com` | Set after the first deploy; it only changes the startup banner. |
+| **Environment** | `SPA_INSECURE_DEFAULTS` | **must not exist** | Delete it if it is ever there — it allows the public default passwords. |
+| **Disks** | Mount Path | `/var/data` | Must match `DB_DIR` exactly. Managed by the blueprint; Render triggers a deploy when it changes. |
+| **Disks** | Size | 5 GB | Can grow later, **never shrink**. |
+| **Settings → Instance** | **Compute plan** | `Starter` or higher | Free plans cannot attach a disk. |
+| **Compute → Manual Scaling** | **Instances** | **1** | Pinned by `numInstances: 1`. Two instances = two workbooks = lost payments. Also do not enable autoscaling. |
+| **Settings → Health Checks** | Health Check Path | `/healthz` | Proves the workbook loads, not just that the HTML is served. |
+| **Settings → Build & Deploy** | **Pre-Deploy Command** | *empty* | Leave it empty. There are no migrations to run, and a failing pre-deploy blocks every release. |
+| **Settings → Deploy Hook / Notifications** | *(optional)* | — | A Slack/email deploy-failure notification is the one addition worth making. |
+
+If a value in the dashboard disagrees with the table, change the dashboard — a
+Blueprint apply rewrites these fields and would otherwise keep reverting your
+edit, or silently undo it on the next sync.
+
 ## Step 3 — Confirm the site is alive
 
 Open `https://<your-service>.onrender.com` — the portal loads, `/admin.html`
