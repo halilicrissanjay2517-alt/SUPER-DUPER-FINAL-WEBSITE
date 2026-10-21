@@ -1403,6 +1403,59 @@ function readBody(req, maxBytes = 1e6) {
   });
 }
 
+/**
+ * Read a raw binary request body.
+ *
+ * readBody() above is for JSON and builds a string, which would corrupt a
+ * workbook (a .xlsx is a zipped binary). This variant keeps Buffers intact and
+ * has its own, much larger ceiling because the workbook grows with the roster.
+ */
+function readBinary(req, maxBytes) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let total = 0;
+    req.on("data", (chunk) => {
+      total += chunk.length;
+      if (total > maxBytes) {
+        reject(new Error("Payload too large"));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on("end", () => resolve(Buffer.concat(chunks)));
+    req.on("error", reject);
+  });
+}
+
+/**
+ * Guard the database-upload routes.
+ *
+ * These carry a whole workbook of student records, so they do NOT accept a
+ * normal admin session: a stolen browser cookie must not be able to replace the
+ * database. They require SPA_DB_UPLOAD_TOKEN, a secret that lives only in the
+ * host's environment and in push-db.ps1, and compare it in constant time.
+ * When the variable is unset the routes are disabled outright.
+ */
+function requireUploadToken(req, res) {
+  const expected = process.env.SPA_DB_UPLOAD_TOKEN || "";
+  if (!expected) {
+    sendJson(res, 404, { error: "Database upload is not enabled" });
+    return false;
+  }
+  const header = String(req.headers.authorization || "");
+  const given = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
+  // Compare equal-length SHA-256 digests so the comparison time never leaks how
+  // many leading characters of the token were correct.
+  const a = crypto.createHash("sha256").update(given).digest();
+  const b = crypto.createHash("sha256").update(expected).digest();
+  if (!given || !crypto.timingSafeEqual(a, b)) {
+    sendJson(res, 401, { error: "Not authorized" });
+    return false;
+  }
+  return true;
+}
+
 /** Guard an API route. Returns the session or sends 401 and returns null. */
 function requireAuth(req, res, roles) {
   const session = getSession(req, "admin");
@@ -2928,6 +2981,105 @@ const server = http.createServer((req, res) => {
   }
 
   if (pathname === "/healthz") return handleHealth(res);
+
+  /*
+   * ---- POST /api/admin/restore-db   (operator only, via push-db.ps1) ----
+   *
+   * Replaces the live workbook with the one uploaded from the school PC. This is
+   * how the existing student records reach a freshly deployed server without
+   * ever committing them to GitHub (see .gitignore).
+   *
+   * Handled BEFORE the /api/ block below, because that block demands JSON and
+   * caps bodies at 1 MB — a workbook is a binary zip and is often larger.
+   */
+  if (pathname === "/api/admin/restore-db" && req.method === "POST") {
+    if (!requireUploadToken(req, res)) return;
+    const MAX_WORKBOOK = 25e6;
+    readBinary(req, MAX_WORKBOOK)
+      .then((buf) => {
+        if (!buf.length) throw new Error("Empty body");
+        // An .xlsx is a ZIP archive and always begins with "PK". Reject anything
+        // else before it can overwrite a good workbook with junk.
+        if (buf[0] !== 0x50 || buf[1] !== 0x4b) {
+          return sendJson(res, 400, { error: "Not an .xlsx file (missing PK header)" });
+        }
+        // Prove the bytes are readable as a workbook before touching the live
+        // one. XLSX.read parses in memory, so a truncated upload fails here.
+        let incoming;
+        try {
+          incoming = XLSX.read(buf, { type: "buffer" });
+        } catch (err) {
+          return sendJson(res, 400, { error: "Workbook could not be parsed" });
+        }
+        if (!incoming.SheetNames.includes(SHEETS.students)) {
+          return sendJson(res, 400, {
+            error: "Workbook has no \"" + SHEETS.students + "\" sheet — wrong file?",
+          });
+        }
+
+        if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
+        // Keep the workbook being replaced, with a timestamp, so a bad upload is
+        // recoverable from the disk without needing this PC.
+        let backup = null;
+        if (fs.existsSync(DB_FILE)) {
+          const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+          backup = path.join(DB_DIR, "database.before-upload-" + stamp + ".xlsx");
+          fs.copyFileSync(DB_FILE, backup);
+        }
+        // Write to a temp file and rename: a rename is atomic, so a crash mid-write
+        // can never leave a half-written workbook as the live database.
+        const tmp = DB_FILE + ".incoming";
+        fs.writeFileSync(tmp, buf);
+        fs.renameSync(tmp, DB_FILE);
+
+        const db = loadDb();
+        const students = readSheet(db, SHEETS.students);
+        const accounts = readSheet(db, SHEETS.accounts);
+        console.log(
+          "Workbook replaced from upload: " + students.length + " students, " +
+            accounts.length + " accounts" + (backup ? "; previous saved to " + backup : "")
+        );
+        return sendJson(res, 200, {
+          ok: true,
+          students: students.length,
+          accounts: accounts.length,
+          backup: backup ? path.basename(backup) : null,
+          sheets: incoming.SheetNames,
+        });
+      })
+      .catch((err) => {
+        console.error("restore-db failed:", err);
+        const tooLarge = /Payload too large/.test(err.message || "");
+        sendJson(res, tooLarge ? 413 : 400, {
+          error: tooLarge ? "Workbook exceeds the 25 MB limit" : err.message,
+        });
+      });
+    return;
+  }
+
+  /*
+   * ---- POST /api/admin/restore-photo?name=file.png ----
+   *
+   * Profile pictures sit beside the workbook on the same disk (see DB_DIR), and
+   * the sheet stores only the filename. They need the same one-time transfer.
+   */
+  if (pathname === "/api/admin/restore-photo" && req.method === "POST") {
+    if (!requireUploadToken(req, res)) return;
+    const name = new URL(req.url, "http://localhost").searchParams.get("name") || "";
+    // Filename only: no separators, no traversal, and a known image extension.
+    const safe = /^[A-Za-z0-9._-]+\.(png|jpe?g|webp)$/i.test(name) && !name.startsWith(".");
+    if (!safe) return sendJson(res, 400, { error: "Unsafe or unsupported filename" });
+    readBinary(req, 5e6)
+      .then((buf) => {
+        if (!buf.length) throw new Error("Empty body");
+        if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
+        const dest = path.join(DB_DIR, name);
+        fs.writeFileSync(dest, buf);
+        return sendJson(res, 200, { ok: true, name, bytes: buf.length });
+      })
+      .catch((err) => sendJson(res, 400, { error: err.message }));
+    return;
+  }
 
   if (pathname.startsWith("/api/")) {
     // A page on another site must not be able to drive this API with the

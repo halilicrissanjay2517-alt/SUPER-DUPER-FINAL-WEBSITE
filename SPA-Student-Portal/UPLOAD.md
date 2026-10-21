@@ -4,6 +4,10 @@ The main route is **Railway** — it runs this app unchanged and gives it a volu
 so `database.xlsx` survives restarts. That is a full walkthrough in
 **`RAILWAY.md`**; use it.
 
+For **Render**, use **`RENDER.md`** — same idea, but the disk is mounted at
+`/var/data`, the Blueprint lives in `../render.yaml`, and your existing workbook
+is uploaded with `push-db.ps1` (the same script either host uses).
+
 This file keeps the two things `RAILWAY.md` does not cover:
 
 - **Route A** — a tunnel from your own PC, for demoing before you sign up for

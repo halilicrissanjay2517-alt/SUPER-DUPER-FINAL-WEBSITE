@@ -197,6 +197,10 @@ finds that folder in this order:
    at `/app/data` and nothing else is needed (see `RAILWAY.md`)
 3. otherwise, next to `server.js` — correct for a local run via `start.bat`
 
+On Render the Blueprint (`../render.yaml`) sets `DB_DIR=/var/data` and mounts
+the disk there; follow `RENDER.md`, including the one-time upload of your
+existing workbook with `push-db.ps1`.
+
 The startup log prints the path it used as `Data : ...`, and warns loudly if a
 host is running with no volume. **Check that line after deploying** — it is the
 difference between a working school and one that forgets every payment.

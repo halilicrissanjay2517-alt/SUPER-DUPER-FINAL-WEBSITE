@@ -85,7 +85,7 @@ That works well on a host that gives you a **persistent disk**:
 | Host type                                         | Works?         | Notes                                                                                                                                                |
 | ------------------------------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Railway                                           | **Yes**        | **Recommended.** Runs the code unchanged; a volume keeps `database.xlsx`. Full walkthrough: `RAILWAY.md`.                                            |
-| Render                                            | **Yes**        | Same idea, but a persistent disk needs a **paid** plan.                                                                                              |
+| Render                                            | **Yes**        | Same idea, but a persistent disk needs a **paid** plan. Full walkthrough: `RENDER.md` (Blueprint: `../render.yaml`).                                 |
 | Fly.io, a school VPS                             | **Yes**        | Keep a persistent volume so `database.xlsx` survives restarts.                                                                                       |
 | Your own PC + a tunnel (Cloudflare Tunnel, ngrok) | **Yes**        | Free, and fine for a demo — but the site is offline when your PC is.                                                                                 |
 | Vercel / Netlify                                  | **No**         | Serverless, and no persistent storage. Logins break and every change is lost, so the site cannot be run there.                                       |
@@ -102,6 +102,9 @@ and Heroku-style hosts) expect. No `Procfile` is needed.
 
 On **Railway**, mount a volume at `/app/data` and set nothing else — Railway
 supplies `RAILWAY_VOLUME_MOUNT_PATH` for you. Follow `RAILWAY.md`.
+
+On **Render**, apply the Blueprint in `../render.yaml`: it mounts a disk at
+`/var/data`, sets `DB_DIR` to it, and pins Node 20. Follow `RENDER.md`.
 
 On any other host that offers a persistent volume, set `DB_DIR` to a folder
 inside that volume's mount path. **If the workbook is not on the volume, every

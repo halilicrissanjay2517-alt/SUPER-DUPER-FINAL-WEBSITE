@@ -1,0 +1,59 @@
+# Render blueprint for the Saint Patrick's Academy Student Portal.
+#
+# Deploy: push this file to GitHub, then Render -> New -> Blueprint -> pick repo.
+# Step-by-step walkthrough (including moving your existing database up there):
+# SPA-Student-Portal/RENDER.md
+#
+# WHY A DISK IS REQUIRED
+#   server.js keeps everything in database.xlsx (students, payments, approvals,
+#   hashed passwords) plus profile pictures next to it. On a host the checkout is
+#   wiped on every deploy, so DB_DIR must point at a mounted persistent disk.
+#   Without the disk every restart re-seeds a blank workbook.
+#
+# WHY NOT THE FREE PLAN
+#   Render's free plan has NO persistent disk and sleeps after ~15 minutes of
+#   inactivity. Use at least the Starter plan for anything holding real records.
+services:
+  - type: web
+    name: spa-student-portal
+    runtime: node
+    plan: starter
+    region: singapore
+    rootDir: SPA-Student-Portal
+    buildCommand: npm install
+    startCommand: npm start
+    # server.js serves /healthz (and only that route) without an extension, so
+    # it is the real readiness probe. Pointing Render at "/" would test the
+    # static HTML instead of the workbook.
+    healthCheckPath: /healthz
+    autoDeployTrigger: commit
+    envVars:
+      # Persistent disk mount. RAILWAY_VOLUME_MOUNT_PATH does not exist here, so
+      # DB_DIR is the only thing pointing the workbook at the disk.
+      - key: DB_DIR
+        value: /var/data
+      # Node version. Render's own default is Node 24; the app is developed and
+      # tested on 20, so pin it rather than inheriting an untested major.
+      - key: NODE_VERSION
+        value: "20"
+      # The server refuses to start on a public host if SPA_ADMIN_PASSWORD is
+      # missing (see the check near line 548 of server.js). sync: false means
+      # Render asks for a value when the Blueprint is created instead of taking
+      # one from this file — secrets never belong in a committed YAML.
+      - key: SPA_ADMIN_PASSWORD
+        sync: false
+      - key: SPA_REGISTRAR_PASSWORD
+        sync: false
+      # Only needed to upload your existing database with push-db.ps1.
+      - key: SPA_DB_UPLOAD_TOKEN
+        sync: false
+      - key: SPA_PUBLIC_URL
+        sync: false
+    disk:
+      name: spa-data
+      mountPath: /var/data
+      # The smallest size the dashboard currently offers. The workbook is
+      # ~100 KB and profile pictures are a few hundred KB each, so this is
+      # years of headroom. Render can grow a disk later but never shrink one;
+      # if your workspace shows a different minimum, set it to that value.
+      sizeGB: 5
