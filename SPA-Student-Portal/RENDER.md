@@ -76,7 +76,15 @@ git push origin main
 > The blueprint pins Node 20 via `NODE_VERSION`, because Render's default is
 > now Node 24 and the app is tested on 20 ([Node version](https://render.com/docs/node-version)).
 > `package.json` also carries `"engines": { "node": ">=20 <21" }` as a fallback
-> if you ever create the service without the Blueprint.
+> if you ever create the service without the Blueprint. Neither is a hard stop:
+> the app also starts on Node 24 (verified), so a missing pin gives an
+> `EBADENGINE` warning in the log, not a failed build.
+>
+> Two shims at the repo root (`package.json` and `server.js`) forward to the
+> app folder, so even a service with a blank **Root Directory** can build and
+> run. They exist so an error is never the *only* thing you get — the Root
+> Directory is still the setting to fix, because it is what the Blueprint and the
+> docs describe.
 
 ### Settings to check (or change) after creation
 Everything below is already in `render.yaml`. Render applies it when the service
@@ -85,7 +93,7 @@ fields are worth eyeballing once so nothing fights the blueprint.
 
 | Dashboard location | Setting | Value | Why |
 | --- | --- | --- | --- |
-| **Settings → Build & Deploy** | **Root Directory** | `SPA-Student-Portal` | This repo's root is one folder above the app. If this is blank, the build fails (`no package.json`). |
+| **Settings → Build & Deploy** | **Root Directory** | `SPA-Student-Portal` | This repo's root is one folder above the app. A blank value is the cause of `Couldn't find a package.json file in "/opt/render/project/src"` (a root-level shim now makes even that build work, but set it anyway). |
 | **Settings → Source** | **Branch** | `main` | That is where the code was pushed. Deploys on every commit (`autoDeployTrigger: commit`); switch to **Off** in **Settings → Build & Deploy → Auto-Deploy** if you want to promote manually. |
 | **Settings → Build & Deploy** | **Build Command** | `npm ci` | Installs exactly what `package-lock.json` pins (the single dependency is `xlsx`). `npm install` also works. Do **not** add `npm run build`; there is no build step. |
 | **Settings → Build & Deploy** | **Start Command** | `npm start` | Runs `node server.js`, which reads `PORT` from Render. |
@@ -93,7 +101,7 @@ fields are worth eyeballing once so nothing fights the blueprint.
 | **Environment** | `DB_DIR` | `/var/data` | **The critical one.** Without it the workbook lives in the ephemeral checkout and is wiped on every deploy. |
 | **Environment** | `SPA_ADMIN_PASSWORD` | your own long random string | Server refuses to boot without it. |
 | **Environment** | `SPA_REGISTRAR_PASSWORD` | your own long random string | Same guard for the registrar login. |
-| **Environment** | `SPA_DB_UPLOAD_TOKEN` | your own long random string | Enables `push-db.ps1`. Keep it; you will want it after local edits. |
+| **Environment** | `SPA_DB_UPLOAD_TOKEN` | your own long random string | Enables the upload routes used by `push-db.ps1` / `render_upload.py` (workbook **and** profile pictures). Keep it; you will want it after local edits. |
 | **Environment** | `SPA_PUBLIC_URL` | `https://<your-service>.onrender.com` | Set after the first deploy; it only changes the startup banner. |
 | **Environment** | `SPA_INSECURE_DEFAULTS` | **must not exist** | Delete it if it is ever there — it allows the public default passwords. |
 | **Disks** | Mount Path | `/var/data` | Must match `DB_DIR` exactly. Managed by the blueprint; Render triggers a deploy when it changes. |
@@ -119,7 +127,10 @@ What the path tells you:
 
 - **`/src` with no folder after it** → the **Root Directory is blank**. Whoever
   created the service did not use the Blueprint (or created a **Web Service**
-  instead of a **Blueprint**), so `rootDir` was never applied.
+  instead of a **Blueprint**), so `rootDir` was never applied. Since the root
+  shims landed, the build no longer dies here — it forwards into
+  `SPA-Student-Portal/` — but a hand-made service also has **no disk and no
+  `DB_DIR`**, so data would still be lost on the next deploy. Fix the settings.
 - **`/src/SPA-Student-Portal`** → the root directory is right; something else is
   wrong (see the next section).
 

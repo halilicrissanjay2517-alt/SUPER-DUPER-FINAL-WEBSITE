@@ -62,6 +62,12 @@ _srv2_err.log
 .env
 .env.local
 
+# Profile pictures waiting to be uploaded (see photos/README.md). They are
+# personal data even though they are not the database, so only the README is
+# tracked and the images themselves are ignored.
+photos/*
+!photos/README.md
+
 # Runtime data folder. On a host DB_DIR points at the mounted disk; if you also
 # run it locally with DB_DIR set, the workbook may land in this folder. Either
 # way it must never be committed — it holds every student record and password

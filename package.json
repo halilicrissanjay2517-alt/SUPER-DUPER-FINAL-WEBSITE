@@ -1,0 +1,14 @@
+{
+  "name": "spa-student-portal-root",
+  "private": true,
+  "description": "Repo-root shim. The real app is in SPA-Student-Portal/; this only exists so a host that is pointed at the repo root (Root Directory left blank) still installs and starts correctly.",
+  "scripts": {
+    "start": "node SPA-Student-Portal/server.js"
+  },
+  "engines": {
+    "node": ">=20 <21"
+  },
+  "dependencies": {
+    "xlsx": "^0.18.5"
+  }
+}
