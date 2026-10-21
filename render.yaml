@@ -19,8 +19,13 @@ services:
     runtime: node
     plan: starter
     region: singapore
+    # The app lives one folder below the repo root. If Render's dashboard still
+    # shows /opt/render/project/src, THIS field did not come from the blueprint
+    # and must be set by hand in Settings -> Build & Deploy -> Root Directory.
     rootDir: SPA-Student-Portal
-    buildCommand: npm install
+    # npm ci installs exactly what package-lock.json pins, so a deploy cannot
+    # drift onto a different xlsx version than the one that was tested.
+    buildCommand: npm ci
     startCommand: npm start
     # server.js serves /healthz (and only that route) without an extension, so
     # it is the real readiness probe. Pointing Render at "/" would test the

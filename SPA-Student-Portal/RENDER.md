@@ -71,7 +71,7 @@ git push origin main
    `SPA_ADMIN_PASSWORD` — that guard is working as intended, so do not try to
    bypass it.
 
-4. **Apply.** Render builds (`npm install`) and starts (`npm start`).
+4. **Apply.** Render builds (`npm ci`) and starts (`npm start`).
 
 > The blueprint pins Node 20 via `NODE_VERSION`, because Render's default is
 > now Node 24 and the app is tested on 20 ([Node version](https://render.com/docs/node-version)).
@@ -87,7 +87,7 @@ fields are worth eyeballing once so nothing fights the blueprint.
 | --- | --- | --- | --- |
 | **Settings → Build & Deploy** | **Root Directory** | `SPA-Student-Portal` | This repo's root is one folder above the app. If this is blank, the build fails (`no package.json`). |
 | **Settings → Source** | **Branch** | `main` | That is where the code was pushed. Deploys on every commit (`autoDeployTrigger: commit`); switch to **Off** in **Settings → Build & Deploy → Auto-Deploy** if you want to promote manually. |
-| **Settings → Build & Deploy** | **Build Command** | `npm install` | Nothing else to install — the single dependency is `xlsx`. Do **not** add `npm run build`; there is no build step. |
+| **Settings → Build & Deploy** | **Build Command** | `npm ci` | Installs exactly what `package-lock.json` pins (the single dependency is `xlsx`). `npm install` also works. Do **not** add `npm run build`; there is no build step. |
 | **Settings → Build & Deploy** | **Start Command** | `npm start` | Runs `node server.js`, which reads `PORT` from Render. |
 | **Environment** | `NODE_VERSION` | `20` | Render's default is now Node 24; the app is tested on 20. |
 | **Environment** | `DB_DIR` | `/var/data` | **The critical one.** Without it the workbook lives in the ephemeral checkout and is wiped on every deploy. |
@@ -107,6 +107,42 @@ fields are worth eyeballing once so nothing fights the blueprint.
 If a value in the dashboard disagrees with the table, change the dashboard — a
 Blueprint apply rewrites these fields and would otherwise keep reverting your
 edit, or silently undo it on the next sync.
+
+### `Couldn't find a package.json file in "/opt/render/project/src"`
+
+This is the most common first-deploy failure, and it is **not** a code problem.
+`/opt/render/project/src` is the repo root — which contains only
+`SPA-Student-Portal/`, `render.yaml` and an image. `package.json` is inside
+`SPA-Student-Portal/`, so the build must run from there.
+
+What the path tells you:
+
+- **`/src` with no folder after it** → the **Root Directory is blank**. Whoever
+  created the service did not use the Blueprint (or created a **Web Service**
+  instead of a **Blueprint**), so `rootDir` was never applied.
+- **`/src/SPA-Student-Portal`** → the root directory is right; something else is
+  wrong (see the next section).
+
+**Fix, either way:**
+
+1. Render Dashboard → your service → **Settings → Build & Deploy**.
+2. **Root Directory**: `SPA-Student-Portal` (paste it exactly — no leading
+   slash, no trailing slash).
+3. **Build Command**: `npm ci` — **Start Command**: `npm start`.
+4. **Save Changes**, then **Manual Deploy → Clear build cache & deploy**.
+
+> If your service was created as a plain **Web Service**, it is not connected to
+> `render.yaml` — the disk, `DB_DIR` and `NODE_VERSION` from the blueprint were
+> never applied, so set them by hand (table above) or delete the service and
+> create it with **New → Blueprint** instead.
+
+```
+==> Running build command 'npm ci'...
+added 9 packages, and audited 10 packages in 2s
+==> Running 'npm start'
+Saint Patrick's Academy portal running at https://...
+  Data   : /var/data/database.xlsx      <-- this line is the one that matters
+```
 
 ## Step 3 — Confirm the site is alive
 
@@ -197,7 +233,7 @@ logins are there.
 | `restore-db` returns **404** | `SPA_DB_UPLOAD_TOKEN` unset (the route is disabled by design) | Set it, redeploy, retry. |
 | `restore-db` returns **401** | Token mismatch | Copy the token exactly from Render's Environment tab. |
 | `restore-db` returns **413** | Workbook over 25 MB | Split the upload or raise `MAX_WORKBOOK` in `server.js`. |
-| Build fails: no `package.json` at root | Build root is the repo root | `rootDir: SPA-Student-Portal` is already set in `render.yaml`; if you created the service by hand, set **Root Directory**. |
+| `Couldn't find a package.json file in "/opt/render/project/src"` | Root Directory is blank — the service was not created from the Blueprint | Set **Root Directory** to `SPA-Student-Portal`, Save, then **Clear build cache & deploy**. See the section under Step 2. |
 | Everyone signed out after a while | Service restarted; sessions are in memory | Expected. No data is lost. |
 | Login refused with the right password | Rate limit: 10 attempts / 10 min per address | Wait ten minutes. |
 
