@@ -81,4 +81,4 @@ XLSX.writeFile(wb, DB_FILE);
 
 console.log('Password reset for "' + admin.username + '" (' + admin.role + ").");
 console.log("Sign in at http://localhost:3000/admin.html");
-console.log("Restart the server (start.bat) so the change is re-read.");
+console.log("Restart the server (node server.js) so the change is re-read.");

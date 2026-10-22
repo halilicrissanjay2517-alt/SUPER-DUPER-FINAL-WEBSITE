@@ -1726,10 +1726,15 @@
   });
 
   /* A reload keeps the session: the cookie is still there, so ask the server
-     who it belongs to. No cookie means 401, and the sign-in form simply stays.
-     Nothing is stored client-side, so there is no stale token to clear. */
+     who it belongs to. No cookie means 200 {admin:null}, and the sign-in form
+     simply stays. Nothing is stored client-side, so there is no stale token to
+     clear. */
   api("/api/me")
     .then(function (data) {
+      if (!data || !data.admin) {
+        state.signedIn = false;
+        return;
+      }
       state.signedIn = true;
       state.admin = data.admin;
       enterDashboard();

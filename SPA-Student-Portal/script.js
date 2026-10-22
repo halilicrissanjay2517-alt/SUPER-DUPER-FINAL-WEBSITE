@@ -377,15 +377,20 @@
    * the public page exactly as it was.
    */
   function resumeSession() {
-    // Always ask: without a cookie the server answers 401 and nothing happens,
-    // so the public page is unchanged for a first-time visitor.
+    // Always ask: the server answers 200 {student:null} when nobody is signed
+    // in, so the public page is unchanged for a first-time visitor.
     studentApi("/api/student/me")
-      .then(function () {
+      .then(function (data) {
+        if (!data || !data.student) {
+          studentState.signedIn = false;
+          return;
+        }
         studentState.signedIn = true;
         window.location.replace(DASHBOARD_URL);
       })
-      .catch(function (err) {
-        if (err.status === 401 || err.status === 403) studentState.signedIn = false;
+      .catch(function () {
+        // A stale session must never block the public page.
+        studentState.signedIn = false;
       });
   }
 

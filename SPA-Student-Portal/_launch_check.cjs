@@ -2,8 +2,15 @@
  * Launch-readiness check. Runs the real server against a THROWAWAY copy of the
  * project, so the live database.xlsx is never modified.
  *
- *  1. A public host with default passwords must REFUSE to start.
- *  2. A public host with passwords supplied must start.
+ * through: a missing workbook stays an ERROR. Hosts do NOT self-seed, by design:
+ * an empty disk must fail loudly instead of publishing a blank school.
+ *
+ *  1. A public host with default passwords must REFUSE to seed.
+ *  2. A public host with passwords supplied must still not seed by itself —
+ *     the workbook arrives from push-db.ps1 (or explicitly SPA_ALLOW_SEED=1).
+ *  3. That explicit opt-in does start and create a workbook.
+ *  4. With the passwords supplied there is nothing left on the default, so the
+ *     startup security notice must stay quiet.
  *
  * The server rewrites database.xlsx on every start, which is exactly why this
  * runs in a temp folder with the workbook copied in.
@@ -49,43 +56,61 @@ function boot(env, ms) {
 }
 
 (async () => {
-  // 1. Public host, no workbook yet, default passwords -> must refuse.
+  // 1. Public host, no workbook yet, default passwords -> must refuse to seed
+  //    AND stay unhealthy, so Render marks the deploy failed.
   const refused = await boot({ PORT: "3461", SPA_ADMIN_PASSWORD: "" }, 6000);
   results.push({
-    check: "public host + default passwords refuses to start",
-    pass: /Refusing to create database\.xlsx/.test(refused.out) && refused.code !== null,
-    detail: refused.code === null ? "server stayed up (bad)" : "exited code " + refused.code,
+    check: "public host + default passwords never seeds",
+    pass: /No workbook at/.test(refused.out) && !fs.existsSync(DB),
+    detail: fs.existsSync(DB) ? "a workbook was written (bad)" : "refused (good)",
   });
-  // A refused start must not leave a half-made workbook behind either.
+  // A refused seed must not leave a half-made workbook behind either.
   results.push({
     check: "a refused start creates no database.xlsx",
     pass: !fs.existsSync(DB),
     detail: fs.existsSync(DB) ? "a workbook was written anyway" : "no workbook written",
   });
 
-  // 2. Public host, passwords supplied -> must start, print its address, and
-  //    create the workbook.
+  // 2. Public host, passwords supplied, empty disk -> the process stays up so
+  //    the log is readable, but it must NOT invent a blank database and the
+  //    health check must report it.
   const ok = await boot(
     { PORT: "3461", SPA_ADMIN_PASSWORD: "a-long-test-password-1", SPA_REGISTRAR_PASSWORD: "a-long-test-password-2" },
     5000
   );
   results.push({
-    check: "public host + passwords supplied starts and prints the address",
+    check: "public host + passwords supplied stays up and prints the address",
     pass: /running at http:\/\/localhost:3461/.test(ok.out) && ok.code === null,
     detail: ok.code === null ? "stayed up (good)" : "exited code " + ok.code,
   });
   results.push({
-    check: "a supplied password is accepted and the workbook is created",
-    pass: fs.existsSync(DB) && !/Refusing to create/.test(ok.out),
+    check: "an empty disk on a host is reported, never silently seeded",
+    pass: /No workbook at/.test(ok.out) && !fs.existsSync(DB),
+    detail: fs.existsSync(DB) ? "a blank workbook was created (bad)" : "reported (good)",
+  });
+
+  // 3. The explicit opt-in (test suite / throwaway demo) does create one.
+  const seeded = await boot(
+    {
+      PORT: "3461",
+      SPA_ADMIN_PASSWORD: "a-long-test-password-1",
+      SPA_REGISTRAR_PASSWORD: "a-long-test-password-2",
+      SPA_ALLOW_SEED: "1",
+    },
+    5000
+  );
+  results.push({
+    check: "SPA_ALLOW_SEED=1 on a host creates the workbook",
+    pass: fs.existsSync(DB) && seeded.code === null,
     detail: fs.existsSync(DB) ? "database.xlsx created" : "no workbook created",
   });
 
-  // 3. With the passwords supplied there is nothing left on the default, so the
+  // 4. With the passwords supplied there is nothing left on the default, so the
   //    startup security notice must stay quiet.
   results.push({
     check: "startup stays quiet when no default password is in use",
-    pass: !/SECURITY: these logins still use the default password/.test(ok.out),
-    detail: /still use the default password/.test(ok.out) ? "warned (bad)" : "no warning (good)",
+    pass: !/SECURITY: these logins still use the default password/.test(seeded.out),
+    detail: /still use the default password/.test(seeded.out) ? "warned (bad)" : "no warning (good)",
   });
 
   // The node_modules junction must go before the folder itself, or Windows

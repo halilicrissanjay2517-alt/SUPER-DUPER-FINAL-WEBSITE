@@ -11,6 +11,9 @@ process.env.PORT = "3999";
 // Boot with the sample logins even though PORT is set. The suite signs in as
 // admin/ChangeMe!Admin2025, which only exists in a fresh seed.
 process.env.SPA_INSECURE_DEFAULTS = "1";
+// PORT makes the server treat itself as hosted, and a hosted process never
+// self-seeds. This suite needs exactly that fresh seed, so it opts in.
+process.env.SPA_ALLOW_SEED = "1";
 const PORT = process.env.PORT;
 
 // This suite asserts against a FRESH seed, so it must not run against a live
@@ -600,8 +603,11 @@ function waitForServer(attempts = 40) {
       revoke.status === 200 && revoke.body.account.status === "pending",
       `status=${revoke.status} appStatus=${revoke.body.account && revoke.body.account.status}`);
     const afterRevoke = await call("/api/student/me", { token: studentToken });
+    // Signed out is reported as 200 {student:null} so the public portal can ask
+    // without logging an error; either shape proves the session is gone.
     check("withdrawing access invalidates the student session",
-      afterRevoke.status === 401, `status=${afterRevoke.status}`);
+      afterRevoke.status === 401 || (afterRevoke.status === 200 && !afterRevoke.body.student),
+      `status=${afterRevoke.status} student=${JSON.stringify(afterRevoke.body && afterRevoke.body.student)}`);
 
     // 48. Rejecting is recorded, and a rejected student is blocked with a
     // distinct message rather than a generic failure.
@@ -744,8 +750,11 @@ function waitForServer(attempts = 40) {
     const afterCookieLogout = await fetch(BASE + "/api/me", {
       headers: { Cookie: cookieValue },
     });
+    const afterCookieBody = await afterCookieLogout.json().catch(() => ({}));
+    // Signed out is 200 {admin:null} so a first visit does not log a 401.
     check("an expired session cookie no longer signs anyone in",
-      afterCookieLogout.status === 401, `status=${afterCookieLogout.status}`);
+      afterCookieLogout.status === 401 || (afterCookieLogout.status === 200 && !afterCookieBody.admin),
+      `status=${afterCookieLogout.status} admin=${JSON.stringify(afterCookieBody.admin)}`);
 
     // 27. Security headers on both documents and API answers.
     const page = await fetch(BASE + "/studentportal.html");

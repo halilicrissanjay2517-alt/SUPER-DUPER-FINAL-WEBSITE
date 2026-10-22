@@ -101,7 +101,8 @@ fields are worth eyeballing once so nothing fights the blueprint.
 | **Environment** | `DB_DIR` | `/var/data` | **The critical one.** Without it the workbook lives in the ephemeral checkout and is wiped on every deploy. |
 | **Environment** | `SPA_ADMIN_PASSWORD` | your own long random string | Server refuses to boot without it. |
 | **Environment** | `SPA_REGISTRAR_PASSWORD` | your own long random string | Same guard for the registrar login. |
-| **Environment** | `SPA_DB_UPLOAD_TOKEN` | your own long random string | Enables the upload routes used by `push-db.ps1` / `render_upload.py` (workbook **and** profile pictures). Keep it; you will want it after local edits. |
+| **Environment** | `SPA_DB_UPLOAD_TOKEN` | your own long random string | Enables the upload routes used by `push-db.ps1` (workbook **and** profile pictures). Keep it; you will want it after local edits. |
+| **Environment** | `SPA_HOSTED` | `1` | Tells the server it is on a host: a missing workbook is an error (never silently re-seeded), and `sbom.json` is written for Render's dependency scan. Set in the blueprint. |
 | **Environment** | `SPA_PUBLIC_URL` | `https://<your-service>.onrender.com` | Set after the first deploy; it only changes the startup banner. |
 | **Environment** | `SPA_INSECURE_DEFAULTS` | **must not exist** | Delete it if it is ever there — it allows the public default passwords. |
 | **Disks** | Mount Path | `/var/data` | Must match `DB_DIR` exactly. Managed by the blueprint; Render triggers a deploy when it changes. |
@@ -240,6 +241,7 @@ logins are there.
 | --- | --- | --- |
 | `Refusing to create database.xlsx with the default admin password` | `SPA_ADMIN_PASSWORD` not visible to the process that booted | See **Fixing the "Refusing to create" error** below. This is the safety net, not a bug. |
 | `Could not read /var/data/database.xlsx` / health check failing | Workbook unreadable or disk missing | Check the disk is mounted at `/var/data`; re-run step 5. |
+| `No workbook at /var/data/database.xlsx — refusing to create an empty one` | The disk mounted but is empty (fresh disk, or mount path changed) | This is on purpose: the server will never re-seed over a live school. Re-run step 5 (`push-db.ps1`). For a throwaway demo instance, set `SPA_ALLOW_SEED=1`. |
 | Data gone after every deploy | `DB_DIR` not pointing at the disk | Blueprint sets `/var/data`; confirm in **Environment** and the disk's mount path. |
 | `restore-db` returns **404** | `SPA_DB_UPLOAD_TOKEN` unset (the route is disabled by design) | Set it, redeploy, retry. |
 | `restore-db` returns **401** | Token mismatch | Copy the token exactly from Render's Environment tab. |
@@ -274,12 +276,11 @@ reached the server. Work through these in order:
 
    ```bash
    cd /opt/render/project/src/SPA-Student-Portal   # or the Root Directory you set
-   node env-diag.cjs
+   node -e "const k=['SPA_ADMIN_PASSWORD','SPA_REGISTRAR_PASSWORD','DB_DIR','SPA_DB_UPLOAD_TOKEN'],v=process.env;k.forEach(n=>{const s=v[n];console.log(n, s?'present length='+s.length:(v[n]===''?'EMPTY':'MISSING'))})"
    ```
 
-   It prints `present`/`MISSING` for each variable with its length and first/last
-   character code — enough to catch a missing key, a quoted value, or whitespace,
-   without ever printing the secret into a log.
+   It prints `present`, `EMPTY` or `MISSING` for each variable — enough to catch
+   a missing key, a quoted value, or whitespace, without printing the secret.
 
 A quick sanity check that the *value itself* is the one you expect: sign in at
 `/admin.html` with `admin` and that password. If a workbook already exists, its

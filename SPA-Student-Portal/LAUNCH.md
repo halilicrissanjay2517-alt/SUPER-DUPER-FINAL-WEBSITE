@@ -18,7 +18,7 @@ Pick **one** of these two ways to change them.
 
 **Way A — through the dashboard (easiest, recommended)**
 
-1. Start the site locally (`start.bat`) and open `http://localhost:3000/admin.html`.
+1. Start the site locally (`cd SPA-Student-Portal; npm start`) and open `http://localhost:3000/admin.html`.
 2. Sign in as `admin` / `ChangeMe!Admin2025`.
 3. Open **Administrators**, edit each account, and set a long password.
 4. Keep the `database.xlsx` you just changed — that file is now your live database.

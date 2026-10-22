@@ -4,7 +4,14 @@ A student-facing website plus a multi-admin dashboard, backed by a single
 **Excel workbook** that acts as the database.
 
 ## Quick start
-Double-click **`start.bat`** in this folder. A window opens and prints:
+From this folder (`SPA-Student-Portal`) run:
+
+```powershell
+npm ci
+npm start
+```
+
+A window opens and prints:
 
 | What | Address |
 |------|---------|
@@ -12,8 +19,7 @@ Double-click **`start.bat`** in this folder. A window opens and prints:
 | Admin dashboard | http://localhost:3000/admin.html |
 
 Keep that window open while using the site. Closing it stops the server.
-
-(Or from a terminal: `cd "SPA-Student-Portal"` then `node server.js`.)
+(Or run `node server.js` directly.)
 
 > **Important:** always open the site through the server address above — never
 > by double-clicking `admin.html`. Opening the file directly (`file://`) cannot
@@ -21,9 +27,7 @@ Keep that window open while using the site. Closing it stops the server.
 
 ## Opening the Excel file (for teachers)
 
-Double-click **`open-database.bat`** to open `database.xlsx` in Excel.
-
-Or find it yourself: `SPA-Student-Portal` folder → `database.xlsx`.
+Open `database.xlsx` in this folder with Excel.
 
 Once open, click the sheet tabs at the bottom:
 
@@ -69,7 +73,7 @@ Both work, but don't mix them carelessly:
 
 - **In the admin dashboard** — changes save instantly and are written to the
   Excel file for you. Nothing else to do. **Recommended.**
-- **Directly in Excel** — after saving your edits, **restart `start.bat`** so the
+- **Directly in Excel** — after saving your edits, **restart the server** so the
   website re-reads the file. Changes made while Excel has the file open may be
   overwritten if the dashboard also saves.
 
@@ -148,7 +152,7 @@ publicly.**
 |----------|----------|------|--------|
 | `admin` | `ChangeMe!Admin2025` | superadmin | Everything, including adding/removing admins |
 | `registrar` | `ChangeMe!Records2025` | registrar | Edit student records only |
-  
+
 These are the defaults for a **new** database only. The passwords in this
 project's own `database.xlsx` have already been changed, and that file is not
 published, so these rows are just documentation of what a fresh seed contains.
@@ -193,11 +197,17 @@ a volume or disk — or every change is lost when the service restarts. The serv
 finds that folder in this order:
 
 1. `DB_DIR` — if you set it explicitly (Render's Blueprint sets it to `/var/data`)
-2. otherwise, next to `server.js` — correct for a local run via `start.bat`
+2. otherwise, next to `server.js` — correct for a local run via `npm start`
 
 On Render the Blueprint (`../render.yaml`) sets `DB_DIR=/var/data` and mounts
 the disk there; follow `RENDER.md`, including the one-time upload of your
 existing workbook with `push-db.ps1`.
+
+**A host never creates a database by itself.** If `DB_DIR` is set and the
+workbook is not there, the server refuses to seed one (it would be an empty
+school) and `/healthz` answers 503, so Render reports the deploy as unhealthy
+instead of serving blank pages. Restore the file with `push-db.ps1`. Only a
+local run, or an explicit `SPA_ALLOW_SEED=1`, self-seeds.
 
 The startup log prints the path it used as `Data : ...`, and warns loudly if a
 host is running with no volume. **Check that line after deploying** — it is the
@@ -258,9 +268,9 @@ no separate mobile build:
 
 ## Tests
 ```powershell
-node _e2e.js            # 96 checks: the server API end to end
+node _e2e.js            # 103 checks: the server API end to end
 node --test             # 4 checks: the portal HTML itself
-node _launch_check.cjs  # 5 checks: the public-launch safety guards
+node _launch_check.cjs  # 6 checks: the public-launch safety guards
 ```
 
 `_e2e.js` boots the server on a spare port and checks login, permissions,
@@ -286,10 +296,10 @@ cannot satisfy. The restore runs on every exit path, including a crash.
 | `features.html` | The "Portal Services" guide page. |
 | `database.xlsx` | The database. **Not in the repo** — see below. |
 | `LAUNCH.md` | Checklist to go live: passwords, sample data, hosting. |
-| `UPLOAD.md` | Step-by-step: putting the site on the internet (tunnels, other hosts). |
 | `RENDER.md` | Step-by-step: deploying to Render, including the disk and the workbook upload. |
-| `_e2e.js` | End-to-end tests (96 checks). |
-| `_launch_check.cjs` | Public-launch safety guards (5 checks). |
+| `push-db.ps1` | Uploads your local `database.xlsx` (and profile pictures) to the deployed server. |
+| `_e2e.js` | End-to-end tests (103 checks). |
+| `_launch_check.cjs` | Public-launch safety guards (6 checks). |
 | `index.test.mjs` | Page-level tests (4 checks). |
 
 > **`database.xlsx` is not in this repository, by design.** It holds real

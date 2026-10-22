@@ -35,7 +35,7 @@ const ROOT = __dirname;
 // host the repo is overwritten on every deploy, while a mounted disk
 // survives. Pointing DB_DIR at that mount keeps students, payments and
 // approvals across restarts. Locally nothing is set, so the file stays next to
-// server.js exactly as start.bat expects.
+// server.js exactly as a plain `node server.js` expects.
 //
 // The order matters:
 //   DB_DIR  — explicit choice, used on Render (/var/data) and locally
@@ -447,8 +447,44 @@ function writeSheet(db, name, rows, columns) {
   if (!db.SheetNames.includes(name)) db.SheetNames.push(name);
 }
 
+/**
+ * True when this process must NOT quietly create a new workbook.
+ *
+ * On a host the data lives on the mounted disk (DB_DIR), and "the file is not
+ * there" always means the disk has been replaced or lost its mount — never
+ * "first run". Creating a seed at that moment would write an EMPTY workbook
+ * over a live school: real records would vanish the instant anyone signed in,
+ * and /healthz would report OK because the seed is perfectly readable.
+ *
+ * A local run (no PORT, no DB_DIR) is still allowed to self-seed, which is what
+ * a fresh clone relies on, and so is an explicit SPA_ALLOW_SEED=1 (the test
+ * suite and a throwaway demo instance use it).
+ */
+function mustNeverSeed() {
+  return (
+    (!!process.env.PORT ||
+      !!process.env.SPA_PUBLIC_URL ||
+      !!process.env.DB_DIR ||
+      process.env.SPA_HOSTED === "1") &&
+    process.env.SPA_ALLOW_SEED !== "1" &&
+    process.env.SPA_INSECURE_DEFAULTS !== "1"
+  );
+}
+
 function loadDb() {
   if (!fs.existsSync(DB_FILE)) {
+    if (mustNeverSeed()) {
+      // Two different problems land here, with two different fixes. Say both,
+      // because the log line is all the operator sees.
+      throw new Error(
+        "No workbook at " + DB_FILE + " — refusing to create an empty one on a host.\n" +
+          "  - If this disk should already hold the school data, it is not mounted at DB_DIR.\n" +
+          "    Restore the workbook with push-db.ps1 (see RENDER.md, step 5), then redeploy.\n" +
+          "  - If this is a deliberately empty instance, set SPA_ADMIN_PASSWORD (and\n" +
+          "    SPA_REGISTRAR_PASSWORD) to seed logins, or SPA_ALLOW_SEED=1 only for a\n" +
+          "    throwaway demo."
+      );
+    }
     return createSeedDb();
   }
   // A workbook on a mounting disk can be briefly unreadable at boot (Excel
@@ -1529,8 +1565,16 @@ async function handleApi(req, res, pathname) {
 
   /* ---- GET /api/me ---- */
   if (pathname === "/api/me" && req.method === "GET") {
-    const session = requireAuth(req, res);
-    if (!session) return;
+    // "Signed out" is the expected answer on a first visit, so it is a 200 with
+    // admin:null rather than a 401 (same reason as /api/student/me). A student
+    // session is still refused: there is no administrator to report.
+    const session = getSession(req, "admin");
+    if (!session) {
+      const other = getSession(req);
+      if (other && other.kind === "admin") return sendJson(res, 200, { admin: other });
+      if (other) return sendJson(res, 403, { error: "Administrator access required" });
+      return sendJson(res, 200, { admin: null });
+    }
     return sendJson(res, 200, { admin: session });
   }
 
@@ -1760,6 +1804,21 @@ async function handleApi(req, res, pathname) {
 
   /* ---- GET /api/student/me  (the signed-in student's own record) ---- */
   if (pathname === "/api/student/me" && req.method === "GET") {
+    // Signed out is a normal state, not an error: the public portal asks this on
+    // every load to decide whether to resume a student's session. A 200 with
+    // student:null keeps the browser console and the host's error tracking free
+    // of a 401 that means "nobody is signed in".
+    //
+    // An administrator session is NOT "signed out" though: answering 200 there
+    // would let an admin cookie stand in for a student one, so it is refused by
+    // the same guard as every other student-only route.
+    if (!getSession(req, "student")) {
+      // No student token at all. An administrator's Bearer token or admin cookie
+      // is still a session, though, and must not be mistaken for "signed out".
+      const admin = getSession(req, "admin");
+      if (admin && admin.kind === "admin") return sendJson(res, 403, { error: "This route is for students" });
+      return sendJson(res, 200, { student: null });
+    }
     const session = requireStudent(req, res);
     if (!session) return;
     const db = loadDb();
@@ -2830,12 +2889,47 @@ function ifNoneMatch(req, etag) {
 }
 
 /**
+ * Write a minimal CycloneDX SBOM next to package.json if one is not there yet.
+ * Render only reports dependency vulnerabilities when it finds an SBOM at build
+ * time, and this app has no build step that could generate one.
+ */
+function writeSbomIfMissing() {
+  const target = path.join(ROOT, "sbom.json");
+  if (fs.existsSync(target)) return;
+  try {
+    const lock = JSON.parse(fs.readFileSync(path.join(ROOT, "package-lock.json"), "utf8"));
+    const components = Object.keys(lock.packages || {})
+      .filter(function (key) {
+        return key.indexOf("node_modules/") === 0;
+      })
+      .map(function (key) {
+        const pkg = lock.packages[key];
+        const name = key.slice(key.lastIndexOf("node_modules/") + 13);
+        return { type: "library", name, version: pkg.version || "0.0.0", purl: "pkg:npm/" + name + "@" + (pkg.version || "0.0.0") };
+      });
+    const root = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8"));
+    const bom = {
+      bomFormat: "CycloneDX",
+      specVersion: "1.4",
+      version: 1,
+      metadata: { component: { type: "application", name: root.name, version: root.version || "0.0.0" } },
+      components,
+    };
+    fs.writeFileSync(target, JSON.stringify(bom, null, 2) + "\n");
+  } catch (err) {
+    console.warn("Could not write sbom.json: " + err.message);
+  }
+}
+
+/**
  * Liveness probe for the host (Render's health check points here).
  * It only reports whether the workbook is readable, so a broken database fails
  * the check loudly instead of serving pages that cannot save.
  */
 function handleHealth(res) {
   try {
+    // A missing workbook is a failure on a host, not something to seed over.
+    if (!fs.existsSync(DB_FILE)) throw new Error("No workbook at " + DB_FILE);
     loadDb();
     res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
     return res.end(JSON.stringify({ ok: true }));
@@ -3117,17 +3211,33 @@ const server = http.createServer((req, res) => {
 });
 
 if (!fs.existsSync(DB_FILE)) {
-  loadDb();
-  console.log("Created database.xlsx with starter data.");
-  console.log("  Workbook: " + DB_FILE);
-  // Never print the passwords themselves: host logs persist and are readable
-  // long after the seed passwords have been changed.
-  console.log("Seed admin logins were created — set the real passwords before exposing this to the internet:");
-  console.log("  admin     — password from SPA_ADMIN_PASSWORD");
-  console.log("  registrar — password from SPA_REGISTRAR_PASSWORD");
+  try {
+    loadDb();
+    console.log("Created database.xlsx with starter data.");
+    console.log("  Workbook: " + DB_FILE);
+    // Never print the passwords themselves: host logs persist and are readable
+    // long after the seed passwords have been changed.
+    console.log("Seed admin logins were created — set the real passwords before exposing this to the internet:");
+    console.log("  admin     — password from SPA_ADMIN_PASSWORD");
+    console.log("  registrar — password from SPA_REGISTRAR_PASSWORD");
+  } catch (err) {
+    // On a host this is the "disk is empty" case. Keep the process up so the
+    // log below is the one Render shows, but /healthz now fails, so the deploy
+    // is marked unhealthy instead of silently serving an empty school.
+    console.error("");
+    console.error("  !! FATAL: " + err.message.split("\n")[0]);
+    console.error("     The site will stay up but /healthz reports 503.");
+    console.error("     Restore the workbook (see RENDER.md, step 5), then redeploy.");
+    console.error("");
+  }
 }
 
 server.listen(PORT, () => {
+  // Render surfaces Dependency Vulnerabilities only for services it finds an
+  // SBOM in at BUILD time (render.yaml has no build step to generate one), so
+  // write it into the repo root once per boot. Best effort: a read-only
+  // checkout must not stop the site from starting.
+  if (process.env.SPA_HOSTED === "1") writeSbomIfMissing();
   // A hosting platform gives the process a PORT and reaches it over the
   // network, so "localhost" in the banner is misleading there. Print the real
   // address a student would open instead.

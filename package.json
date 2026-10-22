@@ -3,7 +3,9 @@
   "private": true,
   "description": "Repo-root shim. The real app is in SPA-Student-Portal/; this only exists so a host that is pointed at the repo root (Root Directory left blank) still installs and starts correctly.",
   "scripts": {
-    "start": "node SPA-Student-Portal/server.js"
+    "start": "node SPA-Student-Portal/server.js",
+    "postinstall": "node server.js --install-only",
+    "prestart": "node server.js --install-only"
   },
   "engines": {
     "node": ">=20 <21"
