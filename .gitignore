@@ -1,0 +1,23 @@
+# ---------------------------------------------------------------------------
+# Root-level ignore rules.
+#
+# SPA-Student-Portal/.gitignore only governs files inside that folder. Anything
+# placed at the REPO ROOT is covered by this file instead, and without it a
+# .env sitting next to the root server.js shim would be committed with the real
+# admin password in it. That is the one mistake here that cannot be undone by
+# deleting the file later — the secret stays in the git history.
+#
+# Real secrets belong in the host's Environment/Variables settings, never in a
+# committed file. .env.example (inside the app folder) is the safe template.
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+
+# Local logs and OS clutter.
+*.log
+Thumbs.db
+desktop.ini
+
+# Nothing installed or generated at the root is worth committing.
+node_modules/

@@ -238,7 +238,7 @@ logins are there.
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
-| `Refusing to create database.xlsx with the default admin password` | `SPA_ADMIN_PASSWORD` not set | Set it in **Environment**. This is the safety net, not a bug. |
+| `Refusing to create database.xlsx with the default admin password` | `SPA_ADMIN_PASSWORD` not visible to the process that booted | See **Fixing the "Refusing to create" error** below. This is the safety net, not a bug. |
 | `Could not read /var/data/database.xlsx` / health check failing | Workbook unreadable or disk missing | Check the disk is mounted at `/var/data`; re-run step 5. |
 | Data gone after every deploy | `DB_DIR` not pointing at the disk | Blueprint sets `/var/data`; confirm in **Environment** and the disk's mount path. |
 | `restore-db` returns **404** | `SPA_DB_UPLOAD_TOKEN` unset (the route is disabled by design) | Set it, redeploy, retry. |
@@ -247,6 +247,49 @@ logins are there.
 | `Couldn't find a package.json file in "/opt/render/project/src"` | Root Directory is blank — the service was not created from the Blueprint | Set **Root Directory** to `SPA-Student-Portal`, Save, then **Clear build cache & deploy**. See the section under Step 2. |
 | Everyone signed out after a while | Service restarted; sessions are in memory | Expected. No data is lost. |
 | Login refused with the right password | Rate limit: 10 attempts / 10 min per address | Wait ten minutes. |
+
+### Fixing the "Refusing to create" error
+
+That message is thrown in exactly one place (`createSeedDb()` in `server.js`)
+and only when **`process.env.SPA_ADMIN_PASSWORD` is empty in the booting
+process**. It does not mean the password is wrong — it means the variable never
+reached the server. Work through these in order:
+
+1. **Confirm the variable on the service that crashed.** Environment tab → the
+   key must be exactly `SPA_ADMIN_PASSWORD` (no space before the `=`).
+2. **Redeploy after saving.** Saving an environment variable does **not**
+   restart an existing instance or retry a failed deploy. Use **Manual Deploy →
+   Clear build cache & deploy**, and read the log of *that* deploy.
+3. **Apply the Blueprint.** `SPA_ADMIN_PASSWORD` and `SPA_REGISTRAR_PASSWORD`
+   are declared with `sync: false`, so Render leaves them empty until you type a
+   value in the Blueprint sync screen. If you created the service by hand instead
+   of from `render.yaml`, the variables exist nowhere and must be added manually.
+4. **Strip the quotes.** Pasting `"my password"` stores the quote characters as
+   part of the password. The value must be the bare string.
+5. **Check you are not on Railway.** Railway ignores `render.yaml`; add the
+   variables under **Variables** there (see `RAILWAY.md`).
+6. **Ask the process, don't guess.** From the host's shell
+   (Render → **Shell**, which uses the same environment as the app):
+
+   ```bash
+   cd /opt/render/project/src/SPA-Student-Portal   # or the Root Directory you set
+   node env-diag.cjs
+   ```
+
+   It prints `present`/`MISSING` for each variable with its length and first/last
+   character code — enough to catch a missing key, a quoted value, or whitespace,
+   without ever printing the secret into a log.
+
+A quick sanity check that the *value itself* is the one you expect: sign in at
+`/admin.html` with `admin` and that password. If a workbook already exists, its
+password comes from the workbook, not from the variable (see below) — the
+guard only runs when creating a fresh one.
+
+**Already has a workbook?** The guard lives in `createSeedDb()`, which only runs
+when `DB_FILE` does not exist. If uploads already placed
+`/var/data/database.xlsx`, the workbook's own stored password is what counts and
+this error would not appear at all — so if you see it, the disk is empty or
+`DB_DIR` is wrong. Check the `Data :` line in the startup log.
 
 ## Notes specific to Render
 
