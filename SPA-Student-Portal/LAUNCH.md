@@ -84,8 +84,7 @@ That works well on a host that gives you a **persistent disk**:
 
 | Host type                                         | Works?         | Notes                                                                                                                                                |
 | ------------------------------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Railway                                           | **Yes**        | **Recommended.** Runs the code unchanged; a volume keeps `database.xlsx`. Full walkthrough: `RAILWAY.md`.                                            |
-| Render                                            | **Yes**        | Same idea, but a persistent disk needs a **paid** plan. Full walkthrough: `RENDER.md` (Blueprint: `../render.yaml`).                                 |
+| **Render**                                        | **Yes**        | **This is the host this project uses.** A persistent **disk** (paid plan) keeps `database.xlsx`. Full walkthrough: `RENDER.md` (Blueprint: `../render.yaml`). |
 | Fly.io, a school VPS                             | **Yes**        | Keep a persistent volume so `database.xlsx` survives restarts.                                                                                       |
 | Your own PC + a tunnel (Cloudflare Tunnel, ngrok) | **Yes**        | Free, and fine for a demo — but the site is offline when your PC is.                                                                                 |
 | Vercel / Netlify                                  | **No**         | Serverless, and no persistent storage. Logins break and every change is lost, so the site cannot be run there.                                       |
@@ -97,11 +96,8 @@ That works well on a host that gives you a **persistent disk**:
 - `SPA_PUBLIC_URL` — e.g. `https://your-domain`, so the banner prints the right address
 - `PORT` — leave this to the platform
 
-`npm start` runs `node server.js`, which is what Railway (and Render, Fly.io
+`npm start` runs `node server.js`, which is what Render (and Fly.io
 and Heroku-style hosts) expect. No `Procfile` is needed.
-
-On **Railway**, mount a volume at `/app/data` and set nothing else — Railway
-supplies `RAILWAY_VOLUME_MOUNT_PATH` for you. Follow `RAILWAY.md`.
 
 On **Render**, apply the Blueprint in `../render.yaml`: it mounts a disk at
 `/var/data`, sets `DB_DIR` to it, and pins Node 20. Follow `RENDER.md`.

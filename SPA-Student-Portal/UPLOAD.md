@@ -1,14 +1,12 @@
 # How to put the site online
 
-The main route is **Railway** — it runs this app unchanged and gives it a volume,
-so `database.xlsx` survives restarts. That is a full walkthrough in
-**`RAILWAY.md`**; use it.
+The route this project uses is **Render** — it runs this app unchanged and gives
+it a persistent **disk**, so `database.xlsx` survives restarts. The full
+walkthrough is **`RENDER.md`**: the Blueprint lives in `../render.yaml`, the disk
+is mounted at `/var/data`, and your existing workbook is uploaded with
+`push-db.ps1`.
 
-For **Render**, use **`RENDER.md`** — same idea, but the disk is mounted at
-`/var/data`, the Blueprint lives in `../render.yaml`, and your existing workbook
-is uploaded with `push-db.ps1` (the same script either host uses).
-
-This file keeps the two things `RAILWAY.md` does not cover:
+This file keeps the two things `RENDER.md` does not cover:
 
 - **Route A** — a tunnel from your own PC, for demoing before you sign up for
   anything (free, but only online while your PC is).
@@ -32,13 +30,13 @@ logins. Before it goes on the internet:
   and letting the school put in the real roster.
 - **Never upload `database.xlsx` to GitHub**, and not a backup copy of it either.
   Anyone who finds it gets every student record and every password hash. The
-  `.gitignore` already excludes both patterns — see `RAILWAY.md` step 1.
+  `.gitignore` already excludes both patterns — see `RENDER.md` step 1.
 
 ### Your admin passwords
 
 Both `admin` and `registrar` use custom passwords, not the shipped defaults, so
 the server's launch guard will not stop you. Keep it that way: generate and store
-them as shown in `RAILWAY.md` step 3.
+them as shown in `RENDER.md` step 3.
 
 ---
 
@@ -68,7 +66,7 @@ The site is online **only while your PC is on and the tunnel is running**.
 - Your home IP is handling real student data.
 
 Fine for showing a teacher, or for defending a demo in one room at one time.
-Not fine for a live school portal — that is what `RAILWAY.md` is for.
+Not fine for a live school portal — that is what `RENDER.md` is for.
 
 ---
 
@@ -96,7 +94,7 @@ app saves to a file and keeps sessions in memory, and those hosts throw both awa
   reads it. Without it every visitor looks like one address, so one attacker can
   lock out the whole school.
 - **Always use the `https://` address**, never plain `http://`, or the admin
-  password crosses the network in the clear. Railway gives you HTTPS free.
+  password crosses the network in the clear. Render gives you HTTPS free.
 - **One copy, one disk.** Never run two copies of `server.js` against the same
   `database.xlsx`.
 - **Restarting signs everyone out.** Sessions are in memory. Nobody loses data;
@@ -114,7 +112,7 @@ app saves to a file and keeps sessions in memory, and those hosts throw both awa
 - [ ] A volume is mounted, and the startup log shows `Data :` inside it
 - [ ] `SPA_INSECURE_DEFAULTS` is **not** set on the host
 - [ ] Site loads over `https://` and the dashboard login works
-- [ ] The restart test in `RAILWAY.md` §5 passed
+- [ ] The restart test in `RENDER.md` passed (the `Data :` line still points at `/var/data`)
 - [ ] A test payment records and reverses correctly
 - [ ] A student can sign up, get approved, and sign in
 - [ ] Test data removed from the live site

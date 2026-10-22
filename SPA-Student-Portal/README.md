@@ -192,10 +192,8 @@ On a host, the workbook must be written to that host's **persistent storage** �
 a volume or disk — or every change is lost when the service restarts. The server
 finds that folder in this order:
 
-1. `DB_DIR` — if you set it explicitly
-2. `RAILWAY_VOLUME_MOUNT_PATH` — set by Railway automatically; mount the volume
-   at `/app/data` and nothing else is needed (see `RAILWAY.md`)
-3. otherwise, next to `server.js` — correct for a local run via `start.bat`
+1. `DB_DIR` — if you set it explicitly (Render's Blueprint sets it to `/var/data`)
+2. otherwise, next to `server.js` — correct for a local run via `start.bat`
 
 On Render the Blueprint (`../render.yaml`) sets `DB_DIR=/var/data` and mounts
 the disk there; follow `RENDER.md`, including the one-time upload of your
@@ -289,7 +287,7 @@ cannot satisfy. The restore runs on every exit path, including a crash.
 | `database.xlsx` | The database. **Not in the repo** — see below. |
 | `LAUNCH.md` | Checklist to go live: passwords, sample data, hosting. |
 | `UPLOAD.md` | Step-by-step: putting the site on the internet (tunnels, other hosts). |
-| `RAILWAY.md` | Step-by-step: deploying to Railway (**recommended**). |
+| `RENDER.md` | Step-by-step: deploying to Render, including the disk and the workbook upload. |
 | `_e2e.js` | End-to-end tests (96 checks). |
 | `_launch_check.cjs` | Public-launch safety guards (5 checks). |
 | `index.test.mjs` | Page-level tests (4 checks). |

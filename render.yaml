@@ -38,8 +38,8 @@ services:
     numInstances: 1
     autoDeployTrigger: commit
     envVars:
-      # Persistent disk mount. RAILWAY_VOLUME_MOUNT_PATH does not exist here, so
-      # DB_DIR is the only thing pointing the workbook at the disk.
+      # Persistent disk mount. DB_DIR is the only thing pointing the workbook at
+      # the disk, so it must match the mountPath below exactly.
       - key: DB_DIR
         value: /var/data
       # Node version. Render's own default is Node 24; the app is developed and

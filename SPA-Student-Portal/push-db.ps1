@@ -10,7 +10,7 @@
 #
 # USAGE
 #   1. Deploy and confirm the site loads.
-#   2. In Render/ Railway -> your service -> Environment, set SPA_DB_UPLOAD_TOKEN
+#   2. In Render -> your service -> Environment, set SPA_DB_UPLOAD_TOKEN
 #      to a long random string. Redeploy so the server picks it up.
 #   3. Run from this folder:
 #        .\push-db.ps1 -Url https://your-app.onrender.com -Token <that string>

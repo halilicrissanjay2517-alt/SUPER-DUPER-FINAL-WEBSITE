@@ -32,20 +32,15 @@ const XLSX = require("xlsx");
 const ROOT = __dirname;
 
 // Where the workbook lives. The code and the data are separate concerns: on a
-// host the repo is overwritten on every deploy, while a mounted volume/disk
+// host the repo is overwritten on every deploy, while a mounted disk
 // survives. Pointing DB_DIR at that mount keeps students, payments and
 // approvals across restarts. Locally nothing is set, so the file stays next to
 // server.js exactly as start.bat expects.
 //
 // The order matters:
-//   DB_DIR                    — explicit choice, used on Render and locally
-//   RAILWAY_VOLUME_MOUNT_PATH — set by Railway itself when a volume is attached,
-//                               so the folder can never drift out of step with
-//                               where the volume is actually mounted
-//   ROOT                      — no host, no volume: plain local run
-const DB_DIR = path.resolve(
-  process.env.DB_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH || ROOT
-);
+//   DB_DIR  — explicit choice, used on Render (/var/data) and locally
+//   ROOT    — no host, no disk: plain local run
+const DB_DIR = path.resolve(process.env.DB_DIR || ROOT);
 const DB_FILE = path.join(DB_DIR, "database.xlsx");
 // Student profile pictures live beside the workbook, on the same persistent
 // volume. Only the filename is recorded in the sheet; the bytes stay on disk so
@@ -2835,7 +2830,7 @@ function ifNoneMatch(req, etag) {
 }
 
 /**
- * Liveness probe for the host (Render and Railway health checks point here).
+ * Liveness probe for the host (Render's health check points here).
  * It only reports whether the workbook is readable, so a broken database fails
  * the check loudly instead of serving pages that cannot save.
  */
@@ -3154,10 +3149,10 @@ server.listen(PORT, () => {
   const onVolume = DB_DIR !== ROOT_RESOLVED;
   if (!onVolume && (process.env.PORT || process.env.SPA_PUBLIC_URL)) {
     console.log("");
-    console.log("  !! WARNING: no volume is mounted, so data is on the host's temporary");
+    console.log("  !! WARNING: no disk is mounted, so data is on the host's temporary");
     console.log("     filesystem and will be lost on the next restart or deploy.");
-    console.log("     Attach a volume and set DB_DIR (or let Railway set");
-    console.log("     RAILWAY_VOLUME_MOUNT_PATH) to a path on it.");
+    console.log("     On Render: attach a disk and point DB_DIR inside its mount path");
+    console.log("     (the Blueprint uses DB_DIR=/var/data and mounts the disk there).");
   }
 
   // Say plainly, at every start, whether the seeded passwords are still in use.

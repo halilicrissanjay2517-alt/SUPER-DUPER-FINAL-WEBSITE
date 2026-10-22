@@ -1,6 +1,6 @@
 # Deploying to Render (with your existing database)
 
-This is the Render equivalent of `RAILWAY.md`. The repo already contains a
+This is the Render deployment guide. The repo already contains a
 Blueprint (`../render.yaml`), so the code side is a few clicks. The part that
 needs care is the **data**: `database.xlsx` is deliberately git-ignored — it
 holds real students' names, contacts, balances and password hashes — so it
@@ -266,8 +266,9 @@ reached the server. Work through these in order:
    of from `render.yaml`, the variables exist nowhere and must be added manually.
 4. **Strip the quotes.** Pasting `"my password"` stores the quote characters as
    part of the password. The value must be the bare string.
-5. **Check you are not on Railway.** Railway ignores `render.yaml`; add the
-   variables under **Variables** there (see `RAILWAY.md`).
+5. **Confirm you are on the right service.** If you previously created a
+   Railway service from this repo, it is unrelated and can be deleted — Render
+   reads `render.yaml` and nothing else.
 6. **Ask the process, don't guess.** From the host's shell
    (Render → **Shell**, which uses the same environment as the app):
 

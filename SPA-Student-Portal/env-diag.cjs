@@ -1,8 +1,8 @@
 /*
  * Answers one question: does the running server actually SEE the secrets?
  *
- * Run this in the host's shell (Render Shell, Railway shell, or a local
- * terminal) from the folder that holds server.js:
+ * Run this in the host's shell (Render Shell, or a local terminal) from the
+ * folder that holds server.js:
  *
  *     node env-diag.cjs
  *
