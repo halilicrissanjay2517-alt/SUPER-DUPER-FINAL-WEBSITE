@@ -158,23 +158,65 @@ Saint Patrick's Academy portal running at https://...
 
 ## Step 3 — Confirm the site is alive
 
-Open `https://<your-service>.onrender.com` — the portal loads, `/admin.html`
-shows the sign-in page. Render's health check hits `/healthz`, which returns
-`{"ok":true}` only when the workbook is readable.
+Open `https://<your-service>.onrender.com` — the static pages load, and
+`/admin.html` shows the sign-in form.
 
-At this point the site is running on **seeded sample data** (four students,
-Maria Santos and friends). That is expected — step 5 replaces it.
+**You are not finished yet at this point.** Check the deploy log for the banner:
 
-## Step 4 — Prove the disk works (before real data)
+```
+Saint Patrick's Academy portal running at https://...
+  Portal : https://.../
+  Admin  : https://.../admin.html
+  Data   : /var/data/database.xlsx
+```
 
-1. Log into `/admin.html` with `admin` and your `SPA_ADMIN_PASSWORD`.
-2. Add a throwaway student, e.g. ID `TEST-000`.
-3. In Render: **Manual Deploy → Deploy latest commit** (or just wait for a
-   restart). Then check the log line `Data : /var/data/database.xlsx`.
-4. Reload the dashboard. If `TEST-000` is still there, the disk is working.
-   If it vanished, **stop** and check that the disk in the dashboard is mounted
-   at `/var/data` before going further.
-5. Delete the test student.
+The `Data :` line must say `/var/data/database.xlsx`. If it says
+`/opt/render/project/src/SPA-Student-Portal/database.xlsx`, stop: the disk is not
+attached or `DB_DIR` is wrong.
+
+On a fresh disk there is **no workbook**, and this app deliberately refuses to
+create an empty one on a host (`mustNeverSeed()` in `server.js`). So the log
+shows this instead, and it is **expected**:
+
+```
+  !! FATAL: No workbook at /var/data/database.xlsx — refusing to create an empty one on a host.
+     The site will stay up but /healthz reports 503.
+```
+
+That means the deploy is marked **unhealthy** until step 5. Do not try to fix it
+by adding `SPA_ALLOW_SEED=1` — go straight to step 5 and upload your real
+workbook. (The alternative is an empty throwaway instance: set `SPA_ADMIN_PASSWORD`
+and `SPA_REGISTRAR_PASSWORD`, delete `DB_DIR`, and the server seeds sample data.
+Never do that on the service holding your school.)
+
+## Step 4 — Confirm you have the right workbook locally (1 minute)
+
+Uploading is the only step that touches real records, so check the file first
+from the project root:
+
+```powershell
+cd "c:\Users\ADMIN\OneDrive\Desktop\SUPER FINAL WEBSITE"
+git check-ignore -v "SPA-Student-Portal/database.xlsx"   # must print a .gitignore: line
+([System.IO.File]::ReadAllBytes(".\SPA-Student-Portal\database.xlsx")[0..1] | ForEach-Object { $_.ToString("X2") }) -join " "
+```
+
+- The first command proves the workbook is still **not** in git. It must print a
+  `SPA-Student-Portal/.gitignore:...:database.xlsx` line; if it prints nothing,
+  **stop** — a real student file is about to be committed.
+- The second prints `50 4B` (`PK`, the ZIP header of an `.xlsx`). Any other value
+  means the file is corrupt or is not a workbook.
+- Optional count of student rows:
+
+  ```powershell
+  cd SPA-Student-Portal
+  node -e "const X=require('xlsx'),w=X.readFile('database.xlsx');console.log(w.SheetNames.join(', '));console.log('students:',X.utils.sheet_to_json(w.Sheets['Students']).length)"
+  ```
+
+  It should list `Students, Admins, Logs, Payments, Accounts` — the upload is
+  rejected if there is no `Students` sheet.
+
+> Your current `database.xlsx` holds **10 students**. The upload response repeats
+> that number; it is how you confirm the right file landed.
 
 ## Step 5 — Upload your existing database
 
@@ -182,7 +224,17 @@ Your workbook is ~85 KB, well under the 25 MB upload limit. From this folder:
 
 ```powershell
 cd "c:\Users\ADMIN\OneDrive\Desktop\SUPER FINAL WEBSITE\SPA-Student-Portal"
-.\push-db.ps1 -Url https://<your-service>.onrender.com -Token <SPA_DB_UPLOAD_TOKEN>
+.\push-db.ps1 -Url https://<your-service>.onrender.com -Token '<SPA_DB_UPLOAD_TOKEN>'
+```
+
+Keep the token in **single quotes**: a random string containing `$`, `&` or `!`
+would otherwise be mangled by PowerShell.
+
+If PowerShell blocks the script (execution policy), run it for this one command
+only — do not change the machine-wide policy:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\push-db.ps1 -Url https://<your-service>.onrender.com -Token '<token>'
 ```
 
 Expected output ends with something like:
@@ -202,8 +254,17 @@ holds 10 — so the number is your check that the right file landed.)
 - If you also use profile pictures, add `-Dir .\photos` (or wherever they are).
 - `-WhatIf` shows what would be sent without sending it.
 
-Then sign in to the dashboard and check that your real roster, payments and
-logins are there.
+Then **redeploy** the service: **Manual Deploy → Deploy latest commit**.
+
+The upload only wrote the file to the disk — the running server still holds the
+"no workbook" state from step 3, so `/healthz` keeps returning 503 until the
+process restarts. After the redeploy the log shows `Data : /var/data/database.xlsx`
+without the FATAL line, and Render marks the deploy healthy.
+
+Finally sign in at `/admin.html` with `admin` and your `SPA_ADMIN_PASSWORD` (the
+password is stored **inside** the workbook, so the one that works is whichever
+was set on the version you just uploaded) and check that your real roster,
+payments and logins are there.
 
 > **Why a script instead of a git push:** committing `database.xlsx` to a
 > public repo publishes every student record and password hash to anyone who
@@ -241,7 +302,8 @@ logins are there.
 | --- | --- | --- |
 | `Refusing to create database.xlsx with the default admin password` | `SPA_ADMIN_PASSWORD` not visible to the process that booted | See **Fixing the "Refusing to create" error** below. This is the safety net, not a bug. |
 | `Could not read /var/data/database.xlsx` / health check failing | Workbook unreadable or disk missing | Check the disk is mounted at `/var/data`; re-run step 5. |
-| `No workbook at /var/data/database.xlsx — refusing to create an empty one` | The disk mounted but is empty (fresh disk, or mount path changed) | This is on purpose: the server will never re-seed over a live school. Re-run step 5 (`push-db.ps1`). For a throwaway demo instance, set `SPA_ALLOW_SEED=1`. |
+| `No workbook at /var/data/database.xlsx — refusing to create an empty one` | The disk mounted but is empty (fresh disk, or mount path changed) | This is on purpose: the server will never re-seed over a live school. Run step 5 (`push-db.ps1`), then **redeploy** so the process picks the workbook up. For a throwaway demo instance, set `SPA_ALLOW_SEED=1`. |
+| Deploy fails with **Health check failed (503)** on a first deploy | Same as above — the app is up, but there is no workbook yet | Expected until step 5. Upload, then redeploy. |
 | Data gone after every deploy | `DB_DIR` not pointing at the disk | Blueprint sets `/var/data`; confirm in **Environment** and the disk's mount path. |
 | `restore-db` returns **404** | `SPA_DB_UPLOAD_TOKEN` unset (the route is disabled by design) | Set it, redeploy, retry. |
 | `restore-db` returns **401** | Token mismatch | Copy the token exactly from Render's Environment tab. |
