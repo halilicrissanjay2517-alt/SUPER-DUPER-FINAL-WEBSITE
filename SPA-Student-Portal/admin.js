@@ -109,8 +109,16 @@
       el.hidden = state.admin.role !== "superadmin";
     });
 
-    loadStudents();
-    loadLogs();
+    // On a freshly deployed host the workbook or the session cookie can be
+    // missing, and a failing call used to leave the dashboard blank with only
+    // "Something went wrong" in a toast. Name the request that failed so the
+    // operator can act, and so the host log has a matching line.
+    loadStudents().catch(function (err) {
+      reportLoadFailure("students", err);
+    });
+    loadLogs().catch(function (err) {
+      reportLoadFailure("activity log", err);
+    });
     renderStats();
     loadApprovalBadge();
 
@@ -121,6 +129,15 @@
   }
 
   var badgeTimer = null;
+
+  /** One place that turns a failed dashboard load into a readable message. */
+  function reportLoadFailure(what, err) {
+    if (err && err.status === 401) return forceLogout();
+    var text = err && err.message ? err.message : "Could not load the " + what;
+    if (err && err.status) text += " (HTTP " + err.status + ")";
+    console.error("Dashboard load failed: " + what, err);
+    toast(text, true);
+  }
 
   /**
    * How many accounts are waiting, shown as a badge on the Approvals nav item.
@@ -140,7 +157,13 @@
         var nav = badge.closest(".side-link");
         nav.title = count === 0 ? "No accounts waiting" : count + " account(s) waiting for approval";
       })
-      .catch(function () { /* badge is a convenience; never block the dashboard */ });
+      .catch(function (err) {
+        // The badge is a convenience and must never block the dashboard, but a
+        // silent catch makes a broken API look like "nothing is pending". Leave
+        // a breadcrumb in the console (the status and message, never data)
+        // instead of swallowing the reason completely.
+        console.warn("Approval badge failed:", err && err.message);
+      });
   }
 
   /* ---------------------------------------------------------- View switching */
@@ -1058,14 +1081,14 @@
   }
 
   function loadStudents() {
-    api("/api/students")
+    return api("/api/students")
       .then(function (data) {
         state.students = data.students || [];
         renderStudents();
       })
       .catch(function (err) {
         if (err.status === 401) return forceLogout();
-        toast(err.message, true);
+        throw err;
       });
   }
 
@@ -1418,7 +1441,7 @@
 
   /* ---------------------------------------------------------- Logs */
   function loadLogs() {
-    api("/api/logs")
+    return api("/api/logs")
       .then(function (data) {
         var list = $("#logList");
         list.innerHTML = "";
@@ -1440,8 +1463,7 @@
             escapeHtml(log.target || "") + " — " + escapeHtml(log.details || "") + "</span>";
           list.appendChild(li);
         });
-      })
-      .catch(function () {});
+      });
   }
 
   /* ---------------------------------------------------------- Payments */

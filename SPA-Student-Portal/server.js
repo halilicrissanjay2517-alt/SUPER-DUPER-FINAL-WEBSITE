@@ -1399,8 +1399,10 @@ function sendJson(res, status, payload, cookie, cache) {
   if (cookie) headers["Set-Cookie"] = cookie;
 
   // Compress before the headers are written: a header cannot be set or
-  // removed once writeHead() has run.
-  if (res.spaAcceptsGzip && body.length > 512) {
+  // removed once writeHead() has run. Byte length, not string length: a peso
+  // sign or an em dash is 2-3 bytes, and Buffer.byteLength is what
+  // Content-Length reports below.
+  if (res.spaAcceptsGzip && Buffer.byteLength(body, "utf8") > 512) {
     body = zlib.gzipSync(Buffer.from(body, "utf8"));
     headers["Content-Encoding"] = "gzip";
     headers["Vary"] = "Accept-Encoding";
@@ -3194,6 +3196,13 @@ const server = http.createServer((req, res) => {
       // Log the detail for the operator, but never hand an internal message
       // (file paths, stack-shaped text) to the caller.
       console.error("API error:", err);
+      // If sendJson() already started the response, writing headers again here
+      // throws ERR_HTTP_HEADERS_SENT and hides the real cause behind a stack
+      // trace. Nothing more can be sent, so just record it and stop.
+      if (res.headersSent) {
+        console.error("API error after the response started; nothing more could be sent.");
+        return res.end();
+      }
       const tooLarge = /Payload too large/.test(err.message || "");
       const badJson = /JSON/.test(err.message || "");
       sendJson(res, tooLarge ? 413 : badJson ? 400 : 500, {
