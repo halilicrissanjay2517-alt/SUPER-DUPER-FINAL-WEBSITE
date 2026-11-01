@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   /* ---------- Academy palette ----------
      A deeper, richer emerald for identity, warmed by antique gold. The greens
      are desaturated slightly and the neutrals warmed so the page reads like
@@ -11,7 +11,7 @@
   --green-50: #e8f3ec;
   --green-100: #d3e8dc;
 
-  /* Warm off-white neutrals — pure #fff/#f4f7f2 reads blue and sterile. */
+  /* Warm off-white neutrals â€” pure #fff/#f4f7f2 reads blue and sterile. */
   --ink: #14261d;
   --ink-soft: #2d4438;
   --muted: #5a6d62;
@@ -21,7 +21,7 @@
   --canvas: #f6f4ee;
   --canvas-2: #f1eee6;
 
-  /* Antique gold — the second accent that stops the site looking single-tone. */
+  /* Antique gold â€” the second accent that stops the site looking single-tone. */
   --gold-600: #9a7418;
   --gold-500: #b8891f;
   --gold-400: #d4a72c;
@@ -36,7 +36,7 @@
   --radius: 12px;
   --radius-lg: 18px;
 
-  /* Layered, tinted shadows — a single soft shadow looks flat and fake.
+  /* Layered, tinted shadows â€” a single soft shadow looks flat and fake.
      Two stacked shadows (tight contact + wide ambient) read as real depth. */
   --shadow-sm: 0 1px 2px rgba(6, 35, 26, 0.07), 0 2px 6px rgba(6, 35, 26, 0.05);
   --shadow: 0 2px 4px rgba(6, 35, 26, 0.06), 0 10px 24px rgba(6, 35, 26, 0.09);
@@ -164,7 +164,7 @@ img {
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 6px 20px rgba(6, 35, 26, 0.05);
 }
 
-/* A fine gold rule beneath the header — the kind of detail printed letterheads
+/* A fine gold rule beneath the header â€” the kind of detail printed letterheads
    carry, and the cheapest way to make a page feel considered. */
 .site-header::after {
   content: "";
@@ -231,12 +231,22 @@ img {
 }
 
 /* Partner seal (CASPI) sitting at the right end of the header, matching the
-   SPA brand logo on the left. */
+   SPA brand logo on the left.
+   The nav is a `space-between` flex row, so `.nav-links` and the seal were each
+   pushed to opposite ends and landed a third of a screen apart. Grouping them
+   lets the menu links sit beside the seal at the right, which closes that gap. */
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
 .nav-partner {
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
-  margin-left: 8px;
+  margin-left: 4px;
 }
 
 .nav-partner img {
@@ -294,7 +304,7 @@ img {
   width: 44px;
   height: 44px;
   padding: 0;
-  margin-left: 6px;
+  margin-left: 2px;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--surface);
@@ -608,7 +618,7 @@ body.menu-open .feature-drawer-tab {
 
 /* The campus photo lives in its own layer so it can drift on scroll (parallax)
    without dragging the text along with it.
-   `cover` fills the whole area edge to edge — no letterbox strips. Pair it with
+   `cover` fills the whole area edge to edge â€” no letterbox strips. Pair it with
    a slightly larger inset so the parallax drift never exposes an edge. */
 /* The parallax offset is a custom property (`--hero-shift`), set by script.js.
    An inline `transform` would be refused by the style-src policy. */
@@ -622,7 +632,7 @@ body.menu-open .feature-drawer-tab {
 
 /* While a modal is open the page behind is inert, so nothing back there needs
    to repaint. Pausing the parallax layer and the blurred header is what keeps
-   typing in the sign-up form smooth — otherwise every keystroke re-composites
+   typing in the sign-up form smooth â€” otherwise every keystroke re-composites
    the whole photo-and-blur backdrop underneath the dialog. */
 .modal-open .hero-bg {
   transform: none !important;
@@ -703,7 +713,7 @@ body.menu-open .feature-drawer-tab {
 }
 
 /* The copy owns the full width of the hero and stays hard against the left
-   edge — no centred column, so the headline and buttons start at the same
+   edge â€” no centred column, so the headline and buttons start at the same
    left line as the header and the sections below. */
 .intro {
   max-width: none;
@@ -1552,7 +1562,7 @@ section {
   box-shadow: 0 0 0 3px rgba(214, 69, 69, 0.18);
 }
 
-/* A wrapper for a password field with a Show/Hide button inside its right edge.
+/* A wrapper for a password field with a Show / Hide button inside its right edge.
    The input keeps its normal look; only its right padding grows to clear the
    button. Used by every password form so the control is identical everywhere. */
 .password-field {
@@ -1621,12 +1631,6 @@ section {
   margin-top: 0;
 }
 
-/* The sign-up modal carries a long form, so let it scroll on short screens
-   rather than run off the bottom of the window. */
-#signupModal .modal-card {
-  max-height: 90vh;
-  overflow-y: auto;
-}
 
 .form-status {
   margin: 12px 0 0;
@@ -1964,7 +1968,7 @@ section {
 }
 
 /* While the document is booting, keep the page behind the splash quiet.
-   The lock is released by script.js, and — critically — also by a pure-CSS
+   The lock is released by script.js, and â€” critically â€” also by a pure-CSS
    safety animation below. If the script never runs (blocked, 404, or a phone
    that drops the request), the page must still unlock itself and scroll. */
 html.is-booting,
@@ -2096,7 +2100,7 @@ html.is-ready .site-header {
 .reveal.is-visible .stagger:nth-child(6) { transition-delay: 0.55s; }
 
 /* Counters show their final value by default, so with JS off the real numbers
-   are always on screen — script.js only rewinds them to animate. */
+   are always on screen â€” script.js only rewinds them to animate. */
 .hero-stats .stat strong {
   font-variant-numeric: tabular-nums;
 }
@@ -2337,7 +2341,7 @@ body.no-scroll {
   color: var(--gold-400);
 }
 
-/* Gold button — the accent action, used once per page so it stays special. */
+/* Gold button â€” the accent action, used once per page so it stays special. */
 .btn-gold {
   background: linear-gradient(180deg, var(--gold-400), var(--gold-500));
   color: #3a2c05;
@@ -2353,7 +2357,7 @@ body.no-scroll {
 
 /* A ghost button for the dark hero and sub-heroes. It carries a real fill and
    a text shadow so it stays legible over a photograph, not just over flat
-   colour — an 8% wash disappears against a bright sky. */
+   colour â€” an 8% wash disappears against a bright sky. */
 .btn-ghost-light {
   background: rgba(4, 35, 26, 0.45);
   color: #fff;
@@ -2423,7 +2427,7 @@ body.no-scroll {
   border-bottom: 1px solid var(--line);
 }
 
-/* A large ghosted numeral — a printed-index touch that costs nothing. */
+/* A large ghosted numeral â€” a printed-index touch that costs nothing. */
 .detail-num {
   flex: none;
   font-size: 40px;
@@ -3019,7 +3023,7 @@ body.no-scroll {
   font-size: 14px;
 }
 
-/* A real inline button that reads as a link — used for "Create one" inside the
+/* A real inline button that reads as a link â€” used for "Create one" inside the
    login modal and for the sign-in prompt in the public lookup table. */
 .link-button {
   padding: 0;
@@ -3050,7 +3054,7 @@ body.no-scroll {
 
 /* ---- My Account panel ---- */
 .account {
-  /* Keep the horizontal inset the other sections get from `section` — without
+  /* Keep the horizontal inset the other sections get from `section` â€” without
      it the payment-history table runs edge to edge on a phone. */
   padding: 72px 24px;
   background: var(--cream, #faf7f2);
@@ -3126,9 +3130,19 @@ body.no-scroll {
 }
 
 /* ---- Sign-up confirmation ---- */
+/* Now that the confirmation shares a grid cell with the sign-up form, it needs
+   an explicit `display: block` for its `hidden` attribute to have anywhere to
+   hide: a grid item whose display is never set is not hidden by [hidden] here,
+   so the "Account created" panel would show on top of the form before any
+   account exists. The [hidden] rule below re-hides it. */
 .signup-done {
+  display: block;
   padding: 8px 0 0;
   text-align: center;
+}
+
+.signup-done[hidden] {
+  display: none;
 }
 
 .signup-done h3 {
@@ -3149,13 +3163,13 @@ body.no-scroll {
 }
 
 /* ==========================================================================
-   Full-bleed layout · glass features · hover drawer
+   Full-bleed layout Â· glass features Â· hover drawer
    --------------------------------------------------------------------------
    This block widens the page so it occupies the whole screen, turns the
    feature surfaces into frosted glass that stays readable, and adds an edge
    drawer that reveals the whole site's features on hover or tap.
    It comes last so it layers on top of the original rules without rewriting
-   them — remove this one block to return to the centred 1200px layout.
+   them â€” remove this one block to return to the centred 1200px layout.
    ========================================================================== */
 
 /* ---------- 1. Full-bleed layout --------------------------------------- */
@@ -3205,7 +3219,7 @@ section {
 .patron {
   position: relative;
   /* A denser wash of colour sits behind the cards so the frosted glass has
-     something to blur — without it, transparency over a near-white canvas is
+     something to blur â€” without it, transparency over a near-white canvas is
      invisible and the cards just read as solid. */
   background:
     radial-gradient(620px 380px at 8% 18%, rgba(18, 121, 76, 0.22), transparent 62%),
@@ -3248,7 +3262,7 @@ section {
     0 24px 50px rgba(15, 56, 35, 0.20);
 }
 
-/* Text stays fully opaque on the glass — transparency that costs legibility
+/* Text stays fully opaque on the glass â€” transparency that costs legibility
    is a bug, not a style. */
 .feature-card h3,
 .feature-card p,
@@ -3539,3 +3553,429 @@ section {
     opacity: 1;
   }
 }
+
+/* ---------- Sign-in / sign-up card ----------
+   One dialog, two panels. A deep-green brand panel sits on the left for the
+   sign-in form and swipes to the right when the visitor switches to sign-up
+   (the card gains .is-signup from script.js), uncovering a column on its left
+   that belongs to the sign-up form — the same column the sign-in form uses on
+   the right. The two forms therefore never occupy the same space, which keeps
+   the long sign-up form painted while the card is mid-animation.
+   Neither form is hidden with opacity: the panel that is off screen is simply
+   clipped by the card's overflow, so a form that is showing is always drawn.
+   Below 820px - and for anyone who asked for reduced motion - the card becomes
+   a quiet single column and the brand panel is simply hidden.
+   Nothing here relies on an inline style, which the page's CSP would refuse. */
+.modal-card-auth {
+  --auth-w: 920px;
+  --auth-h: 560px;
+  --auth-side: 50%;
+  position: relative;
+  width: min(var(--auth-w), 100%);
+  /* A fixed height would let a short window keep it taller than the viewport
+     and cut off the rest of the form; never grow past the window. */
+  height: min(var(--auth-h), calc(100vh - 40px));
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+/* The branded panel, with two slow-drifting light orbs behind the seal. It is
+   the only element that changes position: z-index 2 keeps it above the sign-up
+   column it sweeps across, hiding both forms while it sits on the right half.
+   `.modal-card .auth-brand` (not `.auth-brand`): the card also carries
+   .modal-card, and the page's generic `.modal-card h2 { color: … }` outranks a
+   bare class — which left "Welcome back" almost invisible on the green. */
+.modal-card .auth-brand {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 2;
+  width: var(--auth-side);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 44px 40px;
+  overflow: hidden;
+  color: #eaf5ee;
+  text-align: center;
+  background:
+    radial-gradient(circle at 20% 12%, rgba(26, 143, 92, 0.55), transparent 58%),
+    linear-gradient(150deg, var(--green-700), var(--green-900) 70%);
+  transition: transform 0.7s cubic-bezier(0.7, 0, 0.25, 1);
+}
+
+/* A hairline gold rule along the moving edge, the site's second accent. */
+.auth-brand::after {
+  content: "";
+  position: absolute;
+  top: 12%;
+  bottom: 12%;
+  right: 0;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(212, 167, 44, 0.65), transparent);
+}
+
+.modal-card-auth.is-signup .auth-brand {
+  transform: translateX(100%);
+}
+
+.modal-card-auth.is-signup .auth-brand::after {
+  right: auto;
+  left: 0;
+}
+
+/* Applied for one frame by script.js while the card is being opened on the
+   sign-up side (or reset after closing), so the panel starts in place instead
+   of sliding across a dialog the visitor has just opened. */
+.modal-card-auth.no-auth-anim .auth-brand {
+  transition: none;
+}
+
+.auth-orb {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(2px);
+  animation: auth-drift 14s var(--ease) infinite alternate;
+}
+
+.auth-orb-a {
+  width: 320px;
+  height: 320px;
+  top: -110px;
+  left: -90px;
+  background: radial-gradient(circle, rgba(26, 143, 92, 0.55), transparent 66%);
+}
+
+.auth-orb-b {
+  width: 260px;
+  height: 260px;
+  right: -90px;
+  bottom: -80px;
+  background: radial-gradient(circle, rgba(212, 167, 44, 0.28), transparent 68%);
+  animation-duration: 18s;
+  animation-direction: alternate-reverse;
+}
+
+@keyframes auth-drift {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(26px, -18px, 0) scale(1.12); }
+}
+
+.auth-brand-inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  max-width: 320px;
+}
+
+.auth-brand-logo {
+  width: 76px;
+  height: 76px;
+  object-fit: contain;
+  padding: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 8px 24px rgba(4, 35, 26, 0.35), 0 0 0 6px rgba(255, 255, 255, 0.1);
+  animation: auth-logo-in 0.7s var(--ease) 0.15s both;
+}
+
+@keyframes auth-logo-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.9); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.auth-brand-eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold-400);
+}
+
+/* The panel's own stacking context. `.auth-brand` already sets z-index: 2, but
+   without isolation it competes in the card's root context and drags its
+   children with it. Isolating the panel keeps both panels repainting cleanly
+   while the card slides between sign-in and sign-up. */
+.modal-card .auth-brand {
+  isolation: isolate;
+}
+
+/* Scoped to .modal-card so it beats the generic `.modal-card h2` colour above
+   (both rules are one class + one element; the later one wins). */
+.modal-card .auth-brand-title {
+  margin: 0;
+  font-size: 30px;
+  line-height: 1.15;
+  color: #fff;
+}
+
+.auth-brand-line {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #cfe6da;
+}
+
+.auth-brand-note {
+  margin: 6px 0 0;
+  padding-top: 14px;
+  font-size: 12px;
+  color: rgba(234, 245, 238, 0.62);
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+/* The two forms sit in separate halves of the card. The sign-in form owns the
+   right half, which is the half the brand panel leaves uncovered; the sign-up
+   form owns the left half, so it is only seen once the panel has swept over to
+   the right. Nothing animates on the forms themselves — the moving panel is the
+   whole transition — so the forms stay in sync with it at every frame. */
+.auth-panel {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  width: var(--auth-side);
+  /* Rows size to their content: the form grows on its own and the panel
+     scrolls, so nothing is stretched or pinned to a fixed grid height. */
+  display: grid;
+  grid-template-rows: none;
+  align-content: start;
+  padding: 34px 34px 26px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.auth-panel-login { right: 0; }
+.auth-panel-signup { left: 0; }
+
+.auth-panel > h2 {
+  grid-row: 1;
+  margin: 0 0 6px;
+}
+
+/* Only the lede directly under the heading, not the footnote at the bottom. */
+.auth-panel > h2 + .muted {
+  grid-row: 2;
+  margin: 0 0 20px;
+}
+
+.auth-panel > form,
+.auth-panel > .signup-done { grid-row: 3; }
+
+/* The footnote sits at the end of the scroll, not floating over it: a sticky
+   banner here is clipped by the card's rounded edge and cuts the last field in
+   half on a short screen. The form's bottom margin leaves it room instead. */
+.auth-panel > .modal-footnote {
+  grid-row: 4;
+  align-self: end;
+  margin: 26px 0 0;
+  padding: 16px 0 22px;
+  font-size: 13px;
+  line-height: 1.55;
+  border-top: 1px solid var(--line);
+}
+
+/* The panel that is off screen must not be reachable by Tab or a screen reader,
+   and must not paint underneath the other one. Both forms sit at z-index 1,
+   below the brand panel's 2, so whichever half the panel is over is covered.
+   This is switched by `visibility`, which costs nothing to change and leaves
+   the layout untouched — no fade, no movement of the form itself. */
+.auth-panel-signup { visibility: hidden; }
+.modal-card-auth.is-signup .auth-panel-login { visibility: hidden; }
+.modal-card-auth.is-signup .auth-panel-signup { visibility: visible; }
+
+
+
+/* Fields in this card read as soft, tactile inputs. */
+.auth-panel .field span {
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: var(--ink-soft);
+}
+
+.auth-panel .field input,
+.auth-panel .field select {
+  padding: 13px 15px;
+  border-color: var(--line-strong);
+  border-radius: 10px;
+  background: #fbfdfb;
+  transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease),
+    background 0.2s var(--ease), transform 0.2s var(--ease);
+}
+
+.auth-panel .field input:hover,
+.auth-panel .field select:hover {
+  border-color: var(--green-500);
+}
+
+.auth-panel .field input:focus,
+.auth-panel .field select:focus {
+  background: #fff;
+  border-color: var(--green-600);
+  box-shadow: var(--ring);
+}
+
+/* The submit button: lifts on hover and shows a spinner while it works.
+   script.js adds .is-loading when a request is in flight. */
+.auth-panel .btn-block {
+  position: relative;
+  overflow: hidden;
+  margin-top: 4px;
+  padding: 14px 20px;
+  border-radius: 10px;
+  letter-spacing: 0.02em;
+  box-shadow: 0 8px 20px rgba(10, 74, 48, 0.22);
+  transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease),
+    background 0.2s var(--ease);
+}
+
+/* A sheen sweeps across the button when the pointer is on it. */
+.auth-panel .btn-block::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -60%;
+  width: 45%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.32), transparent);
+  transform: skewX(-18deg);
+  transition: left 0.6s var(--ease);
+  pointer-events: none;
+}
+
+.auth-panel .btn-block:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px rgba(10, 74, 48, 0.3);
+}
+
+.auth-panel .btn-block:hover::after { left: 115%; }
+
+.auth-panel .btn-block:active { transform: translateY(0) scale(0.995); }
+
+.auth-panel .btn-block.is-loading {
+  color: transparent;
+  pointer-events: none;
+}
+
+.auth-panel .btn-block.is-loading::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-top-color: #fff;
+  animation: auth-spin 0.8s linear infinite;
+}
+
+@keyframes auth-spin {
+  to { transform: rotate(360deg); }
+}
+
+
+
+/* The card's headings inherit the page's gold-underlined h2 band, which on
+   white reads as a black smear behind the text. Plain ink instead. */
+.auth-panel > h2,
+.auth-brand .auth-brand-title {
+  background: none;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  padding: 0;
+}
+
+.modal-card .auth-panel > h2 {
+  font-size: 22px;
+  color: var(--green-800);
+}
+
+/* The modal's close button can end up over either half — a dark brand panel
+   when the card is on sign-in, white form when it is on sign-up — so give it a
+   light chip of its own instead of a text colour that only works on one of
+   them. */
+.modal-card-auth .modal-close {
+  z-index: 5;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--ink-soft);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--shadow-sm);
+  transition: background 0.2s var(--ease), color 0.2s var(--ease);
+}
+
+/* The dialog's own rule below is scoped to .modal-card, so it outranks the
+   plain selectors above and would pull the button back to 8px from the corner. */
+.modal-card-auth .modal-card-auth .modal-close {
+  top: 12px;
+  right: 12px;
+  padding: 0;
+}
+
+.modal-card-auth .modal-close:hover {
+  background: #fff;
+  color: var(--green-800);
+}
+
+.modal-card-auth.is-signup .modal-close {
+  color: var(--ink-soft);
+}
+
+/* Narrow screens (and reduced motion): one column, no sliding panel.
+   This has to beat the `display: flex` the brand panel gets above, and the
+   `height: auto` has to beat the fixed --auth-h too, so both rules carry the
+   extra class and sit at this point in the file rather than earlier on. */
+@media (max-width: 820px), (prefers-reduced-motion: reduce) {
+  .modal-card-auth {
+    --auth-side: 100%;
+    height: auto;
+    max-height: min(88vh, 760px);
+  }
+
+  .modal-card-auth .auth-brand { display: none; }
+
+  /* One column: both panels sit at the top of the card, so the hidden one has
+     to be taken out of the page entirely (the wide layout relied on the brand
+     panel covering it, and there is no brand panel here). */
+  .auth-panel {
+    position: static;
+    width: 100%;
+    padding: 28px 22px 22px;
+    overflow: visible;
+  }
+
+  .modal-card-auth:not(.is-signup) .auth-panel-signup,
+  .modal-card-auth.is-signup .auth-panel-login {
+    display: none;
+  }
+
+  .modal-card-auth { display: block; overflow-y: auto; }
+}
+
+@media (max-width: 820px) {
+  .modal-card-auth .modal-close { color: var(--ink-soft); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-orb,
+  .auth-brand-logo,
+  .auth-panel .btn-block.is-loading::before {
+    animation: none;
+  }
+
+  .auth-brand,
+  .auth-panel { transition: none; }
+}
+
+

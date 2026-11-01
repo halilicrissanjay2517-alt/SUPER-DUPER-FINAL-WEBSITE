@@ -52,7 +52,8 @@
             <a href="#dashTop" data-dash-menu-link>Overview</a>
             <a href="#dashProfile" data-dash-menu-link>My profile</a>
             <a href="#dashLogin" data-dash-menu-link>My login &amp; password</a>
-            <a href="#dashPayments" data-dash-menu-link>Payment history</a>
+            <a href="#dashHistory" data-dash-menu-link>Payment history</a>
+            <a href="#dashHistory" data-dash-menu-link data-dash-open-history>View receipts</a>
             <p class="dash-menu-title">Actions</p>
             <button type="button" id="dashMenuRefresh">Refresh my figures</button>
             <a href="studentportal.html">Back to the portal</a>
@@ -83,6 +84,7 @@
         <!-- The dashboard proper. -->
         <div class="dash-content" id="dashContent" hidden>
             <section class="dash-hero" id="dashTop">
+                <div class="dash-hero-ribbon" aria-hidden="true"></div>
                 <div class="dash-hero-id">
                     <span class="profile-avatar dash-hero-avatar" id="dashHeroAvatar" aria-hidden="true">—</span>
                     <div class="dash-hero-text">
@@ -119,6 +121,40 @@
                     <strong class="account-card-value" id="dashDue">—</strong>
                     <span class="dash-card-note" id="dashDueNote"></span>
                 </div>
+            </section>
+
+            <!-- How the tuition has been settled so far: one bar and three plain
+                 facts. Every figure is computed from the student's own payments. -->
+            <section class="dash-overview dash-panel" aria-label="Payment overview" id="dashOverview">
+                <div class="pay-progress-wrap">
+                    <div class="pay-progress-head">
+                        <span class="pay-progress-label">Tuition settled</span>
+                        <strong class="pay-progress-percent" id="dashPaidPercent">0%</strong>
+                    </div>
+                    <div class="pay-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100"
+                         aria-valuenow="0" id="dashPaidBar" aria-label="Share of tuition already paid">
+                        <span class="pay-progress-fill" id="dashPaidFill"></span>
+                    </div>
+                    <p class="pay-progress-foot" id="dashPaidSummary">—</p>
+                </div>
+                <dl class="dash-kpis">
+                    <div class="dash-kpi">
+                        <dt>Payments recorded</dt>
+                        <dd id="dashKpiCount">0</dd>
+                    </div>
+                    <div class="dash-kpi">
+                        <dt>Average payment</dt>
+                        <dd id="dashKpiAverage">&#8369;0</dd>
+                    </div>
+                    <div class="dash-kpi">
+                        <dt>Largest payment</dt>
+                        <dd id="dashKpiLargest">&#8369;0</dd>
+                    </div>
+                    <div class="dash-kpi">
+                        <dt>Latest payment</dt>
+                        <dd id="dashKpiLatest">—</dd>
+                    </div>
+                </dl>
             </section>
 
             <div class="dash-grid">
@@ -211,29 +247,114 @@
                 </section>
             </div>
 
-            <!-- Payment history -->
-            <section class="dash-panel" id="dashPayments" aria-labelledby="dashPaymentsHeading">
-                <header class="dash-panel-head">
-                    <h2 id="dashPaymentsHeading">Payment history</h2>
-                    <span class="dash-panel-total" id="dashPaymentsTotal"></span>
+            <!-- Payment history. The section id (dashHistory) differs from the
+                 table body's id (dashPayments) on purpose: dashboard.js paints
+                 rows into the tbody by that id, and a duplicate id made it
+                 select the outer section and overwrite the whole panel. -->
+            <section class="dash-panel dash-history" id="dashHistory" aria-labelledby="dashPaymentsHeading">
+                <header class="dash-panel-head dash-history-head">
+                    <div>
+                        <h2 id="dashPaymentsHeading">Payment history</h2>
+                        <p class="dash-panel-sub" id="dashPaymentsTotal">Every payment recorded for your account.</p>
+                    </div>
+                    <button type="button" class="btn btn-secondary btn-sm" id="dashExportBtn">
+                        Download statement
+                    </button>
                 </header>
-                <div class="table-wrap">
-                    <table class="data-table">
+
+                <!-- What the payments add up to, at a glance. -->
+                <div class="history-stats" id="dashHistoryStats">
+                    <div class="history-stat">
+                        <span class="history-stat-label">Total paid</span>
+                        <strong class="history-stat-value" id="dashHistoryTotal">&#8369;0</strong>
+                        <span class="history-stat-note" id="dashHistoryTotalNote">No payments yet</span>
+                    </div>
+                    <div class="history-stat">
+                        <span class="history-stat-label">Remaining</span>
+                        <strong class="history-stat-value" id="dashHistoryBalance">&#8369;0</strong>
+                        <span class="history-stat-note" id="dashHistoryBalanceNote">&nbsp;</span>
+                    </div>
+                    <div class="history-stat">
+                        <span class="history-stat-label">Preferred method</span>
+                        <strong class="history-stat-value history-stat-value--text" id="dashHistoryMethod">—</strong>
+                        <span class="history-stat-note" id="dashHistoryMethodNote">&nbsp;</span>
+                    </div>
+                </div>
+
+                <!-- Narrow a long list down without leaving the page. -->
+                <div class="history-toolbar" id="dashHistoryToolbar" hidden>
+                    <div class="history-chips" role="group" aria-label="Filter payments by method">
+                        <button type="button" class="chip is-active" data-method-filter="all">All</button>
+                        <button type="button" class="chip" data-method-filter="cash">Cash</button>
+                        <button type="button" class="chip" data-method-filter="gcash">GCash</button>
+                        <button type="button" class="chip" data-method-filter="bank">Bank</button>
+                        <button type="button" class="chip" data-method-filter="card">Card</button>
+                    </div>
+                    <label class="history-search">
+                        <span class="sr-only">Search your payments</span>
+                        <input type="search" id="dashHistorySearch" placeholder="Search receipt, method or note…" autocomplete="off">
+                    </label>
+                </div>
+
+                <!-- The ledger proper: newest first, one row per payment. -->
+                <div class="history-table-wrap">
+                    <table class="data-table history-table">
                         <thead>
                             <tr>
                                 <th scope="col">Date</th>
                                 <th scope="col">Receipt</th>
-                                <th scope="col">Amount</th>
                                 <th scope="col">Method</th>
                                 <th scope="col">Note</th>
+                                <th scope="col" class="history-col-amount">Amount</th>
+                                <th scope="col"><span class="sr-only">View receipt</span></th>
                             </tr>
                         </thead>
                         <tbody id="dashPayments">
-                            <tr><td colspan="5" class="table-empty">Loading…</td></tr>
+                            <tr><td colspan="6" class="table-empty">Loading…</td></tr>
                         </tbody>
                     </table>
                 </div>
+                <p class="history-empty" id="dashPaymentsEmpty" hidden>
+                    No payments match this filter yet.
+                </p>
+
+                <div class="history-foot">
+                    <span id="dashPaymentsCount">0 payments</span>
+                    <button type="button" class="link-button" id="dashHistoryMore" hidden>Show all payments</button>
+                </div>
             </section>
+        </div>
+
+        <!-- One receipt, sized for reading and for printing. Filled on demand from
+             the payment that was clicked; nothing is fetched just to open it. -->
+        <div class="receipt-modal" id="receiptModal" hidden>
+            <div class="receipt-backdrop" data-receipt-close></div>
+            <div class="receipt-card" role="dialog" aria-modal="true" aria-labelledby="receiptTitle">
+                <button type="button" class="receipt-close" data-receipt-close aria-label="Close receipt">&times;</button>
+                <div class="receipt-head">
+                    <img src="logo.png" alt="" width="48" height="48">
+                    <div>
+                        <strong>Saint Patrick's Academy, Inc.</strong>
+                        <small>Yakal 1, Paltic, Dingalan, Aurora</small>
+                    </div>
+                </div>
+                <h2 class="receipt-title" id="receiptTitle">Official receipt</h2>
+                <p class="receipt-paid"><span aria-hidden="true">&#10003;</span> Recorded by the Accounting office</p>
+                <strong class="receipt-amount" id="receiptAmount">&#8369;0</strong>
+                <dl class="receipt-details">
+                    <div><dt>Receipt no.</dt><dd id="receiptNo">—</dd></div>
+                    <div><dt>Date</dt><dd id="receiptDate">—</dd></div>
+                    <div><dt>Student</dt><dd id="receiptStudent">—</dd></div>
+                    <div><dt>Student ID</dt><dd id="receiptStudentId">—</dd></div>
+                    <div><dt>Method</dt><dd id="receiptMethod">—</dd></div>
+                    <div><dt>Note</dt><dd id="receiptNote">—</dd></div>
+                </dl>
+                <div class="receipt-foot">
+                    <button type="button" class="btn btn-primary btn-sm" id="receiptPrint">Print receipt</button>
+                    <button type="button" class="btn btn-ghost btn-sm" data-receipt-close>Close</button>
+                </div>
+                <p class="receipt-note">Keep this receipt for your records. Questions? Accounting at (042) 555-0168.</p>
+            </div>
         </div>
     </main>
 

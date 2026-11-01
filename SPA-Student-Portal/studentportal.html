@@ -73,22 +73,27 @@
                     <small>Student Portal</small>
                 </span>
             </a>
-            <div class="nav-links">
-                <!-- The header stays quiet: the wide-screen menu carries a few
-                     top-level links, everything else lives in the side menu. -->
-                <a href="#features">Features</a>
-                <a href="#announcements-list">Announcements</a>
-                <a href="#contact">Contact</a>
+            <!-- The links, the partner seal and the menu button travel together
+                 as one group at the right end, instead of being spread across
+                 the whole bar by the nav's space-between. -->
+            <div class="nav-right">
+                <div class="nav-links">
+                    <!-- The header stays quiet: the wide-screen menu carries a few
+                         top-level links, everything else lives in the side menu. -->
+                    <a href="#features">Features</a>
+                    <a href="#announcements-list">Announcements</a>
+                    <a href="#contact">Contact</a>
+                </div>
+                <!-- CASPI (Catholic Association of Schools in the Prelature of Infanta)
+                     seal, mirroring the SPA logo on the left of the header. -->
+                <span class="nav-partner" title="Catholic Association of Schools in the Prelature of Infanta">
+                    <img src="CASPI LOGO.jpg" alt="Catholic Association of Schools in the Prelature of Infanta logo">
+                </span>
+                <button type="button" class="btn btn-ghost nav-toggle" data-menu-toggle aria-expanded="false" aria-controls="siteMenu">
+                    <span class="sr-only">Open menu</span>
+                    <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6Zm0 5h18v2H3v-2Zm0 5h18v2H3v-2Z"/></svg>
+                </button>
             </div>
-            <!-- CASPI (Catholic Association of Schools in the Prelature of Infanta)
-                 seal, mirroring the SPA logo on the left of the header. -->
-            <span class="nav-partner" title="Catholic Association of Schools in the Prelature of Infanta">
-                <img src="CASPI LOGO.jpg" alt="Catholic Association of Schools in the Prelature of Infanta logo">
-            </span>
-            <button type="button" class="btn btn-ghost nav-toggle" data-menu-toggle aria-expanded="false" aria-controls="siteMenu">
-                <span class="sr-only">Open menu</span>
-                <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6Zm0 5h18v2H3v-2Zm0 5h18v2H3v-2Z"/></svg>
-            </button>
         </nav>
     </header>
 
@@ -562,41 +567,59 @@
         <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 6l6 6h-4v6h-4v-6H6l6-6Z"/></svg>
     </button>
 
+    <!-- One card holds both forms. "Log In" opens it on the sign-in panel and
+         "Create Account" opens the same card already slid over to the sign-up
+         panel (see .is-signup below), so the two never open side by side.
+         The whole card is marked up here rather than injected by script: the
+         page must still offer a usable form when script.js does not run. -->
     <div class="modal" id="loginModal" hidden>
         <div class="modal-backdrop" data-modal-close></div>
-        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+        <div class="modal-card modal-card-auth" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
             <button type="button" class="modal-close" data-modal-close aria-label="Close">&times;</button>
-            <h2 id="loginTitle">Log In</h2>
-            <p class="muted">Access your own record: tuition, balance, due date and payment history.</p>
-            <form id="studentLoginForm" novalidate>
-                <label class="field"><span>Student ID or email</span><input type="text" name="studentId" required autocomplete="username"></label>
-                <label class="field"><span>Password</span>
-                    <div class="password-field">
-                        <input type="password" name="password" required autocomplete="current-password">
-                        <button type="button" class="password-toggle" aria-label="Show password" aria-pressed="false">Show</button>
-                    </div>
-                </label>
-                <button type="submit" class="btn btn-primary btn-block">Log In</button>
-                <p class="form-status" id="studentLoginStatus" role="status" aria-live="polite"></p>
-            </form>
-            <p class="muted modal-footnote">
-                No account yet? <button type="button" class="link-button" data-modal-open="signupModal">Create one</button>.
-                New accounts are reviewed by the school office before they can be used.
-            </p>
-        </div>
-    </div>
 
-    <div class="modal" id="signupModal" hidden>
-        <div class="modal-backdrop" data-modal-close></div>
-        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="signupTitle">
-            <button type="button" class="modal-close" data-modal-close aria-label="Close">&times;</button>
-            <h2 id="signupTitle">Create Account</h2>
-            <p class="muted">
-                Fill in your details and register with the Student ID the school already has
-                for you. The school office checks everything you submit and approves your
-                account before you can sign in.
-            </p>
-            <form id="studentSignupForm" novalidate>
+            <!-- Moving brand panel. On a wide screen it slides from the left to
+                 the right as you switch to sign-up; on a phone it sits on top. -->
+            <div class="auth-brand" aria-hidden="true">
+                <span class="auth-orb auth-orb-a"></span>
+                <span class="auth-orb auth-orb-b"></span>
+                <div class="auth-brand-inner">
+                    <img src="logo.png" alt="" class="auth-brand-logo">
+                    <span class="auth-brand-eyebrow">Saint Patrick's Academy, Inc.</span>
+                    <h2 class="auth-brand-title">Welcome back</h2>
+                    <p class="auth-brand-line">One secure place for students and parents to follow announcements, review records and settle tuition.</p>
+                    <p class="auth-brand-note">Current families sign in with the student's account. New accounts are checked by the school office.</p>
+                </div>
+            </div>
+
+            <div class="auth-panel auth-panel-login">
+                <h2 id="loginTitle">Log In</h2>
+                <p class="muted">Access your own record: tuition, balance, due date and payment history.</p>
+                <form id="studentLoginForm" novalidate>
+                    <label class="field"><span>Student ID or email</span><input type="text" name="studentId" required autocomplete="username" placeholder="2024-001"></label>
+                    <label class="field"><span>Password</span>
+                        <div class="password-field">
+                            <input type="password" name="password" required autocomplete="current-password" placeholder="Your password">
+                            <button type="button" class="password-toggle" aria-label="Show password" aria-pressed="false">Show</button>
+                        </div>
+                    </label>
+                    <button type="submit" class="btn btn-primary btn-block">Log In</button>
+                    <p class="form-status" id="studentLoginStatus" role="status" aria-live="polite"></p>
+                </form>
+                <p class="muted modal-footnote">
+                    No account yet?
+                    <button type="button" class="link-button" data-auth-switch="signup">Create one</button>.
+                    New accounts are reviewed by the school office before they can be used.
+                </p>
+            </div>
+
+            <div class="auth-panel auth-panel-signup">
+                <h2 id="signupTitle">Create Account</h2>
+                <p class="muted">
+                    Fill in your details and register with the Student ID the school already has
+                    for you. The school office checks everything you submit and approves your
+                    account before you can sign in.
+                </p>
+                <form id="studentSignupForm" novalidate>
                 <p class="signup-group">Who you are</p>
                 <label class="field"><span>Student ID</span><input type="text" name="studentId" required placeholder="2024-001" autocomplete="off"></label>
                 <label class="field"><span>Full name</span><input type="text" name="fullname" required placeholder="Juan Dela Cruz" autocomplete="name"></label>
@@ -662,11 +685,16 @@
                 <button type="submit" class="btn btn-primary btn-block">Create account</button>
                 <p class="form-status" id="studentSignupStatus" role="status" aria-live="polite"></p>
             </form>
-            <div id="signupDone" hidden class="signup-done">
-                <h3>Account created</h3>
-                <p class="muted" id="signupDoneText"></p>
-                <button type="button" class="btn btn-secondary btn-block" id="checkStatusBtn">Check approval status</button>
-                <p class="form-status" id="signupStatusCheck" role="status" aria-live="polite"></p>
+                <div id="signupDone" hidden class="signup-done">
+                    <h3>Account created</h3>
+                    <p class="muted" id="signupDoneText"></p>
+                    <button type="button" class="btn btn-secondary btn-block" id="checkStatusBtn">Check approval status</button>
+                    <p class="form-status" id="signupStatusCheck" role="status" aria-live="polite"></p>
+                </div>
+                <p class="muted modal-footnote">
+                    Already have an account?
+                    <button type="button" class="link-button" data-auth-switch="login">Log in</button>.
+                </p>
             </div>
         </div>
     </div>

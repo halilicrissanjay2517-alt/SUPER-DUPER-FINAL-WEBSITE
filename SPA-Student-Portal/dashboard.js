@@ -41,6 +41,178 @@
     });
   }
 
+  /* ---------- Payment ledger state ----------
+     The record arrives once; filtering and searching happen in the page so the
+     list answers instantly and the server is not asked again for a view change. */
+  var PAYMENTS_PER_PAGE = 8;
+  var paymentsAll = [];
+  var paymentFilter = "all";
+  var paymentSearch = "";
+  var paymentsShown = PAYMENTS_PER_PAGE;
+  var lastStudent = null;
+
+  /**
+   * Which bucket a payment method belongs to, so the filter chips can group
+   * "Bank Transfer", "Landbank" and "BPI" under one Bank chip.
+   */
+  function methodKey(method) {
+    var m = String(method || "").toLowerCase();
+    if (m.indexOf("gcash") !== -1 || m.indexOf("maya") !== -1) return "gcash";
+    if (m.indexOf("bank") !== -1 || m.indexOf("deposit") !== -1) return "bank";
+    if (m.indexOf("card") !== -1 || m.indexOf("credit") !== -1) return "card";
+    if (m.indexOf("cash") !== -1) return "cash";
+    return "other";
+  }
+
+  function shortenMethod(method) {
+    var m = String(method || "").trim();
+    return m || "—";
+  }
+
+  /** Payments that pass the current chip + search, newest first. */
+  function visiblePayments() {
+    var term = paymentSearch.trim().toLowerCase();
+    return paymentsAll.filter(function (p) {
+      if (paymentFilter !== "all" && methodKey(p.method) !== paymentFilter) return false;
+      if (!term) return true;
+      return [p.receiptNo, p.method, p.note, niceDate(p.date), peso(p.amount)]
+        .join(" ").toLowerCase().indexOf(term) !== -1;
+    });
+  }
+
+  function paintPaymentRows() {
+    var tbody = $("#dashPayments");
+    if (!tbody) return;
+    var rows = visiblePayments();
+    var shown = rows.slice(0, paymentsShown);
+
+    if (shown.length === 0) {
+      tbody.innerHTML =
+        '<tr><td colspan="6" class="table-empty">' +
+        (paymentsAll.length === 0
+          ? "No payments recorded yet. Payments made at the Accounting office appear here."
+          : "No payments match this filter.") +
+        "</td></tr>";
+    } else {
+      tbody.innerHTML = shown.map(function (p) {
+        var key = methodKey(p.method);
+        return '<tr class="history-row">' +
+          '<td class="history-date"><strong>' + escapeHtml(niceDate(p.date)) + "</strong></td>" +
+          "<td><span class=\"history-receipt\">" + escapeHtml(p.receiptNo) + "</span></td>" +
+          '<td><span class="method-pill method-' + escapeHtml(key) + '">' +
+            escapeHtml(shortenMethod(p.method)) + "</span></td>" +
+          '<td class="history-note">' + escapeHtml(p.note || "—") + "</td>" +
+          '<td class="amount-cell">' + peso(p.amount) + "</td>" +
+          '<td class="history-action"><button type="button" class="history-view" ' +
+            'data-receipt="' + escapeHtml(p.receiptNo) + '" aria-label="View receipt ' +
+            escapeHtml(p.receiptNo) + '">View</button></td>' +
+          "</tr>";
+      }).join("");
+    }
+
+    if ($("#dashPaymentsEmpty")) $("#dashPaymentsEmpty").hidden = true;
+    var more = $("#dashHistoryMore");
+    if (more) {
+      more.hidden = rows.length <= paymentsShown;
+      more.textContent = "Show all " + rows.length + " payments";
+    }
+    if ($("#dashPaymentsCount")) {
+      $("#dashPaymentsCount").textContent =
+        rows.length === paymentsAll.length
+          ? rows.length + (rows.length === 1 ? " payment" : " payments") + " recorded"
+          : "Showing " + shown.length + " of " + rows.length + " matching payments";
+    }
+
+    // Keep the overview band in step whenever the ledger is repainted.
+    if (lastStudent) {
+      paintHistoryStats(lastStudent);
+      paintOverview(lastStudent);
+    }
+  }
+
+  /** The three history KPIs: total paid, remaining, and the usual method. */
+  function paintHistoryStats(s) {
+    var payments = paymentsAll;
+    var total = payments.reduce(function (sum, p) { return sum + (Number(p.amount) || 0); }, 0);
+    var balance = Number(s.balance) || 0;
+
+    if ($("#dashHistoryTotal")) $("#dashHistoryTotal").textContent = peso(total);
+    if ($("#dashHistoryTotalNote")) {
+      $("#dashHistoryTotalNote").textContent = payments.length
+        ? "Across " + payments.length + (payments.length === 1 ? " payment" : " payments")
+        : "No payments yet";
+    }
+    if ($("#dashHistoryBalance")) $("#dashHistoryBalance").textContent = peso(balance);
+    var balEl = $("#dashHistoryBalance");
+    if (balEl) {
+      balEl.classList.toggle("is-owed", balance > 0);
+      balEl.classList.toggle("is-clear", balance <= 0);
+    }
+    if ($("#dashHistoryBalanceNote")) {
+      $("#dashHistoryBalanceNote").textContent = balance > 0 ? "Still to settle" : "Fully settled";
+    }
+
+    // Preferred method: the one used most often, then the one used most recently.
+    var counts = {};
+    payments.forEach(function (p) {
+      var label = shortenMethod(p.method);
+      if (label === "—") return;
+      counts[label] = (counts[label] || 0) + 1;
+    });
+    var best = null;
+    Object.keys(counts).forEach(function (label) {
+      if (!best || counts[label] > counts[best]) best = label;
+    });
+    if ($("#dashHistoryMethod")) $("#dashHistoryMethod").textContent = best || "—";
+    if ($("#dashHistoryMethodNote")) {
+      $("#dashHistoryMethodNote").textContent = best
+        ? "Used " + counts[best] + (counts[best] === 1 ? " time" : " times")
+        : "No method on file";
+    }
+
+    var toolbar = $("#dashHistoryToolbar");
+    if (toolbar) toolbar.hidden = payments.length === 0;
+  }
+
+  /** The overview band: one progress bar plus four plain facts. */
+  function paintOverview(s) {
+    var payments = paymentsAll;
+    var fee = Number(s.totalFee) || 0;
+    var paid = Number(s.amountPaid) || 0;
+    var percent = fee > 0 ? Math.max(0, Math.min(100, Math.round((paid / fee) * 100))) : 0;
+
+    if ($("#dashPaidPercent")) $("#dashPaidPercent").textContent = percent + "%";
+    var bar = $("#dashPaidBar");
+    if (bar) bar.setAttribute("aria-valuenow", String(percent));
+    var fill = $("#dashPaidFill");
+    if (fill) {
+      fill.style.width = percent + "%";
+      fill.classList.toggle("is-clear", percent >= 100);
+    }
+    if ($("#dashPaidSummary")) {
+      $("#dashPaidSummary").textContent = fee > 0
+        ? peso(paid) + " of " + peso(fee) + " tuition"
+        : "No tuition assessment on file yet";
+    }
+
+    var amounts = payments.map(function (p) { return Number(p.amount) || 0; });
+    var average = amounts.length
+      ? Math.round(amounts.reduce(function (a, b) { return a + b; }, 0) / amounts.length)
+      : 0;
+    var largest = amounts.length ? Math.max.apply(null, amounts) : 0;
+
+    if ($("#dashKpiCount")) {
+      $("#dashKpiCount").textContent = String(amounts.length);
+    }
+    if ($("#dashKpiAverage")) $("#dashKpiAverage").textContent = peso(average);
+    if ($("#dashKpiLargest")) $("#dashKpiLargest").textContent = peso(largest);
+    if ($("#dashKpiLatest")) {
+      $("#dashKpiLatest").textContent = payments.length
+        ? niceDate(payments[0].date)
+        : "No payments yet";
+    }
+  }
+
   /**
    * How a due date reads, given how much is still owed. `overdue` / `soon` are
    * flags the alert banner keys off, so the page never has to parse the words.
@@ -148,31 +320,170 @@
     }
     renderAlert(s, balance, due);
 
-    /* Details + payment history */
-    var payments = s.payments || [];
-    var total = payments.reduce(function (sum, p) { return sum + (Number(p.amount) || 0); }, 0);
+    /* Details + payment history. The record is kept on the page so the filter,
+       search and receipt dialog can work without another round trip. */
+    lastStudent = s;
+    paymentsAll = (s.payments || []).slice().sort(function (a, b) {
+      return String(b.date).localeCompare(String(a.date));
+    });
+    paymentsShown = PAYMENTS_PER_PAGE;
     if ($("#dashPaymentsTotal")) {
-      $("#dashPaymentsTotal").textContent =
-        "Total paid " + peso(total) + " · " + payments.length +
-        (payments.length === 1 ? " payment" : " payments");
+      $("#dashPaymentsTotal").textContent = paymentsAll.length
+        ? "Every payment recorded for your account, newest first."
+        : "Payments made at the Accounting office will appear here.";
     }
+    paintHistoryStats(s);
+    paintOverview(s);
+    paintPaymentRows();
+  }
 
-    var tbody = $("#dashPayments");
-    if (tbody) {
-      if (payments.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="table-empty">No payments recorded yet.</td></tr>';
-      } else {
-        tbody.innerHTML = payments.map(function (p) {
-          return "<tr>" +
-            "<td>" + escapeHtml(niceDate(p.date)) + "</td>" +
-            "<td><strong>" + escapeHtml(p.receiptNo) + "</strong></td>" +
-            '<td class="amount-cell">' + peso(p.amount) + "</td>" +
-            "<td>" + escapeHtml(p.method || "—") + "</td>" +
-            "<td>" + escapeHtml(p.note || "—") + "</td>" +
-            "</tr>";
-        }).join("");
-      }
+  /* ---------- Receipt dialog ----------
+     Opens from a table row's View button or from the menu. Everything it shows
+     comes from the payment already in the page; nothing is fetched to open it. */
+  var receiptModal = $("#receiptModal");
+  var receiptTrigger = null;
+
+  function openReceipt(receiptNo, trigger) {
+    if (!receiptModal || !lastStudent) return;
+    var p = paymentsAll.find(function (row) {
+      return String(row.receiptNo) === String(receiptNo);
+    });
+    if (!p) return;
+
+    var put = function (id, text) {
+      var el = $(id);
+      if (el) el.textContent = text;
+    };
+    put("#receiptAmount", peso(p.amount));
+    put("#receiptNo", p.receiptNo || "—");
+    put("#receiptDate", niceDate(p.date));
+    put("#receiptStudent", lastStudent.name || "—");
+    put("#receiptStudentId", lastStudent.id || "—");
+    // The name and ID are shown in the profile block, not in renderDetails.
+    put("#receiptStudent", lastStudent.name || "—");
+    put("#receiptMethod", shortenMethod(p.method));
+    put("#receiptNote", p.note || "—");
+
+    receiptTrigger = trigger || null;
+    receiptModal.hidden = false;
+    document.body.classList.add("receipt-open");
+    var closeBtn = receiptModal.querySelector(".receipt-close");
+    if (closeBtn) closeBtn.focus();
+  }
+
+  function closeReceipt() {
+    if (!receiptModal || receiptModal.hidden) return;
+    receiptModal.hidden = true;
+    document.body.classList.remove("receipt-open");
+    if (receiptTrigger && document.contains(receiptTrigger)) receiptTrigger.focus();
+    receiptTrigger = null;
+  }
+
+  if (receiptModal) {
+    Array.prototype.forEach.call(
+      receiptModal.querySelectorAll("[data-receipt-close]"),
+      function (el) { el.addEventListener("click", closeReceipt); }
+    );
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && !receiptModal.hidden) closeReceipt();
+    });
+    var printBtn = $("#receiptPrint");
+    if (printBtn) printBtn.addEventListener("click", function () { window.print(); });
+  }
+
+  /* A click on any View button opens that receipt. One listener on the table
+     covers every row, including rows painted later. */
+  if ($("#dashPayments")) {
+    $("#dashPayments").addEventListener("click", function (e) {
+      var btn = e.target.closest("[data-receipt]");
+      if (btn) openReceipt(btn.getAttribute("data-receipt"), btn);
+    });
+  }
+
+  /* ---------- History filters, search, paging ---------- */
+  Array.prototype.forEach.call(
+    document.querySelectorAll("[data-method-filter]"),
+    function (chip) {
+      chip.addEventListener("click", function () {
+        paymentFilter = chip.getAttribute("data-method-filter");
+        paymentsShown = PAYMENTS_PER_PAGE;
+        Array.prototype.forEach.call(
+          document.querySelectorAll("[data-method-filter]"),
+          function (other) {
+            var on = other === chip;
+            other.classList.toggle("is-active", on);
+            other.setAttribute("aria-pressed", on ? "true" : "false");
+          }
+        );
+        paintPaymentRows();
+      });
     }
+  );
+
+  var historySearch = $("#dashHistorySearch");
+  if (historySearch) {
+    historySearch.addEventListener("input", function () {
+      paymentSearch = historySearch.value || "";
+      paymentsShown = PAYMENTS_PER_PAGE;
+      paintPaymentRows();
+    });
+  }
+
+  var historyMore = $("#dashHistoryMore");
+  if (historyMore) {
+    historyMore.addEventListener("click", function () {
+      paymentsShown = visiblePayments().length || PAYMENTS_PER_PAGE;
+      paintPaymentRows();
+    });
+  }
+
+  /* ---------- Statement download ----------
+     A plain CSV built in the page from the student's own payments, so it needs
+     no server route and no extra permission. */
+  function csvCell(value) {
+    var text = String(value == null ? "" : value);
+    return /[",\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+  }
+
+  var exportBtn = $("#dashExportBtn");
+  if (exportBtn) {
+    exportBtn.addEventListener("click", function () {
+      if (!lastStudent) return;
+      if (paymentsAll.length === 0) {
+        exportBtn.setAttribute("disabled", "disabled");
+        exportBtn.textContent = "No payments to download";
+        setTimeout(function () {
+          exportBtn.removeAttribute("disabled");
+          exportBtn.textContent = "Download statement";
+        }, 2200);
+        return;
+      }
+
+      var lines = [["Saint Patrick's Academy, Inc. — Payment statement"], []];
+      lines.push(["Student", lastStudent.name || "", "Student ID", lastStudent.id || ""]);
+      lines.push(["Tuition fee", (Number(lastStudent.totalFee) || 0)]);
+      lines.push(["Total paid", (Number(lastStudent.amountPaid) || 0)]);
+      lines.push(["Remaining balance", (Number(lastStudent.balance) || 0)]);
+      lines.push([]);
+      lines.push(["Date", "Receipt no.", "Amount", "Method", "Note"]);
+      paymentsAll.forEach(function (p) {
+        lines.push([p.date, p.receiptNo, Number(p.amount) || 0, p.method || "", p.note || ""]);
+      });
+
+      var csv = lines.map(function (row) {
+        return row.map(csvCell).join(",");
+      }).join("\r\n");
+
+      var blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
+      var url = URL.createObjectURL(blob);
+      var link = document.createElement("a");
+      link.href = url;
+      link.download = "SPA-payments-" + (lastStudent.id || "statement") + ".csv";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    });
   }
 
   /**
@@ -393,6 +704,14 @@
   function loadAccount() {
     return studentApi("/api/student/me")
       .then(function (data) {
+        // The server answers 200 {student:null} when nobody is signed in, on
+        // purpose, so the public portal can ask without a 401 in the console.
+        // That is the same state as an expired session, not an error to print.
+        if (!data || !data.student) {
+          var signedOut = new Error("Your session has ended. Please sign in again to see your account.");
+          signedOut.status = 401;
+          throw signedOut;
+        }
         renderRecord(data.student);
         if ($("#dashLoading")) $("#dashLoading").hidden = true;
         if ($("#dashContent")) $("#dashContent").hidden = false;
@@ -420,7 +739,9 @@
     loadAccount().catch(function (err) {
       hasSession = false;
       if (err.status === 401 || err.status === 403) {
-        showBlocked("Your session has ended. Please sign in again to see your account.");
+        showBlocked(err.status === 401 && err.message
+          ? err.message
+          : "Your session has ended. Please sign in again to see your account.");
       } else {
         showBlocked(err.message || "We could not load your account. Please try again.");
       }
@@ -514,6 +835,29 @@
       dashMenu.querySelectorAll("a[data-dash-menu-link]"),
       function (link) {
         link.addEventListener("click", function () { setMenuOpen(false); });
+      }
+    );
+
+    // "View receipts" scrolls to the ledger with the filter reset, so the newest
+    // receipt is always the first one in view after the jump.
+    Array.prototype.forEach.call(
+      dashMenu.querySelectorAll("[data-dash-open-history]"),
+      function (link) {
+        link.addEventListener("click", function () {
+          paymentFilter = "all";
+          paymentSearch = "";
+          paymentsShown = PAYMENTS_PER_PAGE;
+          if (historySearch) historySearch.value = "";
+          Array.prototype.forEach.call(
+            document.querySelectorAll("[data-method-filter]"),
+            function (chip) {
+              var on = chip.getAttribute("data-method-filter") === "all";
+              chip.classList.toggle("is-active", on);
+              chip.setAttribute("aria-pressed", on ? "true" : "false");
+            }
+          );
+          paintPaymentRows();
+        });
       }
     );
 

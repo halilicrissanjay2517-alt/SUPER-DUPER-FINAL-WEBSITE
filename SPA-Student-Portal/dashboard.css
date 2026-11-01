@@ -829,3 +829,605 @@
     font-size: 14px;
   }
 }
+
+/* =====================================================================
+   Student account — payment history & polish
+   The block below turns the private page from a plain form-and-table into
+   something a parent can read at a glance: a ribboned identity strip, a
+   settlement bar, four quiet facts, and a ledger that can be filtered,
+   searched, opened as a receipt and downloaded. Still no images and no
+   scroll animation, so it stays quick on a phone.
+   ===================================================================== */
+
+/* ---------- Hero: card with a fine gold ribbon ---------- */
+.dash-content .dash-hero {
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 20px;
+  padding: 24px 26px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  background:
+    radial-gradient(900px 220px at 100% 0%, rgba(212, 167, 44, 0.14), transparent 62%),
+    linear-gradient(160deg, #ffffff 0%, #fbfaf5 100%);
+  box-shadow: var(--shadow-sm);
+}
+
+.dash-hero-ribbon {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--green-700), var(--green-500) 45%, var(--gold-400));
+}
+
+.dash-hero .eyebrow {
+  letter-spacing: 0.12em;
+}
+
+.dash-title {
+  font-family: var(--serif, Georgia, "Times New Roman", serif);
+  letter-spacing: -0.01em;
+}
+
+.dash-hero-id > .badge {
+  margin-left: auto;
+  text-transform: capitalize;
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+
+/* ---------- Overview band: settlement bar + four facts ---------- */
+.dash-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1.85fr);
+  gap: 26px;
+  align-items: center;
+  margin-bottom: 22px;
+  padding: 22px 24px;
+}
+
+.pay-progress-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.pay-progress-label {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.pay-progress-percent {
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+  color: var(--green-700);
+  line-height: 1;
+}
+
+.pay-progress {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--green-50);
+  box-shadow: inset 0 0 0 1px var(--green-100);
+  overflow: hidden;
+}
+
+.pay-progress-fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--green-700), var(--green-500) 70%, var(--gold-400));
+  transition: width 0.5s var(--ease, ease);
+}
+
+.pay-progress-fill.is-clear {
+  background: linear-gradient(90deg, var(--green-600), #3cb878);
+}
+
+.pay-progress-foot {
+  margin: 10px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.dash-kpi {
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: #fbfdfb;
+}
+
+.dash-kpi dt {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.dash-kpi dd {
+  margin: 4px 0 0;
+  font-size: 16.5px;
+  font-weight: 800;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Payment history panel ---------- */
+.dash-panel-sub {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.dash-history-head {
+  align-items: center;
+}
+
+/* The three headline figures above the ledger. */
+.history-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.history-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background:
+    linear-gradient(180deg, rgba(232, 243, 236, 0.55), rgba(255, 255, 255, 0) 70%),
+    #fff;
+}
+
+.history-stat-label {
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.history-stat-value {
+  font-size: 21px;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--green-800);
+  font-variant-numeric: tabular-nums;
+}
+
+.history-stat-value--text {
+  font-size: 18px;
+  color: var(--ink);
+}
+
+.history-stat-value.is-owed { color: #c0392b; }
+.history-stat-value.is-clear { color: var(--green-700); }
+
+.history-stat-note {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+/* ---------- Toolbar: method chips + search ---------- */
+.history-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.history-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.history-chips .chip {
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: #fff;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background 0.15s var(--ease, ease), color 0.15s var(--ease, ease),
+    border-color 0.15s var(--ease, ease);
+}
+
+.history-chips .chip:hover {
+  border-color: var(--green-600);
+  color: var(--green-700);
+}
+
+.history-chips .chip.is-active {
+  background: var(--green-700);
+  border-color: var(--green-700);
+  color: #fff;
+  box-shadow: var(--shadow-sm);
+}
+
+.history-search {
+  position: relative;
+  flex: 1 1 240px;
+  max-width: 320px;
+}
+
+.history-search input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fbfdfb;
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  transition: border-color 0.2s var(--ease, ease), box-shadow 0.2s var(--ease, ease);
+}
+
+.history-search input:focus {
+  outline: none;
+  border-color: var(--green-600);
+  box-shadow: var(--ring);
+}
+
+/* ---------- Ledger table ---------- */
+.history-table-wrap {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow-x: auto;
+}
+
+.history-table {
+  min-width: 680px;
+}
+
+.history-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f4f8f5;
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.history-table tbody tr {
+  transition: background 0.15s var(--ease, ease);
+}
+
+.history-date {
+  white-space: nowrap;
+  color: var(--ink-soft);
+}
+
+.history-receipt {
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--green-800);
+}
+
+.history-note {
+  color: #4b5f54;
+  min-width: 160px;
+}
+
+/* The amount is the point of the row: anchor it right, on tabular figures. */
+.history-table .history-col-amount,
+.history-table .amount-cell {
+  text-align: right;
+}
+
+.history-table .amount-cell {
+  font-weight: 800;
+  font-size: 15px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-action {
+  text-align: right;
+  width: 88px;
+}
+
+.history-view {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: #fff;
+  color: var(--green-700);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s var(--ease, ease), color 0.15s var(--ease, ease),
+    border-color 0.15s var(--ease, ease);
+}
+
+.history-view:hover {
+  background: var(--green-700);
+  border-color: var(--green-700);
+  color: #fff;
+}
+
+/* Method pills — one colour per channel, all quiet. */
+.method-pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  background: #f1f4f2;
+  color: #4b5f54;
+}
+
+.method-pill.method-cash { background: var(--green-50); color: var(--green-700); }
+.method-pill.method-gcash { background: #e8f1fd; color: var(--blue); }
+.method-pill.method-bank { background: var(--gold-50); color: var(--gold-600); }
+.method-pill.method-card { background: #f0ebfa; color: var(--purple); }
+
+.history-empty {
+  margin: 0;
+  padding: 30px 20px;
+  text-align: center;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.history-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+/* ---------- Receipt dialog ---------- */
+.receipt-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.receipt-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 35, 26, 0.55);
+  animation: receipt-fade 0.18s var(--ease, ease);
+}
+
+.receipt-card {
+  position: relative;
+  width: min(440px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  padding: 26px 26px 22px;
+  border-radius: var(--radius-lg);
+  background: #fff;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-lg);
+  animation: receipt-rise 0.2s var(--ease, ease);
+}
+
+@keyframes receipt-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes receipt-rise {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .receipt-card, .receipt-backdrop { animation: none; }
+}
+
+.receipt-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--green-50);
+  color: var(--green-800);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.receipt-close:hover { background: var(--green-100); }
+
+.receipt-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.receipt-head img {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  object-fit: cover;
+  background: #fff;
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.receipt-head strong {
+  display: block;
+  font-size: 14.5px;
+  line-height: 1.25;
+}
+
+.receipt-head small {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.receipt-title {
+  margin: 18px 0 4px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.receipt-paid {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--green-700);
+}
+
+.receipt-paid span {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--green-50);
+  font-size: 11px;
+}
+
+.receipt-amount {
+  display: block;
+  font-size: 36px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  color: var(--green-900);
+  font-variant-numeric: tabular-nums;
+}
+
+.receipt-details {
+  margin: 18px 0 0;
+  display: grid;
+  gap: 0;
+  border-top: 1px dashed var(--line-strong);
+}
+
+.receipt-details div {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--line);
+}
+
+.receipt-details dt {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.receipt-details dd {
+  margin: 0;
+  font-weight: 700;
+  text-align: right;
+  word-break: break-word;
+}
+
+.receipt-foot {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.receipt-note {
+  margin: 16px 0 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: #7c8b81;
+}
+
+/* The page must not scroll behind an open receipt. */
+body.receipt-open { overflow: hidden; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 900px) {
+  .dash-overview { grid-template-columns: 1fr; gap: 18px; }
+  .dash-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 560px) {
+  .dash-content .dash-hero { padding: 20px 18px; }
+  .dash-hero-id > .badge { margin-left: 0; }
+  .history-stats { grid-template-columns: 1fr; }
+  .history-search { max-width: none; flex-basis: 100%; }
+  .dash-history-head { flex-direction: column; align-items: flex-start; }
+  .history-table { min-width: 560px; }
+  .receipt-card { padding: 22px 18px 18px; }
+  .receipt-amount { font-size: 30px; }
+  .receipt-foot .btn { flex: 1 1 0; text-align: center; }
+}
+
+/* ---------- Print: the receipt, and nothing else ---------- */
+@media print {
+  body.receipt-open { overflow: visible; }
+  body:has(.receipt-modal:not([hidden])) .dash-header,
+  body:has(.receipt-modal:not([hidden])) .dash-main,
+  body:has(.receipt-modal:not([hidden])) .dash-footer,
+  .receipt-backdrop,
+  .receipt-close,
+  .receipt-foot {
+    display: none !important;
+  }
+
+  .receipt-modal {
+    position: static;
+    display: block;
+    padding: 0;
+  }
+
+  .receipt-card {
+    width: 100%;
+    max-height: none;
+    border: 0;
+    box-shadow: none;
+    animation: none;
+  }
+}

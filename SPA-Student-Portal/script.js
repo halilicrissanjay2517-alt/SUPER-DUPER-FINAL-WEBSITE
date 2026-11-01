@@ -385,8 +385,21 @@
           studentState.signedIn = false;
           return;
         }
+        // A signed-in student chose to come back to the public portal, so let
+        // them browse it — do NOT bounce them to the dashboard. Swap the hero
+        // buttons so "My Account" takes them back when they want it.
         studentState.signedIn = true;
-        window.location.replace(DASHBOARD_URL);
+        var publicPanel = $("#records-panel");
+        if (publicPanel) publicPanel.hidden = false;
+        if ($("#heroLoginBtn")) $("#heroLoginBtn").hidden = true;
+        if ($("#heroSignupBtn")) $("#heroSignupBtn").hidden = true;
+        if ($("#heroAccountBtn")) $("#heroAccountBtn").hidden = false;
+        if ($("#heroLogoutBtn")) $("#heroLogoutBtn").hidden = false;
+        var note = $("#heroAccountNote");
+        if (note) {
+          note.hidden = false;
+          note.textContent = "You are signed in as " + (data.student.name || data.student.fullname || "a student") + ".";
+        }
       })
       .catch(function () {
         // A stale session must never block the public page.
@@ -491,6 +504,63 @@
     });
   });
 
+  /* ---------- Sign-in / sign-up card ----------
+     Both forms share one dialog (studentportal.html#loginModal). The card is
+     built with the sign-in panel showing; setAuthPanel() slides it over to the
+     sign-up panel and back — for a click on "Create one" / "Log in", and for
+     the hero's "Create Account" button, which opens the same card rather than a
+     second dialog. `panel` is "login" or "signup". */
+  function setAuthPanel(panel) {
+    var card = $(".modal-card-auth");
+    if (!card) return;
+    var signup = panel === "signup";
+    card.classList.toggle("is-signup", signup);
+    // Land the reader on the first control of the panel now on screen.
+    var visible = $(".auth-panel-" + (signup ? "signup" : "login"), card);
+    var first = visible && $("input, select", visible);
+    if (first) {
+      try { first.focus({ preventScroll: true }); } catch (err) { first.focus(); }
+    }
+  }
+
+  document.addEventListener("click", function (e) {
+    var trigger = e.target.closest ? e.target.closest("[data-auth-switch]") : null;
+    if (!trigger) return;
+    e.preventDefault();
+    setAuthPanel(trigger.getAttribute("data-auth-switch"));
+  });
+
+  /* Opens the shared card straight onto one of its two panels.
+     "Create Account" puts the card on the sign-up side BEFORE it is shown, so
+     the dialog opens already in place instead of being seen sliding across.
+     The move is made without a transition for that first paint — see
+     .no-auth-anim below — and the transition is put back on the next frame so
+     switching panels from inside the card animates normally. */
+  function openAuth(panel) {
+    var modal = document.getElementById("loginModal");
+    var card = modal && $(".modal-card-auth", modal);
+    if (card && panel === "signup") {
+      card.classList.add("no-auth-anim");
+      card.classList.add("is-signup");
+      void card.offsetWidth; // commit that state before the dialog appears
+    }
+    openModal(modal);
+    setAuthPanel(panel);
+    if (card && card.classList.contains("no-auth-anim")) {
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () { card.classList.remove("no-auth-anim"); });
+      });
+    }
+  }
+
+  /* Puts a spinner on the submit button while a request is in flight. */
+  function setAuthLoading(form, loading) {
+    var btn = form && $('button[type="submit"]', form);
+    if (!btn) return;
+    btn.classList.toggle("is-loading", !!loading);
+    btn.disabled = !!loading;
+  }
+
   /* ---------- Modal open / close ---------- */
   var openModals = [];
   var lockScroll = function () {
@@ -533,11 +603,25 @@
     var i = openModals.indexOf(modal);
     if (i !== -1) openModals.splice(i, 1);
     unlockScroll();
+    // Reopening should start on the sign-in panel again, not wherever the
+    // visitor left the card, so the next click behaves the same every time.
+    if (modal.id === "loginModal") {
+      var card = $(".modal-card-auth", modal);
+      if (card) {
+        // Snap back while the dialog is hidden, so the next opening never shows
+        // the brand panel sliding home.
+        card.classList.add("no-auth-anim");
+        card.classList.remove("is-signup");
+      }
+    }
   }
 
   $$("[data-modal-open]").forEach(function (trigger) {
     trigger.addEventListener("click", function () {
-      openModal(document.getElementById(trigger.getAttribute("data-modal-open")));
+      var id = trigger.getAttribute("data-modal-open");
+      // "signupModal" no longer exists: both forms live in the sign-in card.
+      if (id === "signupModal" || id === "loginModal") return openAuth(id === "signupModal" ? "signup" : "login");
+      openModal(document.getElementById(id));
     });
   });
 
@@ -657,6 +741,7 @@
         return;
       }
       setLoginStatus("Signing you in…", "ok");
+      setAuthLoading(loginForm, true);
 
       studentApi("/api/student/login", {
         method: "POST",
@@ -666,6 +751,7 @@
         },
       })
         .then(function () {
+          setAuthLoading(loginForm, false);
           // The server set the HttpOnly cookie; the page stores nothing.
           studentState.signedIn = true;
           loginForm.reset();
@@ -676,6 +762,7 @@
           window.location.href = DASHBOARD_URL;
         })
         .catch(function (err) {
+          setAuthLoading(loginForm, false);
           setLoginStatus(err.message, "error");
         });
     });
@@ -698,6 +785,7 @@
       }
 
       setLoginStatus("Creating your account…", "ok", $("#studentSignupStatus"));
+      setAuthLoading(signupForm, true);
       // Every field the student filled in is sent, so the office has the full
       // application to review rather than a name they must check by hand.
       var value = function (name) {
@@ -720,6 +808,7 @@
         },
       })
         .then(function (data) {
+          setAuthLoading(signupForm, false);
           lastSignupId = data.account.studentId;
           signupForm.reset();
           $$(".field input, .field select", signupForm).forEach(function (i) { i.classList.remove("is-invalid"); });
@@ -736,6 +825,7 @@
           }
         })
         .catch(function (err) {
+          setAuthLoading(signupForm, false);
           setLoginStatus(err.message, "error", $("#studentSignupStatus"));
         });
     });
