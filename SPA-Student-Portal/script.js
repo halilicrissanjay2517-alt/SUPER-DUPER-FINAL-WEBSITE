@@ -619,6 +619,10 @@
   $$("[data-modal-open]").forEach(function (trigger) {
     trigger.addEventListener("click", function () {
       var id = trigger.getAttribute("data-modal-open");
+      // Sign-in triggers also live in the side menu (the Student Portal entry
+      // there). Those carry data-menu-link, which closes the drawer first — it
+      // sits above the dialog, so leaving it open would cover the form the
+      // visitor just asked for.
       // "signupModal" no longer exists: both forms live in the sign-in card.
       if (id === "signupModal" || id === "loginModal") return openAuth(id === "signupModal" ? "signup" : "login");
       openModal(document.getElementById(id));

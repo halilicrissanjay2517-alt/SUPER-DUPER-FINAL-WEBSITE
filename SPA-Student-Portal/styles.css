@@ -242,21 +242,84 @@ img {
   margin-left: auto;
 }
 
-.nav-partner {
-  flex: 0 0 auto;
-  display: inline-flex;
+/* Student Portal entry point: its name, then the two ways in. The school name
+   in the brand no longer says "Student Portal", so this is where a visitor
+   learns it exists and signs in from the top right of the header. */
+.nav-portal {
+  display: flex;
   align-items: center;
-  margin-left: 4px;
+  gap: 8px;
+  margin-left: 6px;
+  padding-left: 14px;
+  border-left: 1px solid var(--line);
 }
 
-.nav-partner img {
-  width: 52px;
-  height: 52px;
-  object-fit: contain;
-  border-radius: 50%;
-  padding: 3px;
-  background: var(--surface);
+.nav-portal-name {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--green-800);
+  white-space: nowrap;
+}
+
+/* Smaller than a page-level .btn so two of them still fit a laptop header. */
+.nav-portal .btn {
+  padding: 8px 14px;
+  font-size: 13px;
+  border-radius: var(--radius-sm);
+  box-shadow: none;
+  white-space: nowrap;
+}
+
+.nav-portal .btn-primary {
+  box-shadow: 0 4px 12px rgba(10, 74, 48, 0.22);
+}
+
+/* The same two entry points inside the side menu, for phones and any width
+   where the header hides them. */
+.side-menu-portal {
+  margin: 4px 20px 14px;
+  padding: 14px;
   border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--green-50);
+}
+
+.side-menu-portal-name {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--green-800);
+}
+
+.side-menu-portal-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.side-menu-portal-actions .btn {
+  padding: 10px 12px;
+  font-size: 13px;
+  box-shadow: none;
+}
+
+/* Below the laptop width there is no room for a name, two buttons and the
+   hamburger, so the name steps aside and the two buttons shrink to fit. */
+@media (max-width: 1100px) {
+  .nav-portal-name { display: none; }
+  .nav-portal { padding-left: 10px; margin-left: 0; }
+}
+
+@media (max-width: 760px) {
+  /* On a phone the two forms stay one tap away in the side menu (its own
+     "Sign in" / "Create account" entries), so the header keeps only the
+     menu button instead of squeezing four controls onto one line. */
+  .nav-portal { display: none; }
 }
 
 .nav-links > a {

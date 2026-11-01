@@ -66,16 +66,17 @@
 
     <header class="site-header" id="top">
         <nav class="nav" aria-label="Primary">
+            <!-- The school name no longer carries "Student Portal": signing in
+                 is now the Student Portal button at the right end of this bar. -->
             <a class="brand" href="#top">
                 <img src="logo.png" alt="Saint Patrick's Academy, Inc. logo">
                 <span class="brand-text">
                     <strong>Saint Patrick's Academy, Inc.</strong>
-                    <small>Student Portal</small>
                 </span>
             </a>
-            <!-- The links, the partner seal and the menu button travel together
-                 as one group at the right end, instead of being spread across
-                 the whole bar by the nav's space-between. -->
+            <!-- The links, the signage and the menu button travel together as one
+                 group at the right end, instead of being spread across the whole
+                 bar by the nav's space-between. -->
             <div class="nav-right">
                 <div class="nav-links">
                     <!-- The header stays quiet: the wide-screen menu carries a few
@@ -84,11 +85,13 @@
                     <a href="#announcements-list">Announcements</a>
                     <a href="#contact">Contact</a>
                 </div>
-                <!-- CASPI (Catholic Association of Schools in the Prelature of Infanta)
-                     seal, mirroring the SPA logo on the left of the header. -->
-                <span class="nav-partner" title="Catholic Association of Schools in the Prelature of Infanta">
-                    <img src="CASPI LOGO.jpg" alt="Catholic Association of Schools in the Prelature of Infanta logo">
-                </span>
+                <!-- The Student Portal entry point. "Log In" opens the card on the
+                     sign-in half; "Create Account" on the sign-up half. -->
+                <div class="nav-portal" role="group" aria-label="Student Portal">
+                    <span class="nav-portal-name">Student Portal</span>
+                    <button type="button" class="btn btn-primary" data-modal-open="loginModal">Log In</button>
+                    <button type="button" class="btn btn-secondary" data-modal-open="signupModal">Create Account</button>
+                </div>
                 <button type="button" class="btn btn-ghost nav-toggle" data-menu-toggle aria-expanded="false" aria-controls="siteMenu">
                     <span class="sr-only">Open menu</span>
                     <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6Zm0 5h18v2H3v-2Zm0 5h18v2H3v-2Z"/></svg>
@@ -109,10 +112,19 @@
                 <img src="logo.png" alt="Saint Patrick's Academy, Inc. logo">
                 <span class="side-menu-brand-text">
                     <strong>Saint Patrick's Academy, Inc.</strong>
-                    <small>Student Portal</small>
                 </span>
             </a>
             <button type="button" class="side-menu-close" id="menuClose" aria-label="Close menu">&times;</button>
+        </div>
+
+        <!-- The Student Portal entry point, here for phones and any width where
+             the header's two buttons are hidden. -->
+        <div class="side-menu-portal" role="group" aria-label="Student Portal">
+            <span class="side-menu-portal-name">Student Portal</span>
+            <div class="side-menu-portal-actions">
+                <button type="button" class="btn btn-primary" data-menu-link data-modal-open="loginModal">Log In</button>
+                <button type="button" class="btn btn-secondary" data-menu-link data-modal-open="signupModal">Create Account</button>
+            </div>
         </div>
 
         <nav class="side-menu-nav" aria-label="Site">
