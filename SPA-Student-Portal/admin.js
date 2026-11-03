@@ -173,9 +173,10 @@
     payments: ["Payments", "Every payment received, with its receipt number."],
     admins: ["Administrators", "Accounts that can sign in and make changes."],
     logs: ["Activity Log", "Every change made by every administrator."],
+    about: ["About the School", "Saint Patrick's Academy, Inc. — mission, vision, and values."],
   };
 
-  var VIEWS = ["students", "approvals", "payments", "admins", "logs"];
+  var VIEWS = ["students", "approvals", "payments", "admins", "logs", "about"];
 
   $$("[data-view]").forEach(function (btn) {
     btn.addEventListener("click", function () {
@@ -198,6 +199,45 @@
       if (view === "approvals") loadApprovals();
     });
   });
+
+  /* ------------------------------------------------------- Dark / light theme
+     The choice is remembered per browser in localStorage and applied as a class
+     on <body> — an inline style would be refused by the server's
+     Content-Security-Policy, so the dark palette lives in admin.css instead. */
+  var THEME_KEY = "spa-admin-theme";
+
+  function applyTheme(theme) {
+    var dark = theme === "dark";
+    document.body.classList.toggle("theme-dark", dark);
+    var btn = $("#themeToggleBtn");
+    var label = $("#themeToggleLabel");
+    if (btn) {
+      btn.classList.toggle("is-dark", dark);
+      btn.setAttribute("aria-pressed", dark ? "true" : "false");
+    }
+    if (label) label.textContent = dark ? "Light" : "Dark";
+  }
+
+  function initTheme() {
+    var saved = null;
+    try { saved = window.localStorage.getItem(THEME_KEY); } catch (e) { saved = null; }
+    if (!saved) {
+      // First visit: follow whatever the operating system is set to.
+      saved = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark" : "light";
+    }
+    applyTheme(saved);
+  }
+
+  var themeToggleBtn = $("#themeToggleBtn");
+  if (themeToggleBtn) {
+    themeToggleBtn.addEventListener("click", function () {
+      var next = document.body.classList.contains("theme-dark") ? "light" : "dark";
+      applyTheme(next);
+      try { window.localStorage.setItem(THEME_KEY, next); } catch (e) { /* private mode */ }
+    });
+    initTheme();
+  }
 
   $("#logoutBtn").addEventListener("click", function () {
     api("/api/logout", { method: "POST" }).catch(function () {});

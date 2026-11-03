@@ -77,6 +77,10 @@
                     <svg class="icon" viewBox="0 0 24 24"><path d="M4 4h16v2H4V4Zm0 5h16v2H4V9Zm0 5h10v2H4v-2Z"/></svg>
                     Activity Log
                 </button>
+                <button type="button" class="side-link" data-view="about">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 15h-2v-2h2v2Zm0-4h-2V7h2v6Z"/></svg>
+                    About the School
+                </button>
             </nav>
 
             <div class="sidebar-foot">
@@ -98,6 +102,13 @@
                     <p class="muted" id="viewSubtitle">Manage student records and balances.</p>
                 </div>
                 <div class="topbar-actions">
+                    <button type="button" class="btn btn-secondary theme-toggle" id="themeToggleBtn"
+                            aria-pressed="false" title="Switch between light and dark">
+                        <span class="theme-toggle-icon" id="themeToggleIcon" aria-hidden="true">
+                            <svg class="icon" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36A5.39 5.39 0 0 1 12 3Z"/></svg>
+                        </span>
+                        <span id="themeToggleLabel">Dark</span>
+                    </button>
                     <a class="btn btn-secondary" href="studentportal.html">View site</a>
                     <button type="button" class="btn btn-secondary" id="syncDatabaseBtn" title="Write every student shown here into database.xlsx">Sync to Excel</button>
                     <button type="button" class="btn btn-secondary" id="openDatabaseBtn" title="Download database.xlsx with every student">Excel database</button>
@@ -315,6 +326,61 @@
                         </tbody>
                     </table>
                 </div>
+            </section>
+
+            <!-- ---- About the School view ---- -->
+            <section class="admin-view" id="viewAbout" hidden>
+                <div class="about-hero">
+                    <img src="logo.png" alt="Saint Patrick's Academy seal" class="about-seal">
+                    <div>
+                        <h2 class="about-title">Saint Patrick's Academy, Inc.</h2>
+                        <p class="about-tagline">Faith · Knowledge · Service</p>
+                    </div>
+                </div>
+
+                <div class="about-grid">
+                    <article class="about-card">
+                        <h3>Our Mission</h3>
+                        <p>
+                            Saint Patrick's Academy forms learners who are grounded in faith,
+                            excellent in academics, and devoted to serving their family,
+                            community, and country.
+                        </p>
+                    </article>
+                    <article class="about-card">
+                        <h3>Our Vision</h3>
+                        <p>
+                            A Catholic institution of learning known for academic excellence,
+                            upright character, and graduates who lead with compassion.
+                        </p>
+                    </article>
+                    <article class="about-card">
+                        <h3>Our Core Values</h3>
+                        <ul class="about-list">
+                            <li><strong>Faith</strong> — prayer, worship, and moral integrity</li>
+                            <li><strong>Excellence</strong> — honest, hard-earned achievement</li>
+                            <li><strong>Service</strong> — putting others before ourselves</li>
+                            <li><strong>Community</strong> — one family of students, staff, and parents</li>
+                        </ul>
+                    </article>
+                    <article class="about-card">
+                        <h3>Contact the School</h3>
+                        <ul class="about-list about-contact">
+                            <li><strong>Registrar's Office</strong> — the sign-in desk of this portal</li>
+                            <li><strong>Portal hours</strong> — Monday to Friday, 8:00 AM – 4:00 PM</li>
+                            <li>
+                                <strong>Student portal</strong> —
+                                <a href="studentportal.html">studentportal.html</a>
+                            </li>
+                        </ul>
+                    </article>
+                </div>
+
+                <p class="muted about-note">
+                    Update the mission, vision, and contact lines in
+                    <code>admin.html</code> (the <strong>About the School</strong> section)
+                    to match your latest student handbook.
+                </p>
             </section>
 
             <!-- ---- Logs view ---- -->

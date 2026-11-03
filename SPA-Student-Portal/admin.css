@@ -1420,3 +1420,393 @@ tr.review-row > td {
 .modal-hint {
   font-size: 13px;
 }
+
+/* ---------------- Stat cards ----------------
+   The five key numbers at the top of the Students view. These were referenced
+   in admin.html but never styled, so the cards stacked full-width. */
+.stat-cards {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.stat-cards-compact {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 16px 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--green-600);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+
+.stat-card.is-green  { border-left-color: #158a54; }
+.stat-card.is-amber  { border-left-color: var(--gold-500); }
+.stat-card.is-blue   { border-left-color: var(--blue); }
+.stat-card.is-red    { border-left-color: #d64545; }
+
+.stat-label {
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.stat-card strong {
+  font-size: 24px;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.stat-sub {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.stat-card.is-green strong  { color: #158a54; }
+.stat-card.is-amber strong  { color: var(--gold-600); }
+.stat-card.is-blue strong   { color: var(--blue); }
+.stat-card.is-red strong    { color: #c0392b; }
+
+@media (max-width: 1100px) {
+  .stat-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 700px) {
+  .stat-cards,
+  .stat-cards-compact { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 460px) {
+  .stat-cards,
+  .stat-cards-compact { grid-template-columns: 1fr; }
+}
+
+/* ---------------------------------------------------------------------------
+   About the School view
+   A compact institutional profile: seal, mission, vision, values, contacts.
+   --------------------------------------------------------------------------- */
+.about-hero {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 22px 24px;
+  margin-bottom: 20px;
+  background: linear-gradient(135deg, var(--green-900), var(--green-700));
+  border-radius: var(--radius-lg);
+  color: #fff;
+  box-shadow: var(--shadow);
+}
+
+.about-seal {
+  width: 72px;
+  height: 72px;
+  flex: none;
+  object-fit: contain;
+  border-radius: 50%;
+  background: #fff;
+  padding: 5px;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.25);
+}
+
+.about-title {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: 0.02em;
+}
+
+.about-tagline {
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold-400);
+}
+
+.about-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.about-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--gold-400);
+  border-radius: var(--radius);
+  padding: 20px 22px;
+  box-shadow: var(--shadow-sm);
+}
+
+.about-card h3 {
+  margin: 0 0 10px;
+  font-size: 15px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--green-800);
+}
+
+.about-card p {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: var(--ink-soft);
+}
+
+.about-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 9px;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+.about-list li strong {
+  color: var(--green-700);
+}
+
+.about-contact a {
+  color: var(--green-700);
+  font-weight: 600;
+}
+
+.about-note {
+  margin-top: 18px;
+  font-size: 13px;
+}
+
+.about-note code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  background: var(--green-50);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-size: 12.5px;
+}
+
+/* ---------------------------------------------------------------------------
+   Theme toggle button (light/dark switch in the topbar)
+   --------------------------------------------------------------------------- */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+}
+
+.theme-toggle .theme-toggle-icon {
+  display: inline-grid;
+  place-items: center;
+}
+
+.theme-toggle .icon {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+/* In dark mode the moon button flips its label and brightens. */
+.theme-toggle.is-dark {
+  border-color: var(--gold-400);
+  color: var(--gold-400);
+}
+
+/* ---------------------------------------------------------------------------
+   DARK THEME
+   Toggled by .theme-dark on <body>. Only the admin dashboard is themed; the
+   public pages keep their light look. Tokens are re-mapped, then every
+   hardcoded light colour in admin.css is re-stated for the dark surface.
+   --------------------------------------------------------------------------- */
+body.theme-dark.admin-body {
+  background: #0c1512;
+  color: #dbe7e0;
+}
+
+body.theme-dark .admin-topbar {
+  background: #101c17;
+  border-bottom-color: #1e3229;
+}
+
+body.theme-dark .admin-topbar h1 {
+  color: #9fd4b4;
+}
+
+body.theme-dark .muted {
+  color: #8aa596;
+}
+
+body.theme-dark .admin-view .table-wrap,
+body.theme-dark .about-card,
+body.theme-dark .log-item {
+  background: #101c17;
+  border-color: #1e3229;
+}
+
+body.theme-dark .admin-table th {
+  color: #9fd4b4;
+  border-bottom-color: #1e3229;
+}
+
+body.theme-dark .admin-table td,
+body.theme-dark .payment-table td {
+  color: #dbe7e0;
+  border-bottom-color: #16261f;
+}
+
+body.theme-dark .admin-table tr:hover td {
+  background: #14231c;
+}
+
+body.theme-dark .stat-card,
+body.theme-dark .pill,
+body.theme-dark .chip {
+  background: #14231c;
+  border-color: #1e3229;
+  color: #cfe0d6;
+}
+
+body.theme-dark .chip.is-active {
+  background: var(--green-600);
+  border-color: var(--green-600);
+  color: #fff;
+}
+
+body.theme-dark .pill-amber,
+body.theme-dark .stat-card.is-amber { background: #2c2310; color: var(--gold-400); }
+body.theme-dark .pill-green,
+body.theme-dark .stat-card.is-green { background: #0f2b1d; color: #6fcf97; }
+body.theme-dark .pill-red,
+body.theme-dark .stat-card.is-red   { background: #2e1717; color: #e37d7d; }
+body.theme-dark .pill-blue,
+body.theme-dark .stat-card.is-blue  { background: #10203a; color: #7db4ee; }
+
+body.theme-dark .money-cell,
+body.theme-dark .balance-cell.settled,
+body.theme-dark .amount-cell,
+body.theme-dark .log-who {
+  color: #9fd4b4;
+}
+
+body.theme-dark .balance-cell.owes {
+  color: #e37d7d;
+}
+
+body.theme-dark .inline-field input,
+body.theme-dark .field select,
+body.theme-dark .field input {
+  background: #14231c;
+  border-color: #1e3229;
+  color: #dbe7e0;
+}
+
+body.theme-dark .inline-field input::placeholder,
+body.theme-dark .field input::placeholder {
+  color: #6d8779;
+}
+
+body.theme-dark .icon-btn,
+body.theme-dark .btn-secondary {
+  background: #14231c;
+  border-color: #1e3229;
+  color: #cfe0d6;
+}
+
+body.theme-dark .icon-btn:hover,
+body.theme-dark .btn-secondary:hover {
+  background: #1a2d24;
+  border-color: var(--green-600);
+  color: #e6f2ea;
+}
+
+body.theme-dark .btn-primary {
+  background: var(--green-600);
+  color: #fff;
+}
+
+body.theme-dark .modal-card {
+  background: #101c17;
+  border: 1px solid #1e3229;
+}
+
+body.theme-dark .modal-card h2,
+body.theme-dark .about-title {
+  color: #9fd4b4;
+}
+
+body.theme-dark .about-tagline {
+  color: var(--gold-400);
+}
+
+body.theme-dark .about-card p,
+body.theme-dark .about-list,
+body.theme-dark .about-note {
+  color: #cfe0d6;
+}
+
+body.theme-dark .about-list li strong,
+body.theme-dark .about-contact a {
+  color: #9fd4b4;
+}
+
+body.theme-dark .about-hero {
+  background: linear-gradient(135deg, #071510, #0d3b26);
+  border: 1px solid #1e3229;
+}
+
+body.theme-dark .modal-backdrop {
+  background: rgba(4, 10, 7, 0.72);
+}
+
+body.theme-dark .toast {
+  background: #1f4d38;
+  color: #e8f5ec;
+}
+
+body.theme-dark .id-chip,
+body.theme-dark .pw-chip {
+  background: #14231c;
+  border-color: #2a4237;
+  color: #9fd4b4;
+}
+
+body.theme-dark .empty-state,
+body.theme-dark .table-empty,
+body.theme-dark .log-when {
+  color: #8aa596;
+}
+
+body.theme-dark .form-status.is-success { color: #6fcf97; }
+body.theme-dark .form-status.is-error   { color: #e37d7d; }
+
+body.theme-dark .balance-preview         { background: #0f2b1d; color: #9fd4b4; }
+body.theme-dark .balance-preview.is-clear { background: #2c2310; color: var(--gold-400); }
+body.theme-dark .balance-preview.is-overdue { background: #2e1717; color: #e37d7d; }
+
+body.theme-dark .admin-table input.cell-input:focus {
+  background: #14231c;
+}
+
+body.theme-dark .admin-table input.cell-input:hover {
+  background: #182a21;
+}
+
+body.theme-dark .field-readonly input {
+  background: #0e1814;
+  color: #6d8779;
+}
+
+body.theme-dark .form-section-title {
+  color: #8aa596;
+  border-top-color: #1e3229;
+}
