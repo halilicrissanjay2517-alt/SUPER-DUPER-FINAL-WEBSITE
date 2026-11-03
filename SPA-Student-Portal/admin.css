@@ -70,7 +70,7 @@
 /* ---------------- Shell ---------------- */
 .admin-shell {
   display: grid;
-  grid-template-columns: 250px 1fr;
+  grid-template-columns: 264px 1fr;
   min-height: 100vh;
 }
 
@@ -83,6 +83,11 @@
   position: sticky;
   top: 0;
   height: 100vh;
+  /* A soft emerald glow from the top-left corner keeps the rail from reading
+     as one flat slab of colour — the depth cue those dashboard concepts lean on. */
+  background-image:
+    radial-gradient(ellipse at 0% 0%, rgba(26, 143, 92, 0.35), transparent 55%),
+    radial-gradient(ellipse at 100% 100%, rgba(212, 167, 44, 0.08), transparent 45%);
 }
 
 .sidebar-brand {
@@ -138,17 +143,42 @@
   font-weight: 600;
   text-align: left;
   cursor: pointer;
-  transition: background 0.18s var(--ease), color 0.18s var(--ease);
+  transition: background 0.18s var(--ease), color 0.18s var(--ease),
+    transform 0.18s var(--ease);
+}
+
+/* Each nav icon sits in a frosted disc, so the rail reads as tiles rather
+   than a plain list — and the disc lights up green when the item is active. */
+.side-link .icon {
+  width: 34px;
+  height: 34px;
+  padding: 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  fill: currentColor;
+  flex: none;
+  transition: background 0.18s var(--ease), fill 0.18s var(--ease);
 }
 
 .side-link:hover {
   background: rgba(255, 255, 255, 0.1);
   color: #fff;
+  transform: translateX(3px);
+}
+
+.side-link:hover .icon {
+  background: rgba(255, 255, 255, 0.16);
 }
 
 .side-link.is-active {
-  background: var(--green-600);
+  background: linear-gradient(90deg, var(--green-600), rgba(26, 143, 92, 0.55));
   color: #fff;
+  box-shadow: 0 6px 16px rgba(18, 121, 76, 0.35);
+}
+
+.side-link.is-active .icon {
+  background: rgba(255, 255, 255, 0.22);
+  fill: #fff;
 }
 
 .sidebar-foot {
@@ -264,6 +294,105 @@
 
 .admin-view {
   padding: 26px 20px 0;
+}
+
+/* ---------------- Welcome banner ----------------
+   The greeting strip at the top of the Students view: date, a warm hello,
+   and the collected-today figure on a deep emerald card with a gold accent —
+   the same hero treatment the reference dashboards lead with. */
+.welcome-banner {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-bottom: 20px;
+  padding: 26px 30px;
+  border-radius: var(--radius-lg);
+  color: #fff;
+  background:
+    radial-gradient(ellipse at 85% 20%, rgba(212, 167, 44, 0.22), transparent 50%),
+    radial-gradient(ellipse at 10% 90%, rgba(26, 143, 92, 0.5), transparent 55%),
+    linear-gradient(120deg, var(--green-900), var(--green-700));
+  box-shadow: var(--shadow);
+}
+
+.welcome-copy {
+  min-width: 0;
+}
+
+.welcome-kicker {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold-400);
+}
+
+.welcome-title {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.25;
+}
+
+.welcome-sub {
+  margin: 5px 0 0;
+  font-size: 13.5px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.welcome-figure {
+  text-align: right;
+  padding-left: 26px;
+  border-left: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.welcome-figure-label {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.welcome-figure strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 30px;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--gold-400);
+}
+
+@media (max-width: 700px) {
+  .welcome-banner {
+    padding: 20px;
+  }
+
+  .welcome-figure {
+    text-align: left;
+    border-left: 0;
+    padding-left: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.18);
+    padding-top: 14px;
+    width: 100%;
+  }
+
+  .welcome-figure strong {
+    font-size: 24px;
+  }
+}
+
+body.theme-dark .welcome-banner {
+  background:
+    radial-gradient(ellipse at 85% 20%, rgba(212, 167, 44, 0.14), transparent 50%),
+    linear-gradient(120deg, #071510, #0d3b26);
+  border: 1px solid #1e3229;
+  box-shadow: none;
 }
 
 .admin-toolbar {
@@ -667,6 +796,90 @@
   padding: 34px 0 !important;
 }
 
+/* ---------------- Exam-period organization (Payments) ---------------- */
+.exam-filter-bar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.exam-filter-bar .chip {
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: #fff;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background 0.15s var(--ease, ease), color 0.15s var(--ease, ease),
+    border-color 0.15s var(--ease, ease);
+}
+
+.exam-filter-bar .chip:hover {
+  border-color: var(--green-600);
+  color: var(--green-700);
+}
+
+.exam-filter-bar .chip.is-active {
+  background: var(--green-800);
+  border-color: var(--green-800);
+  color: #fff;
+  box-shadow: var(--shadow-sm);
+}
+
+/* One extra accent the shared palette lacks: Semi-Final is purple. */
+.badge-purple { background: #f1e9fb; color: #6b46c1; }
+.badge-neutral { background: #eef2ef; color: #52645a; }
+
+/* Small badge inside the Exam Period cell so it reads as a tag, not prose. */
+.exam-badge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+/* The period card the current chip is filtered to gets a highlighted edge. */
+.stat-cards-exam .stat-card.is-selected {
+  border-color: var(--green-600);
+  box-shadow: var(--ring);
+}
+
+.stat-cards-exam {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin-bottom: 14px;
+}
+
+@media (max-width: 1100px) {
+  .stat-cards-exam { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 700px) {
+  .stat-cards-exam { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+body.theme-dark .exam-filter-bar .chip {
+  background: #14231c;
+  border-color: #1e3229;
+  color: #cfe0d6;
+}
+
+body.theme-dark .exam-filter-bar .chip.is-active {
+  background: var(--green-600);
+  border-color: var(--green-600);
+  color: #fff;
+}
+
+body.theme-dark .badge-purple { background: #2a1f42; color: #b79aec; }
+body.theme-dark .badge-neutral { background: #1a2721; color: #9fb3a8; }
+body.theme-dark .badge-green  { background: #0f2b1d; color: #6fcf97; }
+body.theme-dark .badge-blue   { background: #10203a; color: #7db4ee; }
+body.theme-dark .badge-amber  { background: #2c2310; color: var(--gold-400); }
+
 /* ---------------- Payments ---------------- */
 .payment-table {
   min-width: 0;
@@ -681,13 +894,14 @@
 }
 
 .payment-table th:nth-child(1) { width: 11%; }  /* Date */
-.payment-table th:nth-child(2) { width: 10%; }  /* Receipt */
-.payment-table th:nth-child(3) { width: 22%; }  /* Student */
-.payment-table th:nth-child(4) { width: 12%; }  /* Amount */
-.payment-table th:nth-child(5) { width: 13%; }  /* Method */
-.payment-table th:nth-child(6) { width: 12%; }  /* Received by */
-.payment-table th:nth-child(7) { width: 14%; }  /* Note */
-.payment-table th:nth-child(8) { width: 6%; }   /* Actions */
+.payment-table th:nth-child(2) { width: 9%; }   /* Receipt */
+.payment-table th:nth-child(3) { width: 19%; }  /* Student */
+.payment-table th:nth-child(4) { width: 11%; }  /* Amount */
+.payment-table th:nth-child(5) { width: 11%; }  /* Method */
+.payment-table th:nth-child(6) { width: 10%; }  /* Exam Period */
+.payment-table th:nth-child(7) { width: 11%; }  /* Received by */
+.payment-table th:nth-child(8) { width: 12%; }  /* Note */
+.payment-table th:nth-child(9) { width: 6%; }   /* Actions */
 
 .payment-table th {
   white-space: nowrap;
@@ -1025,6 +1239,13 @@
     flex-direction: row;
     flex-wrap: wrap;
     flex: 1 1 100%;
+  }
+
+  /* Horizontal rail: shrink the icon discs so five tiles fit a phone row. */
+  .side-link .icon {
+    width: 28px;
+    height: 28px;
+    padding: 6px;
   }
 
   .sidebar-foot {
@@ -1445,6 +1666,13 @@ tr.review-row > td {
   border-left: 4px solid var(--green-600);
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
+  transition: transform 0.18s var(--ease), box-shadow 0.18s var(--ease);
+}
+
+/* A gentle lift, like the reference dashboards' tiles. */
+.stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow);
 }
 
 .stat-card.is-green  { border-left-color: #158a54; }
@@ -1489,6 +1717,11 @@ tr.review-row > td {
 @media (max-width: 460px) {
   .stat-cards,
   .stat-cards-compact { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stat-card:hover { transform: none; }
+  .side-link:hover { transform: none; }
 }
 
 /* ---------------------------------------------------------------------------
@@ -1638,6 +1871,34 @@ body.theme-dark .admin-topbar {
   border-bottom-color: #1e3229;
 }
 
+body.theme-dark .admin-topbar .btn-secondary {
+  background: #14231c;
+  border-color: #1e3229;
+  color: #cfe0d6;
+}
+
+body.theme-dark .admin-topbar .btn-secondary:hover {
+  background: #1a2d24;
+  border-color: var(--green-600);
+}
+
+body.theme-dark .admin-topbar #createAccountBtn {
+  background: transparent;
+  border-color: var(--green-600);
+  color: #9fd4b4;
+}
+
+body.theme-dark .admin-topbar #createAccountBtn:hover {
+  background: rgba(18, 121, 76, 0.25);
+  color: #e6f2ea;
+}
+
+body.theme-dark .admin-topbar .btn-primary {
+  background: var(--green-600);
+  border-color: var(--green-600);
+  color: #fff;
+}
+
 body.theme-dark .admin-topbar h1 {
   color: #9fd4b4;
 }
@@ -1658,6 +1919,22 @@ body.theme-dark .admin-table th {
   border-bottom-color: #1e3229;
 }
 
+/* The shared stylesheet paints every table head light grey; the dark dashboard
+   needs its own head or the strip stays white in dark mode. */
+body.theme-dark .data-table th {
+  background: #14231c;
+  color: #9fd4b4;
+}
+
+body.theme-dark .data-table tbody tr:hover {
+  background: #14231c;
+}
+
+body.theme-dark .data-table th,
+body.theme-dark .data-table td {
+  border-bottom-color: #16261f;
+}
+
 body.theme-dark .admin-table td,
 body.theme-dark .payment-table td {
   color: #dbe7e0;
@@ -1675,6 +1952,21 @@ body.theme-dark .chip {
   border-color: #1e3229;
   color: #cfe0d6;
 }
+
+body.theme-dark .stat-card strong,
+body.theme-dark .stat-card .stat-label {
+  color: #e6f2ea;
+}
+
+body.theme-dark .stat-card .stat-sub {
+  color: #8aa596;
+}
+
+/* Tinted cards keep their accent, but the number must stay bright. */
+body.theme-dark .stat-card.is-green strong  { color: #6fcf97; }
+body.theme-dark .stat-card.is-amber strong  { color: var(--gold-400); }
+body.theme-dark .stat-card.is-blue strong   { color: #7db4ee; }
+body.theme-dark .stat-card.is-red strong    { color: #e37d7d; }
 
 body.theme-dark .chip.is-active {
   background: var(--green-600);

@@ -104,6 +104,18 @@
     $("#userRole").textContent = state.admin.role;
     $("#userInitial").textContent = (state.admin.name || state.admin.username).charAt(0).toUpperCase();
 
+    // Welcome banner: the signed-in name and today's date.
+    var welcomeName = $("#welcomeName");
+    if (welcomeName) {
+      welcomeName.textContent = state.admin.name || state.admin.username;
+    }
+    var welcomeDate = $("#welcomeDate");
+    if (welcomeDate) {
+      welcomeDate.textContent = new Date().toLocaleDateString("en-PH", {
+        weekday: "long", year: "numeric", month: "long", day: "numeric",
+      });
+    }
+
     // Hide superadmin-only nav for lesser roles.
     $$("[data-super-only]").forEach(function (el) {
       el.hidden = state.admin.role !== "superadmin";
@@ -1062,6 +1074,11 @@
     $("#statPending").textContent = unpaid;
     $("#statOverdue").textContent = overdue;
 
+    // The welcome banner repeats the collected figure so the greeting carries
+    // the one number the office cares about most.
+    var welcomeCollected = $("#welcomeCollected");
+    if (welcomeCollected) welcomeCollected.textContent = peso(collected);
+
     // A collection rate is more useful to an office than a raw total, and it
     // shows at a glance whether the term's billing is on track.
     var pill = $("#statPaid").parentNode;
@@ -1593,6 +1610,7 @@
       amount: paymentForm.amount.value,
       date: paymentForm.date.value,
       method: paymentForm.method.value,
+      examPeriod: paymentForm.examPeriod.value,
       receiptNo: paymentForm.receiptNo.value || undefined,
       note: paymentForm.note.value,
     };
@@ -1618,12 +1636,31 @@
       });
   });
 
+  /* Which exam period the payments list is filtered to. "all" shows every
+     period; anything else matches a payment's examPeriod exactly. */
+  var examFilter = "all";
+  var EXAM_PERIODS_CLIENT = ["General", "Prelim", "Midterm", "Semi-Final", "Final"];
+
+  /** Pill badge colour per exam period, so periods scan apart in the table. */
+  function examPeriodBadge(period) {
+    var p = String(period || "General");
+    var cls = {
+      Prelim: "badge-blue",
+      Midterm: "badge-amber",
+      "Semi-Final": "badge-purple",
+      Final: "badge-green",
+      General: "badge-neutral",
+    }[p] || "badge-neutral";
+    return '<span class="badge exam-badge ' + cls + '">' + escapeHtml(p) + "</span>";
+  }
+
   function renderPayments() {
     var tbody = $("#paymentRows");
     var term = ($("#paymentSearch").value || "").trim().toLowerCase();
     var rows = allPayments.filter(function (p) {
+      if (examFilter !== "all" && String(p.examPeriod || "General") !== examFilter) return false;
       if (!term) return true;
-      return [p.receiptNo, p.studentName, p.studentId, p.method, p.receivedBy, p.note]
+      return [p.receiptNo, p.studentName, p.studentId, p.method, p.receivedBy, p.note, p.examPeriod]
         .join(" ")
         .toLowerCase()
         .indexOf(term) !== -1;
@@ -1634,7 +1671,7 @@
 
     if (rows.length === 0) {
       tbody.innerHTML =
-        '<tr><td colspan="8" class="table-empty">' +
+        '<tr><td colspan="9" class="table-empty">' +
         (allPayments.length === 0 ? "No payments recorded yet." : "No payments match your search.") +
         "</td></tr>";
     }
@@ -1648,6 +1685,7 @@
         escapeHtml(p.studentId) + ")</span></td>" +
         '<td class="amount-cell">' + peso(p.amount) + "</td>" +
         "<td>" + escapeHtml(p.method || "—") + "</td>" +
+        "<td>" + examPeriodBadge(p.examPeriod) + "</td>" +
         "<td>" + escapeHtml(p.receivedBy || "—") + "</td>" +
         "<td>" + escapeHtml(p.note || "—") + "</td>";
 
@@ -1669,9 +1707,71 @@
       tbody.appendChild(tr);
     });
 
-    var total = allPayments.reduce(function (sum, p) { return sum + (Number(p.amount) || 0); }, 0);
-    $("#payCount").textContent = allPayments.length;
-    $("#payTotal").textContent = peso(total);
+    renderExamSummary();
+  }
+
+  /** The chips strip + per-period collection cards above the table. The count
+     and total pills always describe what is currently visible. */
+  function renderExamSummary() {
+    var chips = $("#examFilterBar");
+    if (chips && !chips.dataset.built) {
+      var html = '<button type="button" class="chip is-active" data-exam="all">All periods</button>';
+      EXAM_PERIODS_CLIENT.forEach(function (name) {
+        html += '<button type="button" class="chip" data-exam="' + name + '">' + name + "</button>";
+      });
+      chips.innerHTML = html;
+      chips.dataset.built = "1";
+      $$("[data-exam]", chips).forEach(function (chip) {
+        chip.addEventListener("click", function () {
+          examFilter = chip.getAttribute("data-exam");
+          $$("[data-exam]", chips).forEach(function (c) {
+            c.classList.toggle("is-active", c === chip);
+          });
+          renderPayments();
+        });
+      });
+    }
+
+    // Per-period totals: Prelim → Final, then General last.
+    var totals = {};
+    EXAM_PERIODS_CLIENT.forEach(function (name) { totals[name] = { count: 0, sum: 0 }; });
+    allPayments.forEach(function (p) {
+      var name = String(p.examPeriod || "General");
+      if (!totals[name]) totals[name] = { count: 0, sum: 0 };
+      totals[name].count += 1;
+      totals[name].sum += Number(p.amount) || 0;
+    });
+
+    var cards = $("#examStatCards");
+    if (cards) {
+      cards.innerHTML = EXAM_PERIODS_CLIENT.map(function (name) {
+        var t = totals[name];
+        var tone = {
+          Prelim: "is-blue",
+          Midterm: "is-amber",
+          "Semi-Final": "is-purple",
+          Final: "is-green",
+          General: "",
+        }[name] || "";
+        return (
+          '<div class="stat-card ' + tone + (examFilter === name ? " is-selected" : "") + '">' +
+          '<span class="stat-label">' + name + "</span>" +
+          "<strong>" + peso(t.sum) + "</strong>" +
+          '<span class="stat-sub">' + t.count + " payment" + (t.count === 1 ? "" : "s") + "</span>" +
+          "</div>"
+        );
+      }).join("");
+    }
+
+    // The pills at the right of the toolbar follow the active filter.
+    var visible = allPayments.filter(function (p) {
+      return examFilter === "all" || String(p.examPeriod || "General") === examFilter;
+    });
+    var grand = visible.reduce(function (sum, p) { return sum + (Number(p.amount) || 0); }, 0);
+    $("#payCount").textContent = visible.length;
+    $("#payTotal").textContent = peso(grand);
+    var scope = $("#payScope");
+    if (scope) scope.textContent = examFilter === "all" ? "all periods" : examFilter;
   }
 
   function loadPayments() {

@@ -230,6 +230,20 @@ function toDate(value) {
   return isNaN(parsed) ? "" : parsed.toISOString().slice(0, 10);
 }
 
+/** Which exam period a payment date falls into, from the Philippine school
+ * calendar. June start: Prelim ~Jun–Aug, Midterm ~Sep–Oct, Semi-Final ~Nov–Dec,
+ * Final ~Jan–Mar. Outside those windows (summer) the payment is "General".
+ */
+function guessExamPeriod(dateStr) {
+  const day = toDate(dateStr) || today();
+  const month = Number(day.slice(5, 7));
+  if (month >= 6 && month <= 8) return "Prelim";
+  if (month >= 9 && month <= 10) return "Midterm";
+  if (month >= 11 && month <= 12) return "Semi-Final";
+  if (month >= 1 && month <= 3) return "Final";
+  return "General";
+}
+
 /** How many days until a due date. Negative means overdue, null means no date. */
 function daysUntil(dateStr) {
   const day = toDate(dateStr);
@@ -329,6 +343,21 @@ const PAYMENT_COLUMNS = [
   "method",
   "receivedBy",
   "note",
+  "examPeriod",
+];
+
+/**
+ * The tuition year is divided into exam periods — the moments the office
+ * collects assessment fees before each exam window. Grouping payments under
+ * them is how the treasurer reconciles a testing period. Older rows predating
+ * the column read as "General".
+ */
+const EXAM_PERIODS = [
+  "General",
+  "Prelim",
+  "Midterm",
+  "Semi-Final",
+  "Final",
 ];
 
 const LOG_COLUMNS = ["timestamp", "admin", "action", "target", "details"];
@@ -2667,6 +2696,12 @@ async function handleApi(req, res, pathname) {
     }
 
     const method = body.method || "Cash";
+    // Which exam period the payment is for. Defaults to the current period
+    // guess from the calendar, but the office can always pick another — an
+    // advance Prelim fee paid early, for example.
+    const examPeriod = EXAM_PERIODS.indexOf(body.examPeriod) !== -1
+      ? body.examPeriod
+      : guessExamPeriod(body.date || paymentDateField());
     const payment = {
       date: toDate(body.date) || today(),
       receiptNo: body.receiptNo || nextReceiptNo(db),
@@ -2676,6 +2711,7 @@ async function handleApi(req, res, pathname) {
       method,
       receivedBy: session.username,
       note: body.note || "",
+      examPeriod,
     };
 
     const payments = readSheet(db, SHEETS.payments);
@@ -2696,6 +2732,7 @@ async function handleApi(req, res, pathname) {
       student.id,
       payment.receiptNo + ": ₱" + amount.toLocaleString("en-PH") +
         " via " + method + " on " + payment.date +
+        " [" + examPeriod + "]" +
         " (balance " + balanceBefore + " -> " + balanceAfter +
         ", paid " + student.amountPaid + " of " + student.totalFee + ")"
     );

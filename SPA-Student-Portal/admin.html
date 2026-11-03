@@ -120,6 +120,20 @@
 
             <!-- ---- Students view ---- -->
             <section class="admin-view" id="viewStudents">
+                <!-- Welcome banner: who is on shift, today's date, and the one
+                     number that matters most right now. -->
+                <div class="welcome-banner">
+                    <div class="welcome-copy">
+                        <p class="welcome-kicker" id="welcomeDate">—</p>
+                        <h2 class="welcome-title">Welcome back, <span id="welcomeName">Administrator</span> 👋</h2>
+                        <p class="welcome-sub">Here's what's happening at Saint Patrick's Academy today.</p>
+                    </div>
+                    <div class="welcome-figure">
+                        <span class="welcome-figure-label">Collected to date</span>
+                        <strong id="welcomeCollected">₱0</strong>
+                    </div>
+                </div>
+
                 <!-- Stat cards: the five numbers the office reads first. -->
                 <div class="stat-cards">
                     <div class="stat-card">
@@ -266,6 +280,12 @@
 
             <!-- ---- Payments view ---- -->
             <section class="admin-view" id="viewPayments" hidden>
+                <!-- Per-exam-period collection totals. Clicking a chip below
+                     filters the table to just that period. -->
+                <div class="stat-cards stat-cards-exam" id="examStatCards"></div>
+
+                <div class="exam-filter-bar" id="examFilterBar" role="group" aria-label="Filter payments by exam period"></div>
+
                 <div class="admin-toolbar">
                     <label class="field inline-field">
                         <span class="sr-only">Search payments</span>
@@ -273,7 +293,7 @@
                     </label>
                     <div class="toolbar-stats">
                         <span class="pill"><strong id="payCount">0</strong> payments</span>
-                        <span class="pill pill-amber"><strong id="payTotal">â‚±0</strong> collected</span>
+                        <span class="pill pill-amber"><strong id="payTotal">â‚±0</strong> <span id="payScope">all periods</span></span>
                         <span class="pill pill-blue">
                             Next receipt <strong id="nextReceipt">R-1001</strong>
                         </span>
@@ -289,13 +309,14 @@
                                 <th scope="col">Student</th>
                                 <th scope="col">Amount</th>
                                 <th scope="col">Method</th>
+                                <th scope="col">Exam Period</th>
                                 <th scope="col">Received by</th>
                                 <th scope="col">Note</th>
                                 <th scope="col">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="paymentRows">
-                            <tr><td colspan="8" class="table-empty">Loading…</td></tr>
+                            <tr><td colspan="9" class="table-empty">Loading…</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -489,6 +510,16 @@
                             <option>Online transfer</option>
                             <option>GCash</option>
                             <option>Check</option>
+                        </select>
+                    </label>
+                    <label class="field">
+                        <span>Exam period</span>
+                        <select name="examPeriod" id="paymentExamPeriod">
+                            <option>Prelim</option>
+                            <option>Midterm</option>
+                            <option>Semi-Final</option>
+                            <option>Final</option>
+                            <option>General</option>
                         </select>
                     </label>
                     <label class="field">
