@@ -251,6 +251,63 @@
                  rows into the tbody by that id, and a duplicate id made it
                  select the outer section and overwrite the whole panel. -->
             <section class="dash-panel dash-history" id="dashHistory" aria-labelledby="dashPaymentsHeading">
+                <!-- Pay-now panel: the student files HOW they paid (method,
+                     amount, reference) and the Accounting office verifies it
+                     before it lands in the official ledger. -->
+                <div class="paybox" id="payBox">
+                    <div class="paybox-head">
+                        <div>
+                            <h3 class="paybox-title">Make a payment</h3>
+                            <p class="paybox-sub">Choose how you paid — the Accounting office verifies it and issues your official receipt.</p>
+                        </div>
+                        <button type="button" class="btn btn-primary" id="payBoxToggle">Pay now</button>
+                    </div>
+                    <form id="payRequestForm" hidden>
+                        <div class="paybox-grid">
+                            <label class="field">
+                                <span>Payment method</span>
+                                <select name="method" required id="payRequestMethod">
+                                    <option value="">Choose how you paid…</option>
+                                    <option>GCash</option>
+                                    <option>Bank deposit</option>
+                                    <option>Online transfer</option>
+                                    <option>Cash (at the office)</option>
+                                    <option>Check</option>
+                                </select>
+                            </label>
+                            <label class="field">
+                                <span>Amount (&#8369;)</span>
+                                <input name="amount" type="number" min="1" step="1" required placeholder="0" id="payRequestAmount">
+                            </label>
+                            <label class="field">
+                                <span>Reference no. <em class="paybox-optional">(optional)</em></span>
+                                <input name="reference" id="payRequestReference" placeholder="GCash ref, slip no., etc." maxlength="60">
+                            </label>
+                            <label class="field">
+                                <span>Exam period</span>
+                                <select name="examPeriod" id="payRequestExamPeriod">
+                                    <option>Prelim</option>
+                                    <option>Midterm</option>
+                                    <option>Semi-Final</option>
+                                    <option>Final</option>
+                                    <option>General</option>
+                                </select>
+                            </label>
+                            <label class="field paybox-full">
+                                <span>Note <em class="paybox-optional">(optional)</em></span>
+                                <input name="note" id="payRequestNote" placeholder="e.g. Part payment before Prelim exams" maxlength="160">
+                            </label>
+                        </div>
+                        <p class="paybox-balance" id="payRequestBalance" hidden></p>
+                        <div class="paybox-actions">
+                            <button type="button" class="btn btn-ghost btn-sm" id="payRequestCancel">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Submit for verification</button>
+                        </div>
+                        <p class="form-status" id="payRequestStatus" role="status" aria-live="polite"></p>
+                    </form>
+                    <ul class="paybox-mine" id="payRequestMine" hidden></ul>
+                </div>
+
                 <header class="dash-panel-head dash-history-head">
                     <div>
                         <h2 id="dashPaymentsHeading">Payment history</h2>

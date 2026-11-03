@@ -2102,3 +2102,25 @@ body.theme-dark .form-section-title {
   color: #8aa596;
   border-top-color: #1e3229;
 }
+
+/* ---------------- Payment requests (student-filed) ---------------- */
+.table-payreq {
+  min-width: 0;
+  table-layout: fixed;
+  width: 100%;
+}
+
+.table-payreq th:nth-child(1) { width: 12%; }  /* Filed */
+.table-payreq th:nth-child(2) { width: 20%; }  /* Student */
+.table-payreq th:nth-child(3) { width: 10%; }  /* Amount */
+.table-payreq th:nth-child(4) { width: 11%; }  /* Method */
+.table-payreq th:nth-child(5) { width: 14%; }  /* Reference */
+.table-payreq th:nth-child(6) { width: 9%; }   /* Period */
+.table-payreq th:nth-child(7) { width: 14%; }  /* Status */
+.table-payreq th:nth-child(8) { width: 10%; }  /* Actions */
+
+.table-payreq th { white-space: nowrap; }
+
+body.theme-dark .table-payreq td {
+  border-bottom-color: #16261f;
+}

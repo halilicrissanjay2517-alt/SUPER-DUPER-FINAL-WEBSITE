@@ -159,7 +159,29 @@ const SHEETS = {
   payments: "Payments",
   logs: "Logs",
   accounts: "Accounts",
+  payRequests: "PaymentRequests",
 };
+
+/**
+ * A payment the student filed from their own dashboard, waiting for the
+ * Accounting office to verify the money actually arrived and turn it into a
+ * real ledger payment. Status: pending -> confirmed | rejected.
+ */
+const PAY_REQUEST_COLUMNS = [
+  "requestId",
+  "studentId",
+  "studentName",
+  "amount",
+  "method",
+  "reference",
+  "examPeriod",
+  "note",
+  "status",
+  "requestedAt",
+  "handledBy",
+  "handledAt",
+  "receiptNo",
+];
 
 /* ---------------------------------------------------------------- Excel DB */
 
@@ -641,6 +663,7 @@ function createSeedDb() {
   writeSheet(db, SHEETS.admins, admins, ADMIN_COLUMNS);
   writeSheet(db, SHEETS.logs, logs, LOG_COLUMNS);
   writeSheet(db, SHEETS.accounts, [], ACCOUNT_COLUMNS);
+  writeSheet(db, SHEETS.payRequests, [], PAY_REQUEST_COLUMNS);
   applySheetFormatting(db);
   saveDb(db);
   return db;
@@ -656,6 +679,7 @@ function applySheetFormatting(db) {
   applyColumnWidths(db, SHEETS.admins, [14, 20, 12, 66, 34, 8]);
   applyColumnWidths(db, SHEETS.logs, [26, 14, 16, 12, 70]);
   applyColumnWidths(db, SHEETS.accounts, [12, 22, 26, 66, 34, 10, 22, 16, 22, 28, 20]);
+  applyColumnWidths(db, SHEETS.payRequests, [12, 12, 22, 11, 14, 20, 12, 26, 11, 20, 14, 20, 12]);
 }
 
 /**
@@ -673,6 +697,12 @@ function migrateDb(db) {
   // gain the sheet empty rather than losing anything they already hold.
   if (!db.Sheets[SHEETS.accounts]) {
     writeSheet(db, SHEETS.accounts, [], ACCOUNT_COLUMNS);
+    changed = true;
+  }
+  // Student-filed payment requests arrived with the "pay from the dashboard"
+  // feature; older workbooks gain the sheet empty.
+  if (!db.Sheets[SHEETS.payRequests]) {
+    writeSheet(db, SHEETS.payRequests, [], PAY_REQUEST_COLUMNS);
     changed = true;
   }
   applySheetFormatting(db);
@@ -2099,6 +2129,189 @@ async function handleApi(req, res, pathname) {
     appendLog(db, session.studentId, "password-change", session.studentId, "Student changed password");
     saveDb(db);
     return sendJson(res, 200, { ok: true });
+  }
+
+  /* ---------------------------------------------- Student-filed payments ----
+     The student picks a method on their dashboard, states how much they paid
+     and a reference number, and the office verifies it. Confirming a request
+     records a real ledger payment — the money never enters the books straight
+     from the student's own form. */
+
+  var STUDENT_PAY_METHODS = ["Cash", "Bank deposit", "Online transfer", "GCash", "Check"];
+
+  /* ---- POST /api/student/pay  (file a payment for the office to verify) ---- */
+  if (pathname === "/api/student/pay" && req.method === "POST") {
+    const session = requireStudent(req, res);
+    if (!session) return;
+    const body = await readBody(req);
+    const db = loadDb();
+
+    const record = studentRecordFor(db, session.studentId);
+    if (!record) return sendJson(res, 404, { error: "Your student record is no longer on file." });
+    const owed = Number(record.balance) || 0;
+    if (owed <= 0) {
+      return sendJson(res, 400, { error: "Your balance is already fully settled." });
+    }
+
+    const amount = Number(body.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return sendJson(res, 400, { error: "Enter an amount greater than zero" });
+    }
+    if (amount > owed) {
+      return sendJson(res, 400, {
+        error: "That is more than your outstanding balance of " + owed.toLocaleString("en-PH") + ".",
+      });
+    }
+    const method = STUDENT_PAY_METHODS.indexOf(body.method) !== -1 ? body.method : null;
+    if (!method) return sendJson(res, 400, { error: "Choose a payment method" });
+
+    // One open request at a time: a second filing while the first is still
+    // waiting would double-count the same money once both were verified.
+    const open = readSheet(db, SHEETS.payRequests).some(function (r) {
+      return String(r.studentId) === String(session.studentId) &&
+        String(r.status).toLowerCase() === "pending";
+    });
+    if (open) {
+      return sendJson(res, 409, { error: "You already have a payment waiting for verification." });
+    }
+
+    const request = {
+      requestId: "PR-" + Date.now().toString(36).toUpperCase(),
+      studentId: record.id,
+      studentName: record.name,
+      amount: amount,
+      method: method,
+      reference: String(body.reference || "").trim().slice(0, 60),
+      examPeriod: EXAM_PERIODS.indexOf(body.examPeriod) !== -1 ? body.examPeriod : guessExamPeriod(),
+      note: String(body.note || "").trim().slice(0, 160),
+      status: "pending",
+      requestedAt: today() + " " + new Date().toTimeString().slice(0, 5),
+      handledBy: "",
+      handledAt: "",
+      receiptNo: "",
+    };
+
+    const requests = readSheet(db, SHEETS.payRequests);
+    requests.push(request);
+    writeSheet(db, SHEETS.payRequests, requests, PAY_REQUEST_COLUMNS);
+    appendLog(db, session.studentId, "payment-request", record.id,
+      "Filed " + method + " payment of ₱" + amount.toLocaleString("en-PH") +
+      " [" + request.examPeriod + "] for verification" +
+      (request.reference ? " (ref " + request.reference + ")" : ""));
+    saveDb(db);
+    return sendJson(res, 201, { request: request });
+  }
+
+  /* ---- GET /api/student/pay  (this student's own filed payments) ---- */
+  if (pathname === "/api/student/pay" && req.method === "GET") {
+    const session = requireStudent(req, res);
+    if (!session) return;
+    const db = loadDb();
+    const mine = readSheet(db, SHEETS.payRequests)
+      .filter(function (r) { return String(r.studentId) === String(session.studentId); })
+      .sort(function (a, b) { return String(b.requestedAt).localeCompare(String(a.requestedAt)); });
+    return sendJson(res, 200, { requests: mine });
+  }
+
+  /* ---- PATCH /api/payrequests/:id  (office verifies or declines) ----
+     Confirming writes a real payment to the ledger through the same path the
+     office form uses, so the balance, paid total and receipt numbering all
+     stay in one piece. Rejecting just closes the request. */
+  const payReqMatch = pathname.match(/^\/api\/payrequests\/([^/]+)$/);
+  if (payReqMatch && req.method === "PATCH") {
+    const session = requireAuth(req, res);
+    if (!session) return;
+    const body = await readBody(req);
+    const action = String(body.action || "").toLowerCase();
+    if (action !== "confirm" && action !== "reject") {
+      return sendJson(res, 400, { error: "action must be confirm or reject" });
+    }
+
+    const db = loadDb();
+    const requests = readSheet(db, SHEETS.payRequests);
+    const index = requests.findIndex(function (r) { return String(r.requestId) === String(payReqMatch[1]); });
+    if (index === -1) return sendJson(res, 404, { error: "Payment request not found" });
+    const request = requests[index];
+    if (String(request.status).toLowerCase() !== "pending") {
+      return sendJson(res, 409, { error: "This request has already been handled." });
+    }
+
+    if (action === "reject") {
+      request.status = "rejected";
+      request.handledBy = session.username;
+      request.handledAt = today() + " " + new Date().toTimeString().slice(0, 5);
+      requests[index] = request;
+      writeSheet(db, SHEETS.payRequests, requests, PAY_REQUEST_COLUMNS);
+      appendLog(db, session.username, "payment-request-reject", request.studentId,
+        "Declined " + request.requestId + " (" + request.method + ", ₱" + request.amount + ")");
+      saveDb(db);
+      return sendJson(res, 200, { request: request });
+    }
+
+    // Confirm: file it as a real payment. The student's balance is re-checked
+    // here — they may have paid at the window while the request sat waiting.
+    const students = readSheet(db, SHEETS.students);
+    const sIndex = students.findIndex(function (s) {
+      return String(s.id) === String(request.studentId);
+    });
+    if (sIndex === -1) return sendJson(res, 404, { error: "Student not found" });
+    const student = students[sIndex];
+    const owed = Number(student.balance) || 0;
+    const amount = Number(request.amount) || 0;
+    if (owed <= 0) {
+      return sendJson(res, 409, { error: student.name + "'s balance is already settled — decline this request instead." });
+    }
+    if (amount > owed) {
+      return sendJson(res, 409, {
+        error: "The filed amount now exceeds the balance of " + owed.toLocaleString("en-PH") +
+          " — decline it and record the correct amount manually.",
+      });
+    }
+
+    const payment = {
+      date: today(),
+      receiptNo: nextReceiptNo(db),
+      studentId: student.id,
+      studentName: student.name,
+      amount: amount,
+      method: request.method,
+      receivedBy: session.username + " (verified)",
+      note: "Student-filed" + (request.reference ? " · ref " + request.reference : "") +
+        (request.note ? " · " + request.note : ""),
+      examPeriod: request.examPeriod || guessExamPeriod(),
+    };
+    const payments = readSheet(db, SHEETS.payments);
+    payments.push(payment);
+    writeSheet(db, SHEETS.payments, payments, PAYMENT_COLUMNS);
+    syncStudentBilling(db, student);
+    students[sIndex] = student;
+    writeSheet(db, SHEETS.students, students, STUDENT_COLUMNS);
+
+    request.status = "confirmed";
+    request.handledBy = session.username;
+    request.handledAt = today() + " " + new Date().toTimeString().slice(0, 5);
+    request.receiptNo = payment.receiptNo;
+    requests[index] = request;
+    writeSheet(db, SHEETS.payRequests, requests, PAY_REQUEST_COLUMNS);
+    appendLog(db, session.username, "payment-request-confirm", request.studentId,
+      "Verified " + request.requestId + " as receipt " + payment.receiptNo +
+      " (₱" + amount.toLocaleString("en-PH") + " " + request.method + ")");
+    saveDb(db);
+    return sendJson(res, 200, { request: request, payment: payment, student: student });
+  }
+
+  /* ---- GET /api/payrequests  (the office's verification queue) ---- */
+  if (pathname === "/api/payrequests" && req.method === "GET") {
+    const session = requireAuth(req, res);
+    if (!session) return;
+    const db = loadDb();
+    const requests = readSheet(db, SHEETS.payRequests)
+      .slice()
+      .sort(function (a, b) { return String(b.requestedAt).localeCompare(String(a.requestedAt)); });
+    const pendingCount = requests.filter(function (r) {
+      return String(r.status).toLowerCase() === "pending";
+    }).length;
+    return sendJson(res, 200, { requests: requests, pendingCount: pendingCount });
   }
 
   /* ---- GET /api/student/profile  (the signed-in student's own profile) ----

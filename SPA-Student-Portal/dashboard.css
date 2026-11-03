@@ -1535,3 +1535,130 @@ body.receipt-open { overflow: hidden; }
     animation: none;
   }
 }
+
+/* ---------- Pay-now panel (student files a payment for verification) ---------- */
+.paybox {
+  margin-bottom: 22px;
+  padding: 20px 22px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--gold-400);
+  background: linear-gradient(180deg, var(--gold-50), var(--surface) 65%);
+}
+
+.paybox-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.paybox-title {
+  margin: 0;
+  font-size: 16px;
+  color: var(--green-800);
+}
+
+.paybox-sub {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+  max-width: 52ch;
+}
+
+.paybox-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 18px;
+  margin-top: 18px;
+}
+
+.paybox-grid .paybox-full {
+  grid-column: 1 / -1;
+}
+
+.paybox-optional {
+  font-style: normal;
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.paybox-balance {
+  margin: 14px 0 0;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--green-50);
+  color: var(--green-800);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.paybox-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+/* The student's own filed requests, newest first. */
+.paybox-mine {
+  list-style: none;
+  margin: 18px 0 0;
+  padding: 14px 0 0;
+  border-top: 1px dashed var(--line-strong);
+  display: grid;
+  gap: 8px;
+}
+
+.payreq {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  font-size: 13.5px;
+}
+
+.payreq-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.payreq-method {
+  color: var(--ink-soft);
+}
+
+.payreq-ref {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.payreq-state {
+  font-weight: 700;
+  font-size: 12.5px;
+}
+
+.payreq.is-wait .payreq-state { color: var(--amber); }
+.payreq.is-ok .payreq-state   { color: var(--green-700); }
+.payreq.is-bad .payreq-state  { color: #c0392b; }
+.payreq.is-ok {
+  border-left: 3px solid var(--green-600);
+}
+.payreq.is-bad {
+  border-left: 3px solid #d64545;
+}
+
+@media (max-width: 640px) {
+  .paybox-grid { grid-template-columns: 1fr; }
+  .paybox-head { flex-direction: column; align-items: stretch; }
+  .paybox-head .btn { width: 100%; }
+}

@@ -137,10 +137,29 @@
     // Keep the "awaiting approval" badge live, so an administrator working in
     // the Students tab still sees a student arrive. Cleared on sign-out.
     if (badgeTimer) clearInterval(badgeTimer);
-    badgeTimer = setInterval(loadApprovalBadge, 30000);
+    badgeTimer = setInterval(function () {
+      loadApprovalBadge();
+      loadPayReqBadge();
+    }, 30000);
+    loadPayReqBadge();
   }
 
   var badgeTimer = null;
+
+  /** Pending payment requests badge on the Payments nav item. */
+  function loadPayReqBadge() {
+    if (!state.signedIn) return;
+    api("/api/payrequests")
+      .then(function (data) {
+        var count = Number(data.pendingCount) || 0;
+        var badge = $("#payReqBadge");
+        if (!badge) return;
+        badge.textContent = String(count);
+        badge.hidden = count === 0;
+        badge.classList.toggle("is-pulsing", count > 0);
+      })
+      .catch(function () { /* badge only; never blocks the dashboard */ });
+  }
 
   /** One place that turns a failed dashboard load into a readable message. */
   function reportLoadFailure(what, err) {
@@ -183,12 +202,13 @@
     students: ["Students", "Manage student records and balances."],
     approvals: ["Student Accounts", "Approve the accounts students create for themselves."],
     payments: ["Payments", "Every payment received, with its receipt number."],
+    payrequests: ["Payment Requests", "Payments students filed — verify, then issue the receipt."],
     admins: ["Administrators", "Accounts that can sign in and make changes."],
     logs: ["Activity Log", "Every change made by every administrator."],
     about: ["About the School", "Saint Patrick's Academy, Inc. — mission, vision, and values."],
   };
 
-  var VIEWS = ["students", "approvals", "payments", "admins", "logs", "about"];
+  var VIEWS = ["students", "approvals", "payments", "payrequests", "admins", "logs", "about"];
 
   $$("[data-view]").forEach(function (btn) {
     btn.addEventListener("click", function () {
@@ -208,6 +228,7 @@
       $("#createAccountBtn").hidden = view !== "students" && view !== "approvals";
       if (view === "admins") loadAdmins();
       if (view === "payments") loadPayments();
+      if (view === "payrequests") loadPayRequests();
       if (view === "approvals") loadApprovals();
     });
   });
@@ -1904,4 +1925,108 @@
     .catch(function () {
       state.signedIn = false;
     });
+
+  /* ------------------------------------------- Student payment requests ----
+     Students file "I paid by GCash, here is the reference" on their dashboard;
+     the office verifies the money arrived and confirms — which records a real
+     ledger payment with the next receipt number — or declines it. */
+  var payReqRows = $("#payReqRows");
+
+  function payReqStatusBadge(status) {
+    var s = String(status).toLowerCase();
+    if (s === "confirmed") return '<span class="badge badge-green">Verified</span>';
+    if (s === "rejected") return '<span class="badge badge-red">Declined</span>';
+    return '<span class="badge badge-amber">Awaiting verification</span>';
+  }
+
+  function loadPayRequests() {
+    api("/api/payrequests")
+      .then(function (data) {
+        var requests = data.requests || [];
+        var pending = Number(data.pendingCount) || 0;
+        $("#payReqPending").textContent = pending;
+        $("#payReqEmpty").hidden = requests.length !== 0;
+
+        payReqRows.innerHTML = "";
+        if (requests.length === 0) {
+          payReqRows.innerHTML =
+            '<tr><td colspan="8" class="table-empty">No payment requests yet.</td></tr>';
+        }
+
+        requests.forEach(function (r) {
+          var tr = document.createElement("tr");
+          if (String(r.status).toLowerCase() === "pending") tr.className = "is-awaiting";
+          tr.innerHTML =
+            "<td>" + escapeHtml(String(r.requestedAt || "").slice(0, 16)) + "</td>" +
+            "<td><strong>" + escapeHtml(r.studentName) + "</strong> <span class=\"muted\">(" +
+            escapeHtml(r.studentId) + ")</span></td>" +
+            '<td class="money-cell">' + peso(r.amount) + "</td>" +
+            "<td>" + escapeHtml(r.method) + "</td>" +
+            "<td>" + (r.reference ? '<span class="id-chip">' + escapeHtml(r.reference) + "</span>" : "—") + "</td>" +
+            "<td>" + escapeHtml(r.examPeriod || "General") + "</td>" +
+            "<td>" + payReqStatusBadge(r.status) +
+            (r.receiptNo ? '<br><span class="due-date">receipt ' + escapeHtml(r.receiptNo) + "</span>" : "") +
+            "</td>";
+
+          var td = document.createElement("td");
+          if (String(r.status).toLowerCase() === "pending") {
+            var wrap = document.createElement("div");
+            wrap.className = "row-actions";
+
+            var confirmBtn = document.createElement("button");
+            confirmBtn.type = "button";
+            confirmBtn.className = "btn btn-primary btn-mini";
+            confirmBtn.textContent = "Verify";
+            confirmBtn.addEventListener("click", function () { handlePayRequest(r, "confirm"); });
+
+            var rejectBtn = document.createElement("button");
+            rejectBtn.type = "button";
+            rejectBtn.className = "btn btn-secondary btn-mini";
+            rejectBtn.textContent = "Decline";
+            rejectBtn.addEventListener("click", function () { handlePayRequest(r, "reject"); });
+
+            wrap.appendChild(confirmBtn);
+            wrap.appendChild(rejectBtn);
+            td.appendChild(wrap);
+          } else {
+            td.className = "is-readonly";
+            td.textContent = r.handledBy ? "by " + r.handledBy : "—";
+          }
+          tr.appendChild(td);
+          payReqRows.appendChild(tr);
+        });
+      })
+      .catch(function (err) {
+        payReqRows.innerHTML =
+          '<tr><td colspan="8" class="table-empty">' + escapeHtml(err.message) + "</td></tr>";
+      });
+  }
+
+  function handlePayRequest(request, action) {
+    var verb = action === "confirm" ? "Verify" : "Decline";
+    if (!window.confirm(
+      verb + " this payment?\n\n" +
+      request.studentName + " (" + request.studentId + ")\n" +
+      peso(request.amount) + " via " + request.method +
+      (request.reference ? "\nReference: " + request.reference : "") +
+      (action === "confirm"
+        ? "\n\nConfirming records an official payment with the next receipt number."
+        : "\n\nDeclining closes the request without recording any payment.")
+    )) return;
+
+    api("/api/payrequests/" + encodeURIComponent(request.requestId), {
+      method: "PATCH",
+      body: { action: action },
+    })
+      .then(function (data) {
+        toast(action === "confirm"
+          ? "Verified — receipt " + (data.payment ? data.payment.receiptNo : "issued")
+          : "Request declined");
+        loadPayRequests();
+        loadPayReqBadge();
+        loadStudents();
+        loadLogs();
+      })
+      .catch(function (err) { toast(err.message, true); });
+  }
 })();

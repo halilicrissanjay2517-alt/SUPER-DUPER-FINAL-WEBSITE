@@ -725,6 +725,8 @@
         renderRecord(data.student);
         if ($("#dashLoading")) $("#dashLoading").hidden = true;
         if ($("#dashContent")) $("#dashContent").hidden = false;
+        // The pay-now panel needs the balance to cap the amount field.
+        initPayBox(data.student);
         // The profile panel is a nice-to-have; the record above is the page.
         // One request fills both the identity block and the edit form.
         return studentApi("/api/student/profile")
@@ -898,4 +900,134 @@
   }
 
   boot();
+
+  /* ------------------------------------------------------ Pay now (file a payment)
+     The student states how they paid — method, amount, reference — and the
+     Accounting office verifies it. Confirming turns it into a real ledger
+     payment with an official receipt number. */
+  var payBox = $("#payBox");
+  var payForm = $("#payRequestForm");
+  var payStatus = $("#payRequestStatus");
+  var payToggle = $("#payBoxToggle");
+  var payMine = $("#payRequestMine");
+  var payBalance = $("#payRequestBalance");
+  var payStudentBalance = 0;
+
+  function paintPayMine(requests) {
+    if (!payMine) return;
+    if (!requests.length) {
+      payMine.hidden = true;
+      return;
+    }
+    payMine.hidden = false;
+    payMine.innerHTML = requests.slice(0, 4).map(function (r) {
+      var status = String(r.status).toLowerCase();
+      var cls = status === "confirmed" ? "is-ok" : status === "rejected" ? "is-bad" : "is-wait";
+      var label = status === "confirmed"
+        ? "Verified — receipt " + (r.receiptNo || "")
+        : status === "rejected" ? "Not verified" : "Waiting for verification";
+      return (
+        '<li class="payreq ' + cls + '">' +
+        '<div class="payreq-main"><strong>' + peso(r.amount) + "</strong>" +
+        '<span class="payreq-method">' + escapeHtml(r.method || "—") + "</span>" +
+        (r.reference ? '<span class="payreq-ref">ref ' + escapeHtml(r.reference) + "</span>" : "") +
+        "</div>" +
+        '<span class="payreq-state">' + label + "</span>" +
+        "</li>"
+      );
+    }).join("");
+  }
+
+  function loadPayMine() {
+    if (!payMine) return;
+    studentApi("/api/student/pay")
+      .then(function (data) { paintPayMine(data.requests || []); })
+      .catch(function () { payMine.hidden = true; });
+  }
+
+  function initPayBox(student) {
+    if (!payBox) return;
+    payStudentBalance = Number(student.balance) || 0;
+
+    var amountInput = $("#payRequestAmount");
+    if (amountInput) amountInput.max = String(payStudentBalance || 0);
+    if (payBalance) {
+      if (payStudentBalance > 0) {
+        payBalance.hidden = false;
+        payBalance.textContent =
+          "Your outstanding balance is " + peso(payStudentBalance) +
+          ". Enter an amount up to that — the office verifies every submission.";
+      } else {
+        payBalance.hidden = true;
+      }
+    }
+    // A settled account has nothing to file.
+    if (payToggle && payStudentBalance <= 0) {
+      payToggle.disabled = true;
+      payToggle.textContent = "Fully settled";
+    }
+    if (payStudentBalance > 0) loadPayMine();
+  }
+
+  if (payToggle) {
+    payToggle.addEventListener("click", function () {
+      if (!payForm) return;
+      payForm.hidden = !payForm.hidden;
+      payToggle.textContent = payForm.hidden ? "Pay now" : "Close";
+      if (!payForm.hidden) {
+        var first = $("#payRequestMethod");
+        if (first) first.focus();
+      }
+    });
+  }
+
+  var payCancel = $("#payRequestCancel");
+  if (payCancel) {
+    payCancel.addEventListener("click", function () {
+      payForm.hidden = true;
+      payToggle.textContent = "Pay now";
+      payStatus.textContent = "";
+      payStatus.className = "form-status";
+    });
+  }
+
+  if (payForm) {
+    payForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var amount = Number(payForm.amount.value);
+      var payload = {
+        method: payForm.method.value,
+        amount: amount,
+        reference: payForm.reference.value.trim(),
+        examPeriod: payForm.examPeriod.value,
+        note: payForm.note.value.trim(),
+      };
+
+      if (!payload.method) {
+        setStatus(payStatus, "Choose how you paid.", "err");
+        return;
+      }
+      if (payStudentBalance > 0 && amount > payStudentBalance) {
+        setStatus(payStatus,
+          "That is more than your balance of " + peso(payStudentBalance) + ".", "err");
+        return;
+      }
+
+      setStatus(payStatus, "Submitting…", "");
+      studentApi("/api/student/pay", { method: "POST", body: payload })
+        .then(function () {
+          payForm.hidden = true;
+          payToggle.textContent = "Pay now";
+          payForm.reset();
+          setStatus(payStatus,
+            "Submitted! The Accounting office will verify your payment and issue your official receipt.", "ok");
+          loadPayMine();
+          // A pending request now exists, so filing another is blocked server-side.
+          if (payToggle) { payToggle.disabled = true; payToggle.textContent = "Awaiting verification"; }
+        })
+        .catch(function (err) {
+          setStatus(payStatus, err.message, "err");
+        });
+    });
+  }
 })();

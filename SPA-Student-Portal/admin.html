@@ -69,6 +69,11 @@
                     <svg class="icon" viewBox="0 0 24 24"><path d="M3 6h18v12H3V6Zm2 3v2h14V9H5Zm0 4v3h6v-3H5Z"/></svg>
                     Payments
                 </button>
+                <button type="button" class="side-link" data-view="payrequests">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M6 2h9l5 5v15H6V2Zm8 1v5h5M8 12h8M8 16h8"/></svg>
+                    Payment Requests
+                    <span class="side-badge" id="payReqBadge" hidden>0</span>
+                </button>
                 <button type="button" class="side-link" data-view="admins" data-super-only>
                     <svg class="icon" viewBox="0 0 24 24"><path d="M12 2 3 6v6c0 5 3.8 9.4 9 10 5.2-.6 9-5 9-10V6l-9-4Z"/></svg>
                     Administrators
@@ -322,6 +327,42 @@
                 </div>
                 <p class="empty-state" id="paymentEmpty" hidden>
                     No payments recorded yet. Use <strong>+ Record payment</strong> to add the first one.
+                </p>
+            </section>
+
+            <!-- ---- Payment requests (student-filed, for verification) ---- -->
+            <section class="admin-view" id="viewPayrequests" hidden>
+                <div class="admin-toolbar">
+                    <p class="muted">
+                        Payments students filed from their own dashboard. Verify that the
+                        money arrived, and confirming records it as an official payment
+                        with a receipt number.
+                    </p>
+                    <div class="toolbar-stats">
+                        <span class="pill pill-amber"><strong id="payReqPending">0</strong> awaiting verification</span>
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table class="data-table admin-table table-payreq">
+                        <thead>
+                            <tr>
+                                <th scope="col">Filed</th>
+                                <th scope="col">Student</th>
+                                <th scope="col" class="num">Amount</th>
+                                <th scope="col">Method</th>
+                                <th scope="col">Reference</th>
+                                <th scope="col">Period</th>
+                                <th scope="col">Status</th>
+                                <th scope="col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="payReqRows">
+                            <tr><td colspan="8" class="table-empty">Loading…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="empty-state" id="payReqEmpty" hidden>
+                    No payment requests yet. When a student files a payment from their dashboard it appears here.
                 </p>
             </section>
 
