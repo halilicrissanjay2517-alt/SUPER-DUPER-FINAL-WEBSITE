@@ -1255,6 +1255,110 @@
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+/* ---------- Receipt "print-out" success animation ----------
+   When a receipt opens, the card drops in like fresh paper sliding out of a
+   receipt printer: it extends downward from the top with a zig-zag torn edge
+   revealed at the bottom, then the contents settle in. Respects the reduced-
+   motion preference by simply not running (the guard below covers both rules). */
+.receipt-card.is-printing {
+  --zigzag: 10px;
+  animation:
+    receipt-print 0.9s cubic-bezier(0.22, 0.9, 0.3, 1) both,
+    receipt-rise 0.2s var(--ease, ease);
+  clip-path: none;
+}
+
+@keyframes receipt-print {
+  0%   { clip-path: inset(65% 0 0 0); }
+  55%  { clip-path: inset(0 0 12% 0); }
+  72%  { clip-path: inset(0 0 4% 0); }
+  100% { clip-path: inset(0 0 0 0); }
+}
+
+/* The perforated bottom edge: a zig-zag strip pinned under the card. Two
+   conic-gradient rows make triangles, the classic receipt-tear look. */
+.receipt-card::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--zigzag, 10px) * -1);
+  height: var(--zigzag, 10px);
+  background:
+    conic-gradient(from -45deg at 50% 100%, #fff 90deg, transparent 0) 0 0 / 14px 100%,
+    conic-gradient(from 135deg at 50% 100%, #fff 90deg, transparent 0) 7px 0 / 14px 100%;
+  background-repeat: repeat-x;
+  pointer-events: none;
+}
+
+/* The card's own bottom corners square off where the torn edge begins, so the
+   zig-zag reads as a continuation of the paper rather than a sticker. */
+.receipt-card.is-printing {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+/* Success seal: a drawn checkmark circle that stamps itself over the header
+   once the paper has finished printing out. */
+.receipt-stamp {
+  position: absolute;
+  top: 18px;
+  right: 52px;
+  width: 46px;
+  height: 46px;
+  opacity: 0;
+  transform: scale(1.6) rotate(-14deg);
+}
+
+.receipt-card.is-printing .receipt-stamp {
+  animation: receipt-stamp 0.45s var(--ease, ease) 0.75s forwards;
+}
+
+@keyframes receipt-stamp {
+  0%   { opacity: 0; transform: scale(1.6) rotate(-14deg); }
+  60%  { opacity: 1; transform: scale(0.94) rotate(-6deg); }
+  100% { opacity: 1; transform: scale(1) rotate(-8deg); }
+}
+
+.receipt-stamp circle {
+  fill: none;
+  stroke: #158a54;
+  stroke-width: 2.5;
+  stroke-dasharray: 132;
+  stroke-dashoffset: 132;
+  animation: receipt-circle 0.5s ease-out 0.8s forwards;
+}
+
+.receipt-stamp path {
+  fill: none;
+  stroke: #158a54;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 40;
+  stroke-dashoffset: 40;
+  animation: receipt-circle 0.35s ease-out 1.05s forwards;
+}
+
+@keyframes receipt-circle {
+  to { stroke-dashoffset: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .receipt-card.is-printing {
+    animation: receipt-fade 0.2s var(--ease, ease);
+  }
+
+  .receipt-card.is-printing .receipt-stamp,
+  .receipt-stamp circle,
+  .receipt-stamp path {
+    animation: none;
+    opacity: 1;
+    transform: rotate(-8deg);
+    stroke-dashoffset: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .receipt-card, .receipt-backdrop { animation: none; }
 }

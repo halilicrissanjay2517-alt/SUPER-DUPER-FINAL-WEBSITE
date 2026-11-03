@@ -367,6 +367,16 @@
     receiptTrigger = trigger || null;
     receiptModal.hidden = false;
     document.body.classList.add("receipt-open");
+
+    // Replay the print-out animation each time the receipt opens.
+    var card = receiptModal.querySelector(".receipt-card");
+    if (card) {
+      card.classList.remove("is-printing");
+      // Force a reflow so removing + re-adding restarts the keyframes.
+      void card.offsetWidth;
+      card.classList.add("is-printing");
+    }
+
     var closeBtn = receiptModal.querySelector(".receipt-close");
     if (closeBtn) closeBtn.focus();
   }
