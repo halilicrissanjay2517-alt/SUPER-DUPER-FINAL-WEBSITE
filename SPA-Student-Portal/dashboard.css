@@ -707,8 +707,7 @@
     text-align: center;
   }
 
-  .dash-header-actions #dashRefreshBtn,
-  .dash-header-actions .dash-back {
+  .dash-header-actions #dashRefreshBtn {
     flex: 1 1 0;
   }
 }

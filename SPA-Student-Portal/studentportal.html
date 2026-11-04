@@ -66,8 +66,8 @@
 
     <header class="site-header" id="top">
         <nav class="nav" aria-label="Primary">
-            <!-- The school name no longer carries "Student Portal": signing in
-                 is now the Student Portal button at the right end of this bar. -->
+            <!-- Sign-in lives in the side menu ("Log In" / "Create Account"),
+                 so the header bar itself stays quiet. -->
             <a class="brand" href="#top">
                 <img src="logo.png" alt="Saint Patrick's Academy, Inc. logo">
                 <span class="brand-text">
@@ -84,13 +84,6 @@
                     <a href="#features">Features</a>
                     <a href="#announcements-list">Announcements</a>
                     <a href="#contact">Contact</a>
-                </div>
-                <!-- The Student Portal entry point. "Log In" opens the card on the
-                     sign-in half; "Create Account" on the sign-up half. -->
-                <div class="nav-portal" role="group" aria-label="Student Portal">
-                    <span class="nav-portal-name">Student Portal</span>
-                    <button type="button" class="btn btn-primary" data-modal-open="loginModal">Log In</button>
-                    <button type="button" class="btn btn-secondary" data-modal-open="signupModal">Create Account</button>
                 </div>
                 <button type="button" class="btn btn-ghost nav-toggle" data-menu-toggle aria-expanded="false" aria-controls="siteMenu">
                     <span class="sr-only">Open menu</span>
