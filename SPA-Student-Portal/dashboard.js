@@ -1015,15 +1015,22 @@
 
       setStatus(payStatus, "Submitting…", "");
       studentApi("/api/student/pay", { method: "POST", body: payload })
-        .then(function () {
+        .then(function (data) {
           payForm.hidden = true;
-          payToggle.textContent = "Pay now";
           payForm.reset();
-          setStatus(payStatus,
-            "Submitted! The Accounting office will verify your payment and issue your official receipt.", "ok");
+          var auto = data && data.payment;
+          setStatus(payStatus, auto
+            ? "Verified instantly! Your official receipt " + data.payment.receiptNo +
+              " is in your payment history below."
+            : "Submitted! The Accounting office will verify your payment and issue your official receipt.",
+            "ok");
           loadPayMine();
-          // A pending request now exists, so filing another is blocked server-side.
-          if (payToggle) { payToggle.disabled = true; payToggle.textContent = "Awaiting verification"; }
+          loadAccount(); // the balance changed if it was auto-verified
+          // A pending request may still exist (manual verification path).
+          if (payToggle) {
+            payToggle.disabled = !auto;
+            payToggle.textContent = auto ? "Pay again" : "Awaiting verification";
+          }
         })
         .catch(function (err) {
           setStatus(payStatus, err.message, "err");

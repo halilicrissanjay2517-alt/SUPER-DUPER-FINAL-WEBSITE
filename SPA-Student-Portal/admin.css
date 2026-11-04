@@ -1042,6 +1042,108 @@ body.theme-dark .badge-amber  { background: #2c2310; color: var(--gold-400); }
   color: var(--muted);
 }
 
+/* ---------------- Student detail card ----------------
+   The full-record view that opens when a row in the Excel-style student
+   table is clicked. The fields read like the workbook's columns laid out
+   on cards; the payment history beneath puts the FIRST payment first. */
+.student-row { cursor: pointer; }
+.student-row:hover td { background: rgba(47, 109, 79, 0.06); }
+
+.detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin-bottom: 6px;
+}
+.detail-head h2 { margin: 0; }
+.detail-head .muted { width: 100%; margin: 0 0 4px; }
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 10px;
+  margin: 18px 0 4px;
+}
+
+.detail-item {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  background: var(--surface-2, rgba(0, 0, 0, 0.03));
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 10px;
+}
+
+.detail-item[data-primary="1"] {
+  grid-column: 1 / -1;
+  background: rgba(47, 109, 79, 0.08);
+  border-color: rgba(47, 109, 79, 0.22);
+}
+
+.detail-label {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.detail-value {
+  font-size: 14px;
+  color: var(--ink);
+  word-break: break-word;
+}
+
+.detail-payments-title {
+  margin: 22px 0 10px;
+  font-size: 15px;
+}
+
+.detail-payments-title small {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.detail-firstpay {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 12px;
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  background: linear-gradient(90deg, rgba(47, 109, 79, 0.12), rgba(47, 109, 79, 0.04));
+  border: 1px solid rgba(47, 109, 79, 0.25);
+  border-radius: 10px;
+}
+
+.detail-firstpay .detail-label { color: #2f6d4f; }
+
+.detail-firstpay-amount {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.detail-firstpay-meta {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+body.theme-dark .detail-item {
+  background: #16211c;
+  border-color: #24352d;
+}
+
+body.theme-dark .detail-item[data-primary="1"] {
+  background: #12281e;
+  border-color: #2f6d4f;
+}
+
+body.theme-dark .detail-firstpay .detail-label { color: #6fcf97; }
+
+body.theme-dark .student-row:hover td { background: rgba(111, 207, 151, 0.08); }
+
 /* ---------------- Logs ---------------- */
 .log-list {
   list-style: none;

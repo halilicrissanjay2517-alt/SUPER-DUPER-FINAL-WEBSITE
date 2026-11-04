@@ -2099,6 +2099,162 @@ async function handleApi(req, res, pathname) {
     return sendJson(res, 200, { ok: true, file: path.basename(DB_FILE), savedAt: new Date().toISOString() });
   }
 
+  /* ---- POST /api/import  (merge an uploaded workbook into the live one) ----
+   *
+   * The office keeps lists of students and payments in their own Excel files.
+   * This is where one of those files is brought INTO the database: the upload's
+   * "Students" rows are matched against the roster by Student ID — existing
+   * rows are updated with the new figures, missing ones are added — and its
+   * "Payments" rows are appended to the ledger (a receipt number already on
+   * file is skipped, so re-importing the same file never double-counts a
+   * payment). Every balance is then recomputed from the ledger, so the numbers
+   * the site shows always agree with the payment history.
+   *
+   * Reads JSON, not a binary upload: the browser parses the chosen .xlsx with
+   * the same SheetJS library the server uses and posts the rows, which keeps
+   * the endpoint inside the normal 1 MB JSON body limit and lets the page show
+   * exactly what it found before anything is written.
+   */
+  if (pathname === "/api/import" && req.method === "POST") {
+    const session = requireAuth(req, res);
+    if (!session) return;
+    const body = await readBody(req);
+    const rowsIn = Array.isArray(body.students) ? body.students : [];
+    const paymentsIn = Array.isArray(body.payments) ? body.payments : [];
+    if (rowsIn.length === 0 && paymentsIn.length === 0) {
+      return sendJson(res, 400, { error: "The file has no student or payment rows I can read." });
+    }
+
+    const db = loadDb();
+    const students = readSheet(db, SHEETS.students);
+    const payments = readSheet(db, SHEETS.payments);
+
+    // Column aliases: an office file is rarely written to our exact headers, so
+    // a few common spellings are accepted. "id" is required per row; anything
+    // without one (a totals row, a blank line) is skipped and reported.
+    const pick = (row, names) => {
+      for (const n of names) {
+        const key = Object.keys(row).find(
+          (k) => String(k).trim().toLowerCase().replace(/[^a-z0-9]/g, "") === n
+        );
+        if (key !== undefined && String(row[key]).trim() !== "") return row[key];
+      }
+      return "";
+    };
+
+    let added = 0, updated = 0, skipped = 0;
+    const problems = [];
+    rowsIn.forEach((row, i) => {
+      const id = String(pick(row, ["id", "studentid", "studentno"])).trim();
+      if (!id) { skipped++; return; }
+      const record = {};
+      STUDENT_COLUMNS.forEach((col) => { record[col] = ""; });
+      record.id = id;
+      record.name = String(pick(row, ["name", "fullname", "studentname"])).trim();
+      record.grade = String(pick(row, ["grade", "gradelevel", "yearlevel"])).trim();
+      record.section = String(pick(row, ["section"])).trim();
+      record.status = String(pick(row, ["status"])).trim();
+      record.totalFee = toNumber(pick(row, ["totalfee", "tuitionfee", "fee", "tuition"]));
+      record.dueDate = toDate(pick(row, ["duedate", "duedate"]));
+      record.guardian = String(pick(row, ["guardian", "parent", "parentname"])).trim();
+      record.contact = String(pick(row, ["contact", "contactno", "phone", "mobilenumber"])).trim();
+      record.email = String(pick(row, ["email", "emailaddress"])).trim();
+      record.birthdate = toDate(pick(row, ["birthdate", "birthday", "dateofbirth"]));
+      record.sex = String(pick(row, ["sex", "gender"])).trim();
+      record.address = String(pick(row, ["address", "homeaddress"])).trim();
+      record.guardianContact = String(pick(row, ["guardiancontact", "parentcontact", "guardianno"])).trim();
+      record.lastSchool = String(pick(row, ["lastschool", "previousschool"])).trim();
+      record.note = String(pick(row, ["note", "notes", "remarks"])).trim();
+
+      const index = students.findIndex((s) => String(s.id).trim().toLowerCase() === id.toLowerCase());
+      if (index === -1) {
+        // A brand-new student: the fee falls back to the grade's default when
+        // the file did not carry one, exactly like adding by hand.
+        record.totalFee = record.totalFee || feeForGrade(record.grade);
+        record.status = record.status || "Enrolled";
+        if (!record.username) record.username = id;
+        syncStudentBilling(db, record);
+        students.push(record);
+        added++;
+      } else {
+        // An existing student: only the fields the file actually fills in are
+        // taken, so an import that carries just a fee change does not wipe
+        // contact details the dashboard already holds.
+        const existing = students[index];
+        STUDENT_COLUMNS.forEach((col) => {
+          const value = record[col];
+          if (value !== "" && value !== undefined && value !== null) existing[col] = value;
+        });
+        syncStudentBilling(db, existing);
+        students[index] = existing;
+        updated++;
+      }
+    });
+
+    // Payments: one row per receipt number. A receipt already in the ledger is
+    // skipped rather than appended twice, which is what makes re-running the
+    // same import safe.
+    const knownReceipts = new Set(
+      payments.map((p) => String(p.receiptNo || "").trim().toLowerCase()).filter(Boolean)
+    );
+    let paymentsAdded = 0, paymentsSkipped = 0;
+    const paymentProblems = [];
+    paymentsIn.forEach((row) => {
+      const sid = String(pick(row, ["studentid", "id", "studentno"])).trim();
+      const amount = toNumber(pick(row, ["amount", "amountpaid", "payment", "paid"]));
+      if (!sid || amount <= 0) {
+        paymentProblems.push("row without student ID or amount");
+        return;
+      }
+      const receipt = String(pick(row, ["receiptno", "receipt", "orno", "referenceno"]) ||
+        "").trim();
+      const key = receipt.toLowerCase();
+      if (receipt && knownReceipts.has(key)) { paymentsSkipped++; return; }
+      const method = String(pick(row, ["method", "paymentmethod", "modeofpayment"]) || "Cash").trim();
+      const payment = {
+        date: toDate(pick(row, ["date", "paymentdate", "datepaid"])) || today(),
+        receiptNo: receipt || nextReceiptNo(db) + "-IMP" + (paymentsAdded + 1),
+        studentId: sid,
+        studentName: String(pick(row, ["studentname", "name"]) || ""),
+        amount,
+        method: method || "Cash",
+        receivedBy: "import",
+        note: String(pick(row, ["note", "notes", "remarks"]) || "Imported"),
+        examPeriod: guessExamPeriod(pick(row, ["date", "paymentdate", "datepaid"])),
+      };
+      payments.push(payment);
+      if (receipt) knownReceipts.add(key);
+      paymentsAdded++;
+    });
+
+    // Recompute EVERY student from the ledger, so imported payments land in
+    // each student's paid total and balance even when the students sheet of
+    // the file carried no figures at all. The payments sheet is written FIRST:
+    // syncStudentBilling reads it out of the workbook, so the new rows have to
+    // be in there before the balances are derived or the import would show a
+    // student paid but still owing the full amount.
+    writeSheet(db, SHEETS.payments, payments, PAYMENT_COLUMNS);
+    students.forEach((s) => syncStudentBilling(db, s));
+    writeSheet(db, SHEETS.students, students, STUDENT_COLUMNS);
+    appendLog(db, session.username, "import",
+      "database.xlsx",
+      "Imported " + added + " new, updated " + updated + " students; " +
+        paymentsAdded + " payments added, " + paymentsSkipped + " duplicates skipped" +
+        (skipped ? "; " + skipped + " student rows skipped (no ID)" : ""));
+    saveDb(db);
+
+    return sendJson(res, 200, {
+      ok: true,
+      added,
+      updated,
+      skippedNoId: skipped,
+      paymentsAdded,
+      paymentsSkipped,
+      problems: problems.concat(paymentProblems).slice(0, 10),
+      total: students.length,
+    });
+  }
+
   /* ---- POST /api/student/password  (a student changes their own password) ---- */
   if (pathname === "/api/student/password" && req.method === "POST") {
     const session = requireStudent(req, res);
@@ -2138,6 +2294,37 @@ async function handleApi(req, res, pathname) {
      from the student's own form. */
 
   var STUDENT_PAY_METHODS = ["Cash", "Bank deposit", "Online transfer", "GCash", "Check"];
+
+  /**
+   * Whether student-filed payments verify themselves. The switch lives in the
+   * workbook (Settings sheet) so the office can flip it from the dashboard and
+   * the choice survives restarts.
+   */
+  const SETTINGS_SHEET = "Settings";
+
+  function readSetting(db, key, fallback) {
+    if (!db.Sheets[SETTINGS_SHEET]) return fallback;
+    const rows = readSheet(db, SETTINGS_SHEET);
+    const row = rows.find(function (r) { return String(r.key) === key; });
+    return row ? String(row.value) : fallback;
+  }
+
+  function writeSetting(db, key, value) {
+    const rows = db.Sheets[SETTINGS_SHEET] ? readSheet(db, SETTINGS_SHEET) : [];
+    const row = rows.find(function (r) { return String(r.key) === key; });
+    if (row) row.value = value;
+    else rows.push({ key: key, value: value });
+    writeSheet(db, SETTINGS_SHEET, rows, ["key", "value"]);
+    if (!db.SheetNames.includes(SETTINGS_SHEET)) db.SheetNames.push(SETTINGS_SHEET);
+  }
+
+  function autoVerifyEnabled() {
+    try {
+      return readSetting(loadDb(), "autoVerifyPayments", "on") === "on";
+    } catch (err) {
+      return false;
+    }
+  }
 
   /* ---- POST /api/student/pay  (file a payment for the office to verify) ---- */
   if (pathname === "/api/student/pay" && req.method === "POST") {
@@ -2198,6 +2385,79 @@ async function handleApi(req, res, pathname) {
       "Filed " + method + " payment of ₱" + amount.toLocaleString("en-PH") +
       " [" + request.examPeriod + "] for verification" +
       (request.reference ? " (ref " + request.reference + ")" : ""));
+
+    /* ---- Fully automated verification ----
+       When auto-verification is on, a filing that passes every rule is
+       confirmed immediately — no office visit, no waiting. The rules, in
+       order: a reference number is required (it is the receipt the payment
+       channel gave the student), it must be unique across all filed and
+       confirmed requests (a reused reference is the classic double-submit),
+       and Cash filings always wait for the office because money handed over
+       a counter has no channel receipt to check. */
+    if (autoVerifyEnabled() && method !== "Cash" && request.reference) {
+      const clash = requests.some(function (r) {
+        return r !== request &&
+          String(r.reference || "").toLowerCase() === request.reference.toLowerCase() &&
+          String(r.status).toLowerCase() !== "rejected";
+      });
+      if (clash) {
+        request.status = "rejected";
+        request.handledBy = "auto";
+        request.handledAt = today() + " " + new Date().toTimeString().slice(0, 5);
+        request.note = (request.note ? request.note + " · " : "") +
+          "Reference already used — not verified";
+        requests[requests.length - 1] = request;
+        writeSheet(db, SHEETS.payRequests, requests, PAY_REQUEST_COLUMNS);
+        appendLog(db, "auto", "payment-request-reject", record.id,
+          "Declined " + request.requestId + " automatically: reference " +
+          request.reference + " was already used");
+        saveDb(db);
+        return sendJson(res, 409, {
+          error: "That reference number was already used. Check your receipt and try again.",
+          request: request,
+        });
+      }
+
+      // Everything checks out: record the payment right now.
+      const students = readSheet(db, SHEETS.students);
+      const sIndex = students.findIndex(function (s) {
+        return String(s.id) === String(record.id);
+      });
+      if (sIndex !== -1) {
+        const student = students[sIndex];
+        const payment = {
+          date: today(),
+          receiptNo: nextReceiptNo(db),
+          studentId: student.id,
+          studentName: student.name,
+          amount: amount,
+          method: method,
+          receivedBy: "auto-verified",
+          note: "Student-filed" + (request.reference ? " · ref " + request.reference : "") +
+            (request.note ? " · " + request.note : ""),
+          examPeriod: request.examPeriod,
+        };
+        const payments = readSheet(db, SHEETS.payments);
+        payments.push(payment);
+        writeSheet(db, SHEETS.payments, payments, PAYMENT_COLUMNS);
+        syncStudentBilling(db, student);
+        students[sIndex] = student;
+        writeSheet(db, SHEETS.students, students, STUDENT_COLUMNS);
+
+        request.status = "confirmed";
+        request.handledBy = "auto";
+        request.handledAt = today() + " " + new Date().toTimeString().slice(0, 5);
+        request.receiptNo = payment.receiptNo;
+        requests[requests.length - 1] = request;
+        writeSheet(db, SHEETS.payRequests, requests, PAY_REQUEST_COLUMNS);
+        appendLog(db, "auto", "payment-request-confirm", record.id,
+          "Auto-verified " + request.requestId + " as receipt " + payment.receiptNo +
+          " (₱" + amount.toLocaleString("en-PH") + " " + method + ", ref " + request.reference + ")");
+        saveDb(db);
+        return sendJson(res, 201, { request: request, payment: payment, student: student });
+      }
+    }
+
     saveDb(db);
     return sendJson(res, 201, { request: request });
   }
@@ -2311,7 +2571,25 @@ async function handleApi(req, res, pathname) {
     const pendingCount = requests.filter(function (r) {
       return String(r.status).toLowerCase() === "pending";
     }).length;
-    return sendJson(res, 200, { requests: requests, pendingCount: pendingCount });
+    return sendJson(res, 200, {
+      requests: requests,
+      pendingCount: pendingCount,
+      autoVerify: readSetting(db, "autoVerifyPayments", "on") === "on",
+    });
+  }
+
+  /* ---- PATCH /api/settings/autoverify  (superadmin flips auto-verification) ---- */
+  if (pathname === "/api/settings/autoverify" && req.method === "PATCH") {
+    const session = requireAuth(req, res, ["superadmin"]);
+    if (!session) return;
+    const body = await readBody(req);
+    const db = loadDb();
+    const value = body.enabled ? "on" : "off";
+    writeSetting(db, "autoVerifyPayments", value);
+    appendLog(db, session.username, "settings", "autoVerifyPayments",
+      "Auto-verification of student payments turned " + value);
+    saveDb(db);
+    return sendJson(res, 200, { autoVerify: value === "on" });
   }
 
   /* ---- GET /api/student/profile  (the signed-in student's own profile) ----
@@ -3122,7 +3400,7 @@ function cacheControlFor(ext) {
   if ([".png", ".jpg", ".jpeg", ".webp", ".svg", ".ico"].includes(ext)) {
     return "public, max-age=604800";
   }
-  if ([".css", ".js"].includes(ext)) return "public, max-age=3600, must-revalidate";
+  if ([".css", ".js"].includes(ext)) return "no-cache";
   return "no-cache";
 }
 
@@ -3258,6 +3536,9 @@ function serveStatic(req, res, pathname) {
   if (!PUBLIC_EXT.includes(ext) || PRIVATE_FILES.includes(base) || base.startsWith("_")) {
     return notFound(res);
   }
+  // The vendored SheetJS build lives in vendor/, a folder nothing else serves,
+  // so files outside the allowed roots are still refused: the extension check
+  // above keeps this from becoming an arbitrary-file read.
 
   // A path can carry a public extension and still point at a directory; reading
   // one throws EISDIR, which would surface as a read failure instead of a 404.

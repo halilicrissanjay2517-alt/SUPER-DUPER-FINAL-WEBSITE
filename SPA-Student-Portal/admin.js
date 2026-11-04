@@ -900,6 +900,12 @@
 
       var idTd = document.createElement("td");
       idTd.innerHTML = "<strong>" + escapeHtml(s.id) + "</strong>";
+      // The ID cell is the row's read-only click target: the other cells are
+      // live inputs (this table is the Excel database), so clicking the ID —
+      // the one cell nothing edits — opens the student's full record.
+      idTd.className = "id-cell student-row";
+      idTd.title = "View full details and payment history for " + s.name;
+      idTd.addEventListener("click", function () { openStudentDetail(s); });
       tr.appendChild(idTd);
 
       tr.appendChild(textCell("name", s.name));
@@ -1434,6 +1440,83 @@
     });
   }
 
+  /* ------------------------------------------------ Import from Excel
+     Another list of students and payments, held in its own .xlsx, is brought
+     INTO the live database. The file is parsed here in the browser with the
+     same SheetJS build the server uses, the rows are posted to /api/import,
+     and the server merges them (by Student ID for students, by receipt number
+     for payments) and recomputes every balance. The dashboard then reloads so
+     the imported students appear immediately. */
+  var importBtn = $("#importExcelBtn");
+  var importModal = $("#importModal");
+  var importForm = $("#importForm");
+  var importStatus = $("#importStatus");
+
+  if (importBtn && importModal) {
+    importBtn.addEventListener("click", function () {
+      importForm.reset();
+      importStatus.textContent = "";
+      importStatus.className = "form-status";
+      importModal.hidden = false;
+    });
+
+    importForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var fileInput = $("#importFile");
+      var file = fileInput.files && fileInput.files[0];
+      if (!file) {
+        importStatus.textContent = "Choose an .xlsx file first.";
+        importStatus.className = "form-status is-error";
+        return;
+      }
+
+      var submit = $("#importSubmitBtn");
+      submit.disabled = true;
+      importStatus.textContent = "Reading the file…";
+      importStatus.className = "form-status";
+
+      file.arrayBuffer().then(function (buffer) {
+        var workbook = XLSX.read(buffer, { type: "array" });
+        // Find the sheets by name, falling back to the first sheet for
+        // students so a single-sheet list still imports.
+        var studentSheetName = workbook.SheetNames.find(function (n) {
+          return /student/i.test(n);
+        }) || workbook.SheetNames[0];
+        var paymentSheetName = workbook.SheetNames.find(function (n) {
+          return /payment/i.test(n) && n !== studentSheetName;
+        });
+        var students = XLSX.utils.sheet_to_json(workbook.Sheets[studentSheetName], { defval: "" });
+        var payments = paymentSheetName
+          ? XLSX.utils.sheet_to_json(workbook.Sheets[paymentSheetName], { defval: "" })
+          : [];
+
+        importStatus.textContent = "Importing " + students.length + " student rows and " +
+          payments.length + " payment rows…";
+
+        return api("/api/import", {
+          method: "POST",
+          body: { students: students, payments: payments },
+        }).then(function (result) {
+          var line = "Imported: " + result.added + " new students, " +
+            result.updated + " updated, " + result.paymentsAdded + " payments added" +
+            (result.paymentsSkipped ? ", " + result.paymentsSkipped + " duplicate payments skipped" : "") +
+            (result.skippedNoId ? ", " + result.skippedNoId + " rows skipped (no Student ID)" : "");
+          importStatus.textContent = line;
+          importStatus.className = "form-status is-success";
+          toast(line);
+          loadStudents();
+          loadPayments();
+          loadLogs();
+          submit.disabled = false;
+        });
+      }).catch(function (err) {
+        importStatus.textContent = err.message || "The file could not be read.";
+        importStatus.className = "form-status is-error";
+        submit.disabled = false;
+      });
+    });
+  }
+
   /* ---------------------------------------------------------- Admins */
   function loadAdmins() {
     api("/api/admins")
@@ -1827,6 +1910,136 @@
   }
 
   /* -------------------------------------------------- Per-student history */
+
+  /**
+   * The full record for ONE student, shown when their row is clicked in the
+   * Excel-style table. Every field the workbook holds appears here, from the
+   * identity and contact details down to the money, and below it the complete
+   * payment history with the FIRST payment at the top — so "what did they pay
+   * first and what came after" is one glance, not a scroll.
+   */
+  function openStudentDetail(student) {
+    var modal = $("#studentDetailModal");
+    if (!modal) return;
+
+    $("#detailName").textContent = student.name || "Student";
+    var sub = student.id + " · " + (student.grade || "—") +
+      (student.section ? " · " + student.section : "");
+    $("#detailSubtitle").textContent = sub;
+
+    // Re-colour the status chip each time, because a class set by a previous
+    // student would stick otherwise.
+    var chip = $("#detailStatus");
+    chip.textContent = student.status || "—";
+    var tone = ({
+      "badge-green": "status-tone-green",
+      "badge-amber": "status-tone-amber",
+      "badge-blue": "status-tone-blue",
+    })[badgeFor(student.status)] || "status-tone-blue";
+    SpaStyles.setVariant(chip, {
+      tone: "tone", // placeholder key so every previous tone class is cleared
+      "status-tone-green": "status-tone-green",
+      "status-tone-amber": "status-tone-amber",
+      "status-tone-blue": "status-tone-blue",
+    }, tone);
+
+    var rows = [
+      ["Student ID", student.id, true],
+      ["Full name", student.name],
+      ["Grade", student.grade],
+      ["Section", student.section],
+      ["Email", student.email],
+      ["Guardian", student.guardian],
+      ["Guardian contact", student.guardianContact],
+      ["Contact number", student.contact],
+      ["Address", student.address],
+      ["Birthdate", student.birthdate],
+      ["Sex", student.sex],
+      ["Last school", student.lastSchool],
+      ["Tuition fee", peso(student.totalFee)],
+      ["Amount paid", peso(student.amountPaid)],
+      ["Balance", peso(student.balance)],
+      ["Due date", student.dueDate ? niceDate(student.dueDate) : "—"],
+      ["Last payment", student.lastPaymentDate ? niceDate(student.lastPaymentDate) : "No payments yet"],
+      ["Portal username", student.username],
+      ["Registered", student.registeredAt ? niceDate(student.registeredAt) : "—"],
+      ["Notes", student.note],
+    ];
+    var dl = $("#detailFields");
+    dl.innerHTML = rows.map(function (r) {
+      var value = r[1] === undefined || r[1] === null || String(r[1]) === "" ? "—" : r[1];
+      return "<div class=\"detail-item\"" + (r[2] ? " data-primary=\"1\"" : "") + ">" +
+        "<span class=\"detail-label\">" + escapeHtml(r[0]) + "</span>" +
+        "<span class=\"detail-value\">" + escapeHtml(value) + "</span></div>";
+    }).join("");
+
+    var body = $("#detailPayments");
+    body.innerHTML = '<p class="table-empty">Loading payment history…</p>';
+    $("#detailModalActions").innerHTML = "";
+    modal.hidden = false;
+
+    api("/api/payments?studentId=" + encodeURIComponent(student.id))
+      .then(function (data) {
+        var pay = (data.payments || []).slice().sort(function (a, b) {
+          return String(a.date || "").localeCompare(String(b.date || ""));
+        });
+        var first = pay[0];
+        var head = pay.length
+          ? '<div class="detail-firstpay">' +
+            '<span class="detail-label">First payment</span>' +
+            '<span class="detail-firstpay-amount">' + peso(first.amount) + "</span>" +
+            '<span class="detail-firstpay-meta">' + escapeHtml(niceDate(first.date)) +
+            " · " + escapeHtml(first.method || "—") +
+            (first.receiptNo ? " · " + escapeHtml(first.receiptNo) : "") + "</span></div>"
+          : "";
+        if (pay.length === 0) {
+          body.innerHTML = head +
+            '<p class="empty-state">No payments recorded for this student yet.</p>';
+          return;
+        }
+        var html = head +
+          '<div class="table-wrap"><table class="data-table payment-table">' +
+          "<thead><tr><th>#</th><th>Date</th><th>Receipt</th><th>Amount</th>" +
+          "<th>Method</th><th>Note</th></tr></thead><tbody>";
+        pay.forEach(function (p, i) {
+          html +=
+            "<tr><td>" + (i + 1) + "</td>" +
+            "<td>" + escapeHtml(p.date || "—") + "</td>" +
+            "<td>" + escapeHtml(p.receiptNo) + "</td>" +
+            '<td class="amount-cell">' + peso(p.amount) + "</td>" +
+            "<td>" + escapeHtml(p.method || "—") + "</td>" +
+            "<td>" + escapeHtml(p.note || "—") + "</td></tr>";
+        });
+        html += "</tbody></table></div>";
+        html += '<p class="history-total">Total paid: <strong>' + peso(data.total) +
+          "</strong> · " + pay.length + (pay.length === 1 ? " payment" : " payments") + "</p>";
+        body.innerHTML = html;
+      })
+      .catch(function (err) {
+        body.innerHTML = '<p class="empty-state">' + escapeHtml(err.message) + "</p>";
+      });
+
+    var actions = $("#detailModalActions");
+    var editBtn = document.createElement("button");
+    editBtn.type = "button";
+    editBtn.className = "btn btn-secondary";
+    editBtn.textContent = "Edit details";
+    editBtn.addEventListener("click", function () {
+      modal.hidden = true;
+      openStudentModal(student);
+    });
+    var payBtn = document.createElement("button");
+    payBtn.type = "button";
+    payBtn.className = "btn btn-primary";
+    payBtn.textContent = "Record payment";
+    payBtn.addEventListener("click", function () {
+      modal.hidden = true;
+      openPaymentModal(student.id);
+    });
+    actions.appendChild(editBtn);
+    actions.appendChild(payBtn);
+  }
+
   function openHistoryModal(student) {
     $("#historyModalTitle").textContent = "Payment history — " + student.name;
     $("#historySubtitle").textContent =
@@ -1947,59 +2160,78 @@
         $("#payReqPending").textContent = pending;
         $("#payReqEmpty").hidden = requests.length !== 0;
 
-        payReqRows.innerHTML = "";
-        if (requests.length === 0) {
-          payReqRows.innerHTML =
-            '<tr><td colspan="8" class="table-empty">No payment requests yet.</td></tr>';
+        var toggle = $("#autoVerifyToggle");
+        if (toggle) {
+          var on = !!data.autoVerify;
+          toggle.setAttribute("aria-pressed", on ? "true" : "false");
+          toggle.classList.toggle("is-on", on);
+          $("#autoVerifyState").textContent = on ? "ON" : "OFF";
         }
 
-        requests.forEach(function (r) {
-          var tr = document.createElement("tr");
-          if (String(r.status).toLowerCase() === "pending") tr.className = "is-awaiting";
-          tr.innerHTML =
-            "<td>" + escapeHtml(String(r.requestedAt || "").slice(0, 16)) + "</td>" +
-            "<td><strong>" + escapeHtml(r.studentName) + "</strong> <span class=\"muted\">(" +
-            escapeHtml(r.studentId) + ")</span></td>" +
-            '<td class="money-cell">' + peso(r.amount) + "</td>" +
-            "<td>" + escapeHtml(r.method) + "</td>" +
-            "<td>" + (r.reference ? '<span class="id-chip">' + escapeHtml(r.reference) + "</span>" : "—") + "</td>" +
-            "<td>" + escapeHtml(r.examPeriod || "General") + "</td>" +
-            "<td>" + payReqStatusBadge(r.status) +
-            (r.receiptNo ? '<br><span class="due-date">receipt ' + escapeHtml(r.receiptNo) + "</span>" : "") +
-            "</td>";
-
-          var td = document.createElement("td");
-          if (String(r.status).toLowerCase() === "pending") {
-            var wrap = document.createElement("div");
-            wrap.className = "row-actions";
-
-            var confirmBtn = document.createElement("button");
-            confirmBtn.type = "button";
-            confirmBtn.className = "btn btn-primary btn-mini";
-            confirmBtn.textContent = "Verify";
-            confirmBtn.addEventListener("click", function () { handlePayRequest(r, "confirm"); });
-
-            var rejectBtn = document.createElement("button");
-            rejectBtn.type = "button";
-            rejectBtn.className = "btn btn-secondary btn-mini";
-            rejectBtn.textContent = "Decline";
-            rejectBtn.addEventListener("click", function () { handlePayRequest(r, "reject"); });
-
-            wrap.appendChild(confirmBtn);
-            wrap.appendChild(rejectBtn);
-            td.appendChild(wrap);
-          } else {
-            td.className = "is-readonly";
-            td.textContent = r.handledBy ? "by " + r.handledBy : "—";
-          }
-          tr.appendChild(td);
-          payReqRows.appendChild(tr);
+        var rows = requests.filter(function (r) {
+          // With auto-verification running, handled-by-auto requests still show,
+          // but they read as receipts, not as a queue item.
+          return true;
         });
+        paintPayRequestRows(rows);
       })
       .catch(function (err) {
         payReqRows.innerHTML =
           '<tr><td colspan="8" class="table-empty">' + escapeHtml(err.message) + "</td></tr>";
       });
+  }
+
+  function paintPayRequestRows(requests) {
+    payReqRows.innerHTML = "";
+    if (requests.length === 0) {
+      payReqRows.innerHTML =
+        '<tr><td colspan="8" class="table-empty">No payment requests yet.</td></tr>';
+    }
+
+    requests.forEach(function (r) {
+      var tr = document.createElement("tr");
+      var auto = String(r.handledBy || "").toLowerCase() === "auto";
+      if (String(r.status).toLowerCase() === "pending") tr.className = "is-awaiting";
+      tr.innerHTML =
+        "<td>" + escapeHtml(String(r.requestedAt || "").slice(0, 16)) + "</td>" +
+        "<td><strong>" + escapeHtml(r.studentName) + "</strong> <span class=\"muted\">(" +
+        escapeHtml(r.studentId) + ")</span></td>" +
+        '<td class="money-cell">' + peso(r.amount) + "</td>" +
+        "<td>" + escapeHtml(r.method) + "</td>" +
+        "<td>" + (r.reference ? '<span class="id-chip">' + escapeHtml(r.reference) + "</span>" : "—") + "</td>" +
+        "<td>" + escapeHtml(r.examPeriod || "General") + "</td>" +
+        "<td>" + payReqStatusBadge(r.status) +
+        (auto ? ' <span class="badge badge-neutral">auto</span>' : "") +
+        (r.receiptNo ? '<br><span class="due-date">receipt ' + escapeHtml(r.receiptNo) + "</span>" : "") +
+        "</td>";
+
+      var td = document.createElement("td");
+      if (String(r.status).toLowerCase() === "pending") {
+        var wrap = document.createElement("div");
+        wrap.className = "row-actions";
+
+        var confirmBtn = document.createElement("button");
+        confirmBtn.type = "button";
+        confirmBtn.className = "btn btn-primary btn-mini";
+        confirmBtn.textContent = "Verify";
+        confirmBtn.addEventListener("click", function () { handlePayRequest(r, "confirm"); });
+
+        var rejectBtn = document.createElement("button");
+        rejectBtn.type = "button";
+        rejectBtn.className = "btn btn-secondary btn-mini";
+        rejectBtn.textContent = "Decline";
+        rejectBtn.addEventListener("click", function () { handlePayRequest(r, "reject"); });
+
+        wrap.appendChild(confirmBtn);
+        wrap.appendChild(rejectBtn);
+        td.appendChild(wrap);
+      } else {
+        td.className = "is-readonly";
+        td.textContent = r.handledBy ? "by " + r.handledBy : "—";
+      }
+      tr.appendChild(td);
+      payReqRows.appendChild(tr);
+    });
   }
 
   function handlePayRequest(request, action) {
@@ -2028,5 +2260,31 @@
         loadLogs();
       })
       .catch(function (err) { toast(err.message, true); });
+  }
+
+  /* Auto-verification switch: superadmin only. */
+  var autoVerifyToggle = $("#autoVerifyToggle");
+  if (autoVerifyToggle) {
+    autoVerifyToggle.addEventListener("click", function () {
+      var turningOn = autoVerifyToggle.getAttribute("aria-pressed") !== "true";
+      if (!window.confirm(
+        turningOn
+          ? "Turn auto-verification ON?\n\nPayments filed with a unique reference number verify\n" +
+            "themselves instantly and get a receipt without office action.\n" +
+            "Cash payments always wait for the office."
+          : "Turn auto-verification OFF?\n\nEvery student-filed payment will wait for manual\n" +
+            "verification here, as before."
+      )) return;
+
+      api("/api/settings/autoverify", {
+        method: "PATCH",
+        body: { enabled: turningOn },
+      })
+        .then(function (data) {
+          toast("Auto-verification turned " + (data.autoVerify ? "ON" : "OFF"));
+          loadPayRequests();
+        })
+        .catch(function (err) { toast(err.message, true); });
+    });
   }
 })();
