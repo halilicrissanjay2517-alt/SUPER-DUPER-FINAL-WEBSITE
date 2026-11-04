@@ -210,9 +210,10 @@
     admins: ["Administrators", "Accounts that can sign in and make changes."],
     logs: ["Activity Log", "Every change made by every administrator."],
     about: ["About the School", "Saint Patrick's Academy, Inc. — mission, vision, and values."],
+    studentaccount: ["Student Account", "This student's payment plan, month by month."],
   };
 
-  var VIEWS = ["students", "approvals", "payments", "payrequests", "admins", "logs", "about"];
+  var VIEWS = ["students", "approvals", "payments", "payrequests", "admins", "logs", "about", "studentaccount"];
 
   $$("[data-view]").forEach(function (btn) {
     btn.addEventListener("click", function () {
@@ -2231,6 +2232,9 @@
     if (main) main.scrollTop = 0;
 
     // Status chip, re-coloured for this student.
+    $("#accountName").textContent = student.name || "Student";
+    $("#accountSubtitle").textContent = student.id + " · " + (student.grade || "—") +
+      (student.section ? " · " + student.section : "");
     var chip = $("#accountStatus");
     chip.textContent = student.status || "—";
     var tone = ({
