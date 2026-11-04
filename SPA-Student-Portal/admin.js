@@ -2251,12 +2251,14 @@
 
     var body = $("#detailPayments");
     body.innerHTML = '<p class="table-empty">Loading payment history…</p>';
+    $("#detailMonths").innerHTML = '<p class="table-empty">Loading payment schedule…</p>';
     $("#detailModalActions").innerHTML = "";
     modal.hidden = false;
 
     api("/api/payments?studentId=" + encodeURIComponent(student.id))
       .then(function (data) {
         detailPaymentData = data;
+        renderDetailMonths(data);
         renderDetailPayments();
       })
       .catch(function (err) {
@@ -2289,6 +2291,99 @@
     actions.appendChild(printBtn);
     actions.appendChild(editBtn);
     actions.appendChild(payBtn);
+  }
+
+  /** The ten school-year months the tuition plan is spread over. */
+  var SCHOOL_MONTHS_VIEW = ["Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
+
+  /**
+   * Draws the monthly payment progress grid in the detail modal.
+   *
+   * The tuition plan spreads the total fee over the ten school months
+   * (June to March), with the FIRST payment treated as the down payment.
+   * Each month cell shows what was paid in that school month versus the
+   * monthly due, colour-coded: green = fully paid, amber = partial,
+   * red = nothing paid yet, with the earliest unpaid month called out
+   * as "next payment due".
+   */
+  function renderDetailMonths(data) {
+    var host = $("#detailMonths");
+    if (!host) return;
+    var student = detailStudent || {};
+    var pay = (data && data.payments) || [];
+
+    // Down payment = the first payment ever recorded (earliest date, then
+    // earliest receipt), shown separately from the monthly plan.
+    var sorted = pay.slice().sort(function (a, b) {
+      return String(a.date || "").localeCompare(String(b.date || ""));
+    });
+    var down = sorted[0] || null;
+
+    var totalFee = Number(student.totalFee) || 0;
+    var monthlyDue = Math.round(totalFee / SCHOOL_MONTHS_VIEW.length);
+
+    // Sum what was paid into each school month. June–December are plan
+    // months 1–7; Jan–March continue the same plan; summer is skipped,
+    // matching the server's Monthly Payments sheet.
+    var paid = {};
+    SCHOOL_MONTHS_VIEW.forEach(function (m) { paid[m] = 0; });
+    pay.forEach(function (p) {
+      var day = String(p.date || "");
+      if (!/^\d{4}-\d{2}/.test(day)) return;
+      var m = Number(day.slice(5, 7));
+      var idx = m >= 6 ? m - 6 : m + 4;
+      if (idx >= 0 && idx < SCHOOL_MONTHS_VIEW.length) {
+        paid[SCHOOL_MONTHS_VIEW[idx]] += Number(p.amount) || 0;
+      }
+    });
+
+    var downAmt = down ? Number(down.amount) || 0 : 0;
+    // Down payment is charged against the first month(s): walk the plan
+    // crediting the down payment first, then judge each month by what
+    // remains owed.
+    var credit = downAmt;
+    var carried = 0; // surplus from previous months
+    var nextDue = null;
+    var cells = SCHOOL_MONTHS_VIEW.map(function (m) {
+      var got = paid[m] + carried;
+      var covered = Math.min(credit, monthlyDue);
+      credit -= covered;
+      var applied = covered + Math.min(got, Math.max(0, monthlyDue - covered));
+      carried = Math.max(0, got - applied);
+      var owed = monthlyDue - applied;
+      var tone = owed <= 0 ? "paid" : applied > 0 ? "partial" : "unpaid";
+      if (tone !== "paid" && !nextDue) nextDue = m;
+      return { month: m, paid: applied, owed: owed, tone: tone };
+    });
+
+    var html = '<div class="months-summary">' +
+      '<span class="months-chip"><span class="detail-label">Down payment</span>' +
+      (down
+        ? '<strong>' + peso(downAmt) + '</strong><small>' +
+          escapeHtml(niceDate(down.date)) + " · " + escapeHtml(down.method || "—") +
+          (down.receiptNo ? " · OR " + escapeHtml(down.receiptNo) : "") + "</small>"
+        : '<strong>Not yet paid</strong><small>No payments on record</small>') +
+      '</span>' +
+      '<span class="months-chip"><span class="detail-label">Monthly due</span>' +
+      '<strong>' + peso(monthlyDue) + '</strong><small>' + totalFee + " ÷ " +
+      SCHOOL_MONTHS_VIEW.length + " months</small></span>" +
+      '<span class="months-chip"><span class="detail-label">Balance</span>' +
+      '<strong>' + peso(student.balance) + '</strong><small>' +
+      (nextDue ? "Next due: " + nextDue : "Fully covered") + "</small></span>" +
+      '</div>';
+
+    html += '<div class="months-grid">';
+    cells.forEach(function (c) {
+      html += '<div class="month-cell month-' + c.tone + '">' +
+        '<span class="month-cell-name">' + c.month + '</span>' +
+        '<span class="month-cell-amount">' + peso(c.paid) + '</span>' +
+        '<span class="month-cell-state">' +
+        (c.tone === "paid" ? "Paid" : c.tone === "partial" ? "Partial · " + peso(c.owed) + " left" : "Unpaid") +
+        '</span></div>';
+    });
+    html += '</div>';
+
+    host.innerHTML = html;
   }
 
   /** "2026-01" for a payment, used to group the history by month. */

@@ -1142,6 +1142,72 @@ body.theme-dark .detail-item[data-primary="1"] {
 
 body.theme-dark .detail-firstpay .detail-label { color: #6fcf97; }
 
+/* ---------------- Monthly payment progress (student detail modal) -------- */
+.months-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 12px;
+}
+
+.months-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+  background: var(--card, #fff);
+  border: 1px solid var(--line, #dde5df);
+  border-radius: 10px;
+  min-width: 140px;
+}
+
+.months-chip strong { font-size: 16px; color: var(--ink); }
+.months-chip small { font-size: 12px; color: var(--muted); }
+
+.months-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.month-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px;
+  border-radius: 9px;
+  border: 1px solid;
+  font-size: 12px;
+}
+
+.month-cell-name { font-weight: 700; }
+.month-cell-amount { font-size: 13px; font-weight: 700; }
+.month-cell-state { font-size: 11px; }
+
+.month-paid {
+  background: rgba(47, 109, 79, 0.12);
+  border-color: rgba(47, 109, 79, 0.45);
+  color: #2f6d4f;
+}
+
+.month-partial {
+  background: rgba(190, 143, 22, 0.12);
+  border-color: rgba(190, 143, 22, 0.45);
+  color: #8a6a10;
+}
+
+.month-unpaid {
+  background: rgba(178, 58, 58, 0.10);
+  border-color: rgba(178, 58, 58, 0.4);
+  color: #b23a3a;
+}
+
+body.theme-dark .month-paid { background: #12281e; color: #6fcf97; }
+body.theme-dark .month-partial { background: #2a2210; color: #e8b64c; }
+body.theme-dark .month-unpaid { background: #2a1414; color: #e08a8a; }
+body.theme-dark .months-chip { background: #16211c; border-color: #24352d; }
+
 body.theme-dark .month-group {
   border-color: #24352d;
   background: #16211c;
