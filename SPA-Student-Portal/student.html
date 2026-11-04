@@ -351,6 +351,9 @@
                         <span class="sr-only">Search your payments</span>
                         <input type="search" id="dashHistorySearch" placeholder="Search receipt, method or note…" autocomplete="off">
                     </label>
+                    <button type="button" class="btn btn-secondary btn-sm" id="dashPrintStatement" title="Print every payment on record">
+                        🖨 Print statement
+                    </button>
                 </div>
 
                 <!-- The ledger proper: newest first, one row per payment. -->
@@ -377,7 +380,9 @@
 
                 <div class="history-foot">
                     <span id="dashPaymentsCount">0 payments</span>
-                    <button type="button" class="link-button" id="dashHistoryMore" hidden>Show all payments</button>
+                    <div class="history-foot-actions">
+                        <button type="button" class="link-button" id="dashHistoryMore" hidden>Show all payments</button>
+                    </div>
                 </div>
             </section>
         </div>

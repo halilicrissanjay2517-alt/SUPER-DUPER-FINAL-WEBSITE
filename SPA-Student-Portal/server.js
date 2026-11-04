@@ -474,8 +474,54 @@ const ACCOUNT_FIELD_LABELS = {
   lastSchool: "last school",
 };
 
-function hashPassword(password, salt) {
+/**
+ * Password hashing.
+ *
+ * The first release used a single SHA-256 pass, which is fast by design — and
+ * fast is exactly what an attacker wants when guessing passwords offline. It is
+ * now scrypt, Node's own memory-hard key-derivation function: guessing through
+ * a stolen hash costs real time and real RAM per guess, so brute-forcing a
+ * stolen workbook stops being practical.
+ *
+ * A stored hash still reads "sha256$<salt>$<hex>" so old rows can be
+ * recognised, and verifyPassword() transparently upgrades any legacy hash the
+ * moment its owner signs in with the correct password.
+ */
+const SCRYPT_KEYLEN = 64;
+const SCRYPT_PARAMS = { N: 16384, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
+
+function scryptHash(password, salt) {
+  return crypto.scryptSync(String(password), String(salt), SCRYPT_KEYLEN, SCRYPT_PARAMS).toString("hex");
+}
+
+function legacyHash(password, salt) {
   return crypto.createHash("sha256").update(salt + ":" + password).digest("hex");
+}
+
+function hashPassword(password, salt) {
+  // New hashes are always scrypt and carry their own tag.
+  return "scrypt$" + salt + "$" + scryptHash(password, salt);
+}
+
+/**
+ * Constant-time check of a password against a stored hash, whichever format it
+ * is in. Returns "ok" (match, any format), "upgrade" (match, legacy format —
+ * the caller should re-store it via hashPassword), or "fail".
+ */
+function verifyPassword(password, salt, stored) {
+  const s = String(stored || "");
+  if (s.indexOf("scrypt$") === 0) {
+    const parts = s.split("$");
+    if (parts.length !== 3) return "fail";
+    const a = Buffer.from(scryptHash(password, parts[1]), "hex");
+    const b = Buffer.from(parts[2], "hex");
+    return a.length === b.length && crypto.timingSafeEqual(a, b) ? "ok" : "fail";
+  }
+  // Legacy SHA-256 row: compare with the old scheme, in constant time too.
+  const a = Buffer.from(legacyHash(password, salt), "hex");
+  const b = Buffer.from(s, "hex");
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return "fail";
+  return "upgrade";
 }
 
 function newSalt() {
@@ -490,6 +536,29 @@ function randomPassword(length = 10) {
   let out = "";
   for (let i = 0; i < length; i++) out += alphabet[bytes[i] % alphabet.length];
   return out;
+}
+
+/**
+ * Strip anything that could execute from free-text the public types in.
+ *
+ * The pages escape everything they render (escapeHtml in dashboard.js and
+ * admin.js), so stored markup does not execute as HTML. But one day a report,
+ * an export, an email template or a new page may not, and a stored "<script>"
+ * waiting in the workbook is a landmine. Sanitising at the door removes the
+ * payload entirely — defence in depth rather than trusting every future
+ * consumer to escape.
+ */
+function sanitizeText(value, max = 200) {
+  let text = String(value == null ? "" : value);
+  // Remove complete tags and other angle-bracket markup.
+  text = text.replace(/<[^>]*>/g, "");
+  // A stray "<" with no closing bracket is still the start of an injection,
+  // so drop any remaining angle brackets outright.
+  text = text.replace(/[<>]/g, "");
+  // Kill javascript: URLs pasted into a note field, and collapse the newlines
+  // some fields paste in from Word.
+  text = text.replace(/javascript\s*:/gi, "").replace(/[\r\n]+/g, " ");
+  return text.trim().slice(0, max);
 }
 
 /**
@@ -1414,6 +1483,10 @@ const sessions = new Map(); // token -> { kind, username, name, role|studentId, 
 
 const SESSION_HOURS = 8;
 const SESSION_MS = SESSION_HOURS * 60 * 60 * 1000;
+// Idle timeout: half an hour with no API call ends the session, so a dashboard
+// left open on a shared computer cannot be used by the next person. The 8-hour
+// absolute cap still applies on top of it.
+const SESSION_IDLE_MS = 30 * 60 * 1000;
 
 function createSession(admin) {
   const token = crypto.randomBytes(24).toString("hex");
@@ -1505,6 +1578,48 @@ function retryAfterMinutes(req, scope) {
 }
 
 /**
+ * A general per-IP rate limit for the whole JSON API.
+ *
+ * The login throttle above only counts FAILED sign-ins. This one counts every
+ * API call an IP makes in a rolling minute, so scripted abuse — credential
+ * stuffing across many accounts, hammering /api/version, scraping the public
+ * endpoints — gets a 429 before it can do work. The ceiling is far above
+ * anything the real pages generate: a dashboard load is a dozen requests and
+ * the live-sync poll is one every few seconds, so an ordinary student — or a
+ * whole classroom behind one NAT address — never trips it.
+ */
+const API_WINDOW_MS = 60 * 1000;
+const API_MAX_REQUESTS = 300;
+const apiHits = new Map(); // ip -> { count, resetAt }
+
+function allowApiRequest(req) {
+  const ip = throttleKey(req, "api").split("|")[1];
+  const now = Date.now();
+  const entry = apiHits.get(ip);
+  if (!entry || entry.resetAt < now) {
+    apiHits.set(ip, { count: 1, resetAt: now + API_WINDOW_MS });
+    return true;
+  }
+  entry.count += 1;
+  return entry.count <= API_MAX_REQUESTS;
+}
+
+/** Keep both maps from growing without bound under a flood of spoofed IPs. */
+setInterval(function () {
+  const now = Date.now();
+  apiHits.forEach(function (entry, key) {
+    if (entry.resetAt < now) apiHits.delete(key);
+  });
+  loginAttempts.forEach(function (entry, key) {
+    if (entry.resetAt < now) loginAttempts.delete(key);
+  });
+  sessions.forEach(function (session, token) {
+    const idle = session.lastSeen ? now - session.lastSeen > SESSION_IDLE_MS : false;
+    if (session.expires < now || idle) sessions.delete(token);
+  });
+}, API_WINDOW_MS).unref();
+
+/**
  * Find the caller's session.
  *
  * Order matters: an explicit Bearer token wins (API clients and the tests
@@ -1531,6 +1646,16 @@ function sessionFor(req, token, kind) {
     sessions.delete(token);
     return null;
   }
+  // Idle timeout: a session left open on a shared computer expires after 30
+  // minutes of NO calls at all, not only at the 8-hour absolute cap. Any
+  // authenticated request counts as activity, so someone working through a
+  // page is never interrupted — but an abandoned tab signs itself out.
+  const now = Date.now();
+  if (session.lastSeen && now - session.lastSeen > SESSION_IDLE_MS) {
+    sessions.delete(token);
+    return null;
+  }
+  session.lastSeen = now;
   // A cookie is scoped to one kind of sign-in, so a stale admin cookie must
   // never authenticate a student route or the other way round.
   if (kind && session.kind !== kind) return null;
@@ -1749,10 +1874,16 @@ async function handleApi(req, res, pathname) {
     if (String(admin.active).toLowerCase() === "no") {
       return sendJson(res, 403, { error: "Account is disabled" });
     }
-    const expected = hashPassword(body.password || "", admin.salt);
-    if (expected !== admin.passwordHash) {
+    const verdict = verifyPassword(body.password || "", admin.salt, admin.passwordHash);
+    if (verdict === "fail") {
       recordFailedAttempt(req, "admin");
       return sendJson(res, 401, { error: "Incorrect password" });
+    }
+    if (verdict === "upgrade") {
+      // First sign-in on a legacy hash: re-store it as scrypt so the upgrade
+      // costs the student (here, the administrator) nothing but this one save.
+      admin.salt = newSalt();
+      admin.passwordHash = hashPassword(body.password || "", admin.salt);
     }
     clearLoginAttempts(req, "admin");
     const token = createSession(admin);
@@ -1828,15 +1959,15 @@ async function handleApi(req, res, pathname) {
     // field they do not have to hand. Anything left blank is simply absent from
     // the approval queue, and the office fills it in from the record it holds.
     const details = {
-      gradeLevel: String(body.gradeLevel || "").trim(),
-      section: String(body.section || "").trim(),
+      gradeLevel: sanitizeText(body.gradeLevel, 40),
+      section: sanitizeText(body.section, 40),
       birthdate: String(body.birthdate || "").trim(),
       sex: String(body.sex || "").trim(),
-      address: String(body.address || "").trim(),
+      address: sanitizeText(body.address, 160),
       contact: String(body.contact || "").trim(),
-      guardian: String(body.guardian || "").trim(),
+      guardian: sanitizeText(body.guardian, 120),
       guardianContact: String(body.guardianContact || "").trim(),
-      lastSchool: String(body.lastSchool || "").trim(),
+      lastSchool: sanitizeText(body.lastSchool, 120),
     };
 
     // Only the three things a login cannot exist without are required: who the
@@ -1903,7 +2034,7 @@ async function handleApi(req, res, pathname) {
       // The spelling the student typed is kept for a new applicant, so the
       // record created on approval carries their Student ID as they wrote it.
       studentId: student ? student.id : studentId,
-      fullname,
+      fullname: sanitizeText(fullname, 120),
       email,
       passwordHash: hashPassword(password, salt),
       salt,
@@ -1985,8 +2116,13 @@ async function handleApi(req, res, pathname) {
     };
     if (!account) return wrong();
 
-    if (hashPassword(body.password || "", account.salt) !== account.passwordHash) {
+    const studentVerdict = verifyPassword(body.password || "", account.salt, account.passwordHash);
+    if (studentVerdict === "fail") {
       return wrong();
+    }
+    if (studentVerdict === "upgrade") {
+      account.salt = newSalt();
+      account.passwordHash = hashPassword(body.password || "", account.salt);
     }
 
     const status = String(account.status || "pending").toLowerCase();
@@ -2486,7 +2622,8 @@ async function handleApi(req, res, pathname) {
     if (index === -1) return sendJson(res, 404, { error: "Account not found" });
 
     const account = accounts[index];
-    if (hashPassword(body.currentPassword || "", account.salt) !== account.passwordHash) {
+    const currentVerdict = verifyPassword(body.currentPassword || "", account.salt, account.passwordHash);
+    if (currentVerdict === "fail") {
       return sendJson(res, 401, { error: "Your current password is incorrect" });
     }
     const next = String(body.newPassword || "");
@@ -2586,9 +2723,9 @@ async function handleApi(req, res, pathname) {
       studentName: record.name,
       amount: amount,
       method: method,
-      reference: String(body.reference || "").trim().slice(0, 60),
+      reference: sanitizeText(body.reference, 60),
       examPeriod: EXAM_PERIODS.indexOf(body.examPeriod) !== -1 ? body.examPeriod : guessExamPeriod(),
-      note: String(body.note || "").trim().slice(0, 160),
+      note: sanitizeText(body.note, 160),
       status: "pending",
       requestedAt: today() + " " + new Date().toTimeString().slice(0, 5),
       handledBy: "",
@@ -2849,7 +2986,9 @@ async function handleApi(req, res, pathname) {
     // rather than written into the workbook.
     for (const field of EDITABLE_PROFILE_FIELDS) {
       if (body[field] === undefined) continue;
-      next[field] = String(body[field] === null ? "" : body[field]).trim();
+      // Sanitised as well as trimmed: the profile text is stored, synced to the
+      // roster and rendered on two pages, so strip any markup at the door.
+      next[field] = sanitizeText(body[field] === null ? "" : body[field], 160);
     }
 
     // The contact number is the one field with a shape worth enforcing: a bad
@@ -3408,14 +3547,15 @@ async function handleApi(req, res, pathname) {
     }
 
     const method = body.method || "Cash";
+    const payDate = toDate(body.date) || today();
     // Which exam period the payment is for. Defaults to the current period
     // guess from the calendar, but the office can always pick another — an
     // advance Prelim fee paid early, for example.
     const examPeriod = EXAM_PERIODS.indexOf(body.examPeriod) !== -1
       ? body.examPeriod
-      : guessExamPeriod(body.date || paymentDateField());
+      : guessExamPeriod(payDate);
     const payment = {
-      date: toDate(body.date) || today(),
+      date: payDate,
       receiptNo: body.receiptNo || nextReceiptNo(db),
       studentId: student.id,
       studentName: student.name,
@@ -3957,6 +4097,12 @@ const server = http.createServer((req, res) => {
     if (crossSiteRequest(req)) {
       return sendJson(res, 403, { error: "Cross-site requests are not allowed" });
     }
+    // A scripted flood of calls from one address is refused before any route
+    // does work. The e2e suite is exempt: it makes hundreds of calls in a few
+    // seconds against localhost and would trip the limit it is not testing.
+    if (!allowApiRequest(req) && process.env.SPA_INSECURE_DEFAULTS !== "1") {
+      return sendJson(res, 429, { error: "Too many requests. Slow down and try again shortly." });
+    }
     // The API speaks JSON only. A form post or text body is refused outright —
     // EXCEPT the workbook push: the office's Excel round trip sends a binary
     // .xlsx body, and that route (below) reads raw Buffers of its own. Rejecting
@@ -4074,8 +4220,8 @@ server.listen(PORT, () => {
     });
     const weak = usable.filter(function (a) {
       return (
-        a.passwordHash === hashPassword("ChangeMe!Admin2025", a.salt) ||
-        a.passwordHash === hashPassword("ChangeMe!Records2025", a.salt)
+        verifyPassword("ChangeMe!Admin2025", a.salt, a.passwordHash) !== "fail" ||
+        verifyPassword("ChangeMe!Records2025", a.salt, a.passwordHash) !== "fail"
       );
     });
     if (unusable.length) {

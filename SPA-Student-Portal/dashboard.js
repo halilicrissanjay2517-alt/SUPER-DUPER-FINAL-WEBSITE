@@ -342,6 +342,7 @@
      comes from the payment already in the page; nothing is fetched to open it. */
   var receiptModal = $("#receiptModal");
   var receiptTrigger = null;
+  var currentReceipt = null;
 
   function openReceipt(receiptNo, trigger) {
     if (!receiptModal || !lastStudent) return;
@@ -349,6 +350,7 @@
       return String(row.receiptNo) === String(receiptNo);
     });
     if (!p) return;
+    currentReceipt = p;
 
     var put = function (id, text) {
       var el = $(id);
@@ -398,7 +400,11 @@
       if (e.key === "Escape" && !receiptModal.hidden) closeReceipt();
     });
     var printBtn = $("#receiptPrint");
-    if (printBtn) printBtn.addEventListener("click", function () { window.print(); });
+    if (printBtn) printBtn.addEventListener("click", function () {
+      // The dialog shows the one receipt; print it in the official format from
+      // the record behind it, not a screenshot of the dialog.
+      if (currentReceipt) printOfficialReceipt(currentReceipt);
+    });
   }
 
   /* A click on any View button opens that receipt. One listener on the table
@@ -493,6 +499,168 @@
       link.click();
       document.body.removeChild(link);
       setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    });
+  }
+
+  /* ---------- Printing (mirrors the office dashboard) ----------
+     The same two documents the Accounting office can produce — the official
+     receipt for a single payment and the full statement of account — are built
+     from the student's own ledger and opened in a print window. Nothing is
+     fetched: everything comes from the record already on the page. */
+
+  function pesoInWords(n) {
+    var amount = Math.round((Number(n) || 0) * 100) / 100;
+    var whole = Math.floor(amount);
+    var cents = Math.round((amount - whole) * 100);
+    function below1000(num) {
+      var ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+        "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen",
+        "Seventeen", "Eighteen", "Nineteen"];
+      var tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+      var words = "";
+      if (num >= 1000) {
+        words += ones[Math.floor(num / 1000)] + " Thousand ";
+        num %= 1000;
+      }
+      if (num >= 100) {
+        words += ones[Math.floor(num / 100)] + " Hundred ";
+        num %= 100;
+      }
+      if (num >= 20) {
+        words += tens[Math.floor(num / 10)] + " ";
+        num %= 10;
+      }
+      if (num > 0) words += ones[num] + " ";
+      return words.trim();
+    }
+    var words = whole === 0 ? "Zero" : below1000(whole);
+    words = words.trim();
+    return words + " Pesos" + (cents ? " and " + below1000(cents) + " Centavos" : "") + " Only";
+  }
+
+  /** Opens a print window with a document; shared by both printouts. */
+  function printWindow(doc, fallbackMessage) {
+    var w = window.open("", "_blank");
+    if (!w) {
+      var note = $("#dashPaymentsCount");
+      if (note) note.textContent = fallbackMessage;
+      return;
+    }
+    w.document.write(doc);
+    w.document.close();
+    w.focus();
+    setTimeout(function () { w.print(); }, 400);
+  }
+
+  /** One payment as an official-receipt-style document. */
+  function printOfficialReceipt(p) {
+    if (!p || !lastStudent) return;
+    var s = lastStudent;
+    var doc = "<!doctype html><html><head><meta charset='utf-8'><title>Official Receipt " +
+      escapeHtml(p.receiptNo || "") + "</title><style>" +
+      "body{font-family:'Segoe UI',Arial,sans-serif;color:#111;margin:24px;}" +
+      ".rcpt{max-width:720px;margin:0 auto;border:2px solid #04231a;padding:24px 32px;}" +
+      ".rcpt-head{display:flex;align-items:center;gap:14px;border-bottom:2px solid #04231a;padding-bottom:12px;}" +
+      ".rcpt-head img{height:64px;}" +
+      ".rcpt-school{font-size:20px;font-weight:700;letter-spacing:.5px;}" +
+      ".rcpt-addr{font-size:11px;color:#444;}" +
+      ".rcpt-title{margin:14px 0 4px;text-align:center;font-weight:700;letter-spacing:3px;font-size:15px;}" +
+      ".rcpt-no{display:flex;justify-content:space-between;font-size:13px;margin-bottom:12px;}" +
+      "table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px;}" +
+      "td,th{border:1px solid #999;padding:7px 10px;text-align:left;}" +
+      ".amt{text-align:right;font-weight:700;white-space:nowrap;}" +
+      ".words{margin-top:10px;font-size:12px;font-style:italic;}" +
+      ".totals{margin-top:14px;font-size:13px;width:46%;margin-left:auto;}" +
+      ".totals td{border:none;padding:3px 0;}" +
+      ".totals .amt{font-size:15px;}" +
+      ".sign{margin-top:48px;display:flex;justify-content:space-between;font-size:12px;}" +
+      ".sign div{border-top:1px solid #111;padding-top:4px;width:220px;text-align:center;}" +
+      ".foot{margin-top:16px;text-align:center;font-size:10px;color:#666;}" +
+      "@media print{body{margin:0}.rcpt{border-color:#000}}" +
+      "</style></head><body><div class='rcpt'>" +
+      "<div class='rcpt-head'><div>" +
+      "<div class='rcpt-school'>SAINT PATRICK'S ACADEMY, INC.</div>" +
+      "<div class='rcpt-addr'>Official Receipt — Student Fees</div></div></div>" +
+      "<div class='rcpt-title'>OFFICIAL RECEIPT</div>" +
+      "<div class='rcpt-no'><span><strong>OR No.:</strong> " + escapeHtml(p.receiptNo || "—") + "</span>" +
+      "<span><strong>Date:</strong> " + escapeHtml(niceDate(p.date)) + "</span></div>" +
+      "<table><tr><th style='width:30%'>Received from</th><td>" + escapeHtml(s.name || "") +
+      "</td></tr><tr><th>Student ID / Grade & Section</th><td>" +
+      escapeHtml((s.id || "") + " · " + (s.grade || "—") + (s.section ? " – " + s.section : "")) +
+      "</td></tr><tr><th>Particulars</th><td>School fees payment" +
+      (p.note ? " — " + escapeHtml(p.note) : "") + "</td></tr>" +
+      "<tr><th>Payment method</th><td>" + escapeHtml(p.method || "—") + "</td></tr></table>" +
+      "<div class='words'>Amount in words: " + pesoInWords(p.amount) + "</div>" +
+      "<table class='totals'>" +
+      "<tr><td>Total assessment</td><td class='amt'>" + peso(s.totalFee) + "</td></tr>" +
+      "<tr><td>Total paid to date</td><td class='amt'>" + peso(s.amountPaid) + "</td></tr>" +
+      "<tr><td><strong>Remaining balance</strong></td><td class='amt'><strong>" + peso(s.balance) + "</strong></td></tr>" +
+      "</table>" +
+      "<div class='sign'><div>Received by (cashier)</div><div>Payee signature</div></div>" +
+      "<div class='foot'>This receipt serves as proof of payment. Please keep it for your records.</div>" +
+      "</div></body></html>";
+    printWindow(doc, "Allow pop-ups to print the receipt.");
+  }
+
+  /** Every payment on record, plus the fee totals — the statement of account. */
+  function printStatement() {
+    if (!lastStudent) return;
+    var s = lastStudent;
+    var pay = paymentsAll.slice().sort(function (a, b) {
+      return String(a.date || "").localeCompare(String(b.date || ""));
+    });
+    var rows = pay.map(function (p, i) {
+      return "<tr><td>" + (i + 1) + "</td><td>" + escapeHtml(niceDate(p.date)) + "</td><td>" +
+        escapeHtml(p.receiptNo || "—") + "</td><td>" + escapeHtml(p.method || "—") +
+        "</td><td>" + escapeHtml(p.note || "—") +
+        "</td><td class='amt'>" + peso(p.amount) + "</td></tr>";
+    }).join("");
+    var doc = "<!doctype html><html><head><meta charset='utf-8'><title>Statement of account — " +
+      escapeHtml(s.name || "") + "</title><style>" +
+      "body{font-family:'Segoe UI',Arial,sans-serif;color:#111;margin:24px;}" +
+      ".rcpt{max-width:760px;margin:0 auto;}" +
+      ".rcpt-school{font-size:18px;font-weight:700;}" +
+      ".rcpt-addr{font-size:11px;color:#444;margin-bottom:14px;}" +
+      "h2{margin:6px 0 2px;font-size:16px;}" +
+      "table{width:100%;border-collapse:collapse;font-size:12px;margin-top:12px;}" +
+      "td,th{border:1px solid #999;padding:6px 9px;text-align:left;}" +
+      "th{background:#eee;}.amt{text-align:right;white-space:nowrap;}" +
+      ".ids{font-size:12px;color:#333;margin-top:8px;}" +
+      ".totals{margin-top:14px;width:50%;margin-left:auto;font-size:13px;border-collapse:collapse;}" +
+      ".totals td{border:none;padding:3px 0;}" +
+      "</style></head><body><div class='rcpt'>" +
+      "<div class='rcpt-school'>SAINT PATRICK'S ACADEMY, INC.</div>" +
+      "<div class='rcpt-addr'>Statement of Account — Student Fees</div>" +
+      "<h2>" + escapeHtml(s.name || "") + "</h2>" +
+      "<div class='ids'>Student ID: " + escapeHtml(s.id || "—") + " · Grade " +
+      escapeHtml(s.grade || "—") + (s.section ? " – " + escapeHtml(s.section) : "") +
+      " · Status: " + escapeHtml(s.status || "—") + "</div>" +
+      (pay.length
+        ? "<table><thead><tr><th>#</th><th>Date</th><th>Receipt</th><th>Method</th><th>Note</th><th>Amount</th></tr></thead><tbody>" +
+          rows + "</tbody></table>"
+        : "<p>No payments recorded.</p>") +
+      "<table class='totals'>" +
+      "<tr><td>Total assessment</td><td class='amt'>" + peso(s.totalFee) + "</td></tr>" +
+      "<tr><td>Total paid</td><td class='amt'>" + peso(s.amountPaid) + "</td></tr>" +
+      "<tr><td><strong>Balance</strong></td><td class='amt'><strong>" + peso(s.balance) + "</strong></td></tr>" +
+      "</table></div></body></html>";
+    printWindow(doc, "Allow pop-ups to print the statement.");
+  }
+
+  var printStatementBtn = $("#dashPrintStatement");
+  if (printStatementBtn) {
+    printStatementBtn.addEventListener("click", function () {
+      if (!lastStudent) return;
+      if (paymentsAll.length === 0) {
+        printStatementBtn.setAttribute("disabled", "disabled");
+        printStatementBtn.textContent = "No payments to print";
+        setTimeout(function () {
+          printStatementBtn.removeAttribute("disabled");
+          printStatementBtn.textContent = "🖨 Print statement";
+        }, 2200);
+        return;
+      }
+      printStatement();
     });
   }
 
