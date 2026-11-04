@@ -1517,6 +1517,22 @@
     });
   }
 
+  /* ------------------------------------------------ Live Excel sync
+     The workbook is the database, so when it changes under us — the office
+     saved database.xlsx in Excel, an import ran on another tab, a payment was
+     recorded — reload everything this dashboard shows, within seconds, with
+     no refresh and no button. */
+  if (window.SpaLiveSync) {
+    SpaLiveSync.watch(function (stamp) {
+      loadStudents();
+      loadPayments();
+      loadApprovals();
+      loadLogs();
+      toast("Excel database changed — refreshed " +
+        (stamp && stamp.students ? "(" + stamp.students + " students)" : ""));
+    });
+  }
+
   /* ---------------------------------------------------------- Admins */
   function loadAdmins() {
     api("/api/admins")

@@ -3703,6 +3703,33 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  /* ---- GET /api/version  (the workbook's change stamp) ----
+   * Every page that shows student data polls this every few seconds. When the
+   * stamp moves — the office saved database.xlsx in Excel, an import ran, or a
+   * payment was recorded — the page knows its figures are stale and refreshes
+   * itself, so an Excel edit appears on the site within seconds, live.
+   * Deliberately public (no session needed): it carries only a timestamp and a
+   * row count, never student data, and being open lets a signed-in student's
+   * page and the office dashboard both use the same signal.
+   */
+  if (pathname === "/api/version" && req.method === "GET") {
+    let stamp = { changed: false, mtime: null, students: 0 };
+    try {
+      const stats = fs.statSync(DB_FILE);
+      stamp = {
+        changed: true,
+        mtime: stats.mtimeMs,
+        size: stats.size,
+        students: readSheet(loadDb(), SHEETS.students).length,
+      };
+    } catch (err) {
+      // An unreadable workbook (Excel holding the file mid-save is the common
+      // case) reports the last known stamp instead of failing the poll.
+      stamp.error = "workbook busy";
+    }
+    return sendJson(res, 200, stamp);
+  }
+
   if (pathname.startsWith("/api/")) {
     // A page on another site must not be able to drive this API with the
     // visitor's cookie attached.

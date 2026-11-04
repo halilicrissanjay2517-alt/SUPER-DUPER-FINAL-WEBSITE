@@ -739,6 +739,22 @@
       });
   }
 
+  /**
+   * Live Excel sync: the workbook on the office's side can change at any
+   * moment (a payment recorded, an edit in Excel, an import). When its stamp
+   * moves, reload this student's own record so the balance and history on
+   * screen are never behind the database — no refresh needed.
+   */
+  function watchWorkbook() {
+    if (!window.SpaLiveSync) return;
+    SpaLiveSync.watch(function () {
+      // Only worth reloading while there is something on screen to update.
+      if (!hasSession) return;
+      loadAccount().catch(function () { /* session end is handled elsewhere */ });
+      if (typeof loadPayMine === "function") loadPayMine();
+    });
+  }
+
   function boot() {
     if (!hasSession) {
       showBlocked(
@@ -748,6 +764,7 @@
       return;
     }
 
+    watchWorkbook();
     loadAccount().catch(function (err) {
       hasSession = false;
       if (err.status === 401 || err.status === 403) {
