@@ -2138,7 +2138,10 @@ async function handleApi(req, res, pathname) {
      A whole workbook does not fit the 1 MB JSON limit, so like restore-db this
      is handled before the /api/ block and reads raw binary. */
   if (pathname === "/api/database/push" && req.method === "POST") {
-    const session = requireAuth(req, res, ["admin"]);
+    // Any signed-in administrator may send their edited workbook back — that is
+    // the entire point of the "Open in Excel" round trip. Gating this to one
+    // role silently blocked every registrar whose Excel save bounced with 403.
+    const session = requireAuth(req, res);
     if (!session) return;
     const MAX_WORKBOOK = 25e6;
     readBinary(req, MAX_WORKBOOK)

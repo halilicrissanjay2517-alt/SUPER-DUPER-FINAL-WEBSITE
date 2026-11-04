@@ -18,13 +18,22 @@
 (function (global) {
   "use strict";
 
-  var POLL_MS = 4000;          // how often to ask "has the file changed?"
+  var POLL_MS = 2000;          // how often to ask "has the file changed?" —
+                               // short enough that an edit lands while the
+                               // office is still looking at the screen
   var RETRY_MS = 15000;        // back off after a failed poll (server down)
   var timer = null;
   var inFlight = false;
   var lastStamp = null;        // the last stamp this page has seen
   var handler = null;
   var failures = 0;
+
+  // A tab in the background still polls, but one brought back to the front
+  // must not sit up to two seconds on a stale screen: poll the instant it is
+  // visible again.
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden && handler) poll();
+  });
 
   function poll() {
     if (inFlight) return;

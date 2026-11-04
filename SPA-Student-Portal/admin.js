@@ -1786,6 +1786,12 @@
       loadPayments();
       loadApprovals();
       loadLogs();
+      // The payment-request queue and the two nav badges are part of the live
+      // picture too: a student filing a payment on their phone should appear
+      // here ("Awaiting verification") without anybody pressing refresh.
+      loadPayRequests();
+      loadApprovalBadge();
+      loadPayReqBadge();
       toast("Excel database changed — refreshed " +
         (stamp && stamp.students ? "(" + stamp.students + " students)" : ""));
     });
