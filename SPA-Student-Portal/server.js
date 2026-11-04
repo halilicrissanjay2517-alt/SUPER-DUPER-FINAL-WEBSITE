@@ -160,7 +160,16 @@ const SHEETS = {
   logs: "Logs",
   accounts: "Accounts",
   payRequests: "PaymentRequests",
+  // One organized row per student: what they were billed per month, what they
+  // paid in each school month, and the running balance. The office opens this
+  // sheet to see a payment calendar instead of reading the raw ledger.
+  monthly: "Monthly Payments",
 };
+
+/** The ten school months of a Philippine school year (June start). */
+const SCHOOL_MONTHS = [
+  "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar",
+];
 
 /**
  * A payment the student filed from their own dashboard, waiting for the
@@ -191,6 +200,11 @@ const STUDENT_COLUMNS = [
   "grade",
   "section",
   "status",
+  // The fee is split the way the school bills it: tuition and miscellaneous
+  // are two separate columns and totalFee is their sum, so the office can
+  // change either part in Excel or on the dashboard and the total follows.
+  "tuitionFee",
+  "miscFee",
   "totalFee",
   "amountPaid",
   "balance",
@@ -312,14 +326,33 @@ function syncStudentBilling(db, student) {
   const paid = readSheet(db, SHEETS.payments).reduce(function (sum, p) {
     return String(p.studentId) === String(student.id) ? sum + (Number(p.amount) || 0) : sum;
   }, 0);
-  // No usable fee on record (absent, or left at 0) means "billed from the grade"
-  // rather than "owes nothing". A roster entry added with a misspelt grade used
-  // to land on 0 and stay there; repairing it here fixes such rows on the next
-  // write. A student who has already paid is left alone, since an explicit 0 is
-  // then a deliberate scholarship, not a missing fee.
-  const storedFee = toNumber(student.totalFee);
-  const fee = storedFee > 0 || paid > 0 ? storedFee : feeForGrade(student.grade);
+  // The fee is billed as tuition + miscellaneous. Either part may be edited
+  // (in Excel or on the dashboard); the total always follows their sum. When
+  // neither part is set but a legacy totalFee exists, the old total is split
+  // back out 85/15 (the school's usual tuition/misc ratio) so the two new
+  // columns never disagree with the figure the office already knows.
+  let tuition = toNumber(student.tuitionFee);
+  let misc = toNumber(student.miscFee);
+  let fee = toNumber(student.totalFee);
+  if (tuition <= 0 && misc <= 0 && fee > 0) {
+    tuition = Math.round(fee * 0.85);
+    misc = fee - tuition;
+  }
+  if (tuition > 0 || misc > 0) {
+    fee = tuition + misc;
+  } else if (fee <= 0 && paid <= 0) {
+    // No usable fee on record (absent, or left at 0) means "billed from the
+    // grade" rather than "owes nothing". A roster entry added with a misspelt
+    // grade used to land on 0 and stay there; repairing it here fixes such
+    // rows on the next write. A student who has already paid is left alone,
+    // since an explicit 0 is then a deliberate scholarship, not a missing fee.
+    fee = feeForGrade(student.grade);
+    tuition = fee;
+    misc = 0;
+  }
 
+  student.tuitionFee = tuition;
+  student.miscFee = misc;
   student.totalFee = fee;
   student.amountPaid = paid;
   student.balance = Math.max(fee - paid, 0);
@@ -553,8 +586,9 @@ function loadDb() {
 
 function readWorkbook() {
   const db = XLSX.readFile(DB_FILE);
-  // Bring an older workbook up to date: adds the Payments sheet and the
-  // tuition columns (totalFee, amountPaid, dueDate, lastPaymentDate).
+  // Bring an older workbook up to date: adds the Payments sheet, the tuition
+  // columns (totalFee, amountPaid, dueDate, lastPaymentDate), the tuition/
+  // miscellaneous split and the Monthly Payments calendar.
   if (migrateDb(db)) saveDb(db);
   return db;
 }
@@ -694,20 +728,81 @@ function createSeedDb() {
   const logs = [];
 
   writeSheet(db, SHEETS.payments, payments, PAYMENT_COLUMNS);
+  // Split each seed fee into tuition + miscellaneous (85/15, the usual
+  // ratio) so the new columns are populated from the very first workbook.
+  students.forEach(function (s) {
+    const fee = Number(s.totalFee) || 0;
+    s.tuitionFee = Math.round(fee * 0.85);
+    s.miscFee = fee - s.tuitionFee;
+  });
   writeSheet(db, SHEETS.students, students, STUDENT_COLUMNS);
   writeSheet(db, SHEETS.admins, admins, ADMIN_COLUMNS);
   writeSheet(db, SHEETS.logs, logs, LOG_COLUMNS);
   writeSheet(db, SHEETS.accounts, [], ACCOUNT_COLUMNS);
   writeSheet(db, SHEETS.payRequests, [], PAY_REQUEST_COLUMNS);
   applySheetFormatting(db);
+  rebuildMonthlySheet(db);
   saveDb(db);
   return db;
+}
+
+/**
+ * Rebuild the "Monthly Payments" sheet from the live data.
+ *
+ * One row per student, organized the way the office reads a payment plan:
+ *
+ *   id | name | grade | monthlyDue | Jun..Mar (paid in that month) |
+ *   totalPaid | balance | status
+ *
+ * `monthlyDue` is the total fee spread over ten months (June to March). The
+ * month columns count the payments whose date falls in that month, so a
+ * payment recorded on the website or an edit in Excel shows up here on the
+ * next save. A workbook is read-only in the sense that this sheet is always
+ * DERIVED — editing it directly is overwritten on the next save, by design,
+ * because its numbers must agree with the Payments ledger.
+ */
+function rebuildMonthlySheet(db) {
+  const students = readSheet(db, SHEETS.students);
+  const payments = readSheet(db, SHEETS.payments);
+  // Which school-year month a payment date belongs to: June 2024 and June
+  // 2025 both count as "Jun", because the plan repeats every school year.
+  const rows = students.map(function (student) {
+    const row = {
+      id: student.id,
+      name: student.name,
+      grade: student.grade,
+      monthlyDue: Math.round((Number(student.totalFee) || 0) / SCHOOL_MONTHS.length),
+    };
+    SCHOOL_MONTHS.forEach(function (m) { row[m] = 0; });
+    payments.forEach(function (p) {
+      if (String(p.studentId) !== String(student.id)) return;
+      const day = toDate(p.date);
+      if (!day) return;
+      // June–December are plan months 1–7 (indices 0–6); Jan–March continue
+      // the same plan (indices 7–9). April/May (summer) fall outside the plan
+      // and are skipped rather than folded into a wrong month.
+      const m = Number(day.slice(5, 7));
+      const idx = m >= 6 ? m - 6 : m + 4;
+      if (idx >= 0 && idx < SCHOOL_MONTHS.length) {
+        row[SCHOOL_MONTHS[idx]] = (row[SCHOOL_MONTHS[idx]] || 0) + (Number(p.amount) || 0);
+      }
+    });
+    row.totalPaid = Number(student.amountPaid) || 0;
+    row.balance = Number(student.balance) || 0;
+    row.status = student.status || "";
+    return row;
+  });
+
+  const columns = ["id", "name", "grade", "monthlyDue"].concat(
+    SCHOOL_MONTHS, ["totalPaid", "balance", "status"]
+  );
+  writeSheet(db, SHEETS.monthly, rows, columns);
 }
 
 /** Column widths for every sheet, so the workbook opens tidy in Excel. */
 function applySheetFormatting(db) {
   applyColumnWidths(db, SHEETS.students, [
-    11, 22, 10, 16, 12, 12, 12, 16, 18, 16, 26,
+    11, 22, 10, 16, 12, 12, 12, 12, 12, 12, 16, 18, 16, 26,
     13, 13, 16, 22, 16, 22, 12, 7, 30, 18, 22, 30, 12, 14,
   ]);
   applyColumnWidths(db, SHEETS.payments, [12, 11, 11, 20, 11, 15, 13, 28]);
@@ -715,6 +810,9 @@ function applySheetFormatting(db) {
   applyColumnWidths(db, SHEETS.logs, [26, 14, 16, 12, 70]);
   applyColumnWidths(db, SHEETS.accounts, [12, 22, 26, 66, 34, 10, 22, 16, 22, 28, 20]);
   applyColumnWidths(db, SHEETS.payRequests, [12, 12, 22, 11, 14, 20, 12, 26, 11, 20, 14, 20, 12]);
+  applyColumnWidths(db, SHEETS.monthly, [11, 22, 10, 12, 14].concat(
+    SCHOOL_MONTHS.map(function () { return 11; }), [13, 13, 12]
+  ));
 }
 
 /**
@@ -740,6 +838,12 @@ function migrateDb(db) {
     writeSheet(db, SHEETS.payRequests, [], PAY_REQUEST_COLUMNS);
     changed = true;
   }
+  // The tuition/misc split and the Monthly Payments calendar arrived with the
+  // per-month billing view; older workbooks gain both on the next read.
+  if (!db.Sheets[SHEETS.monthly]) changed = true;
+  const studentHeader = ((db.Sheets[SHEETS.students] &&
+    XLSX.utils.sheet_to_json(db.Sheets[SHEETS.students], { header: 1 })[0]) || []);
+  if (!studentHeader.includes("tuitionFee")) changed = true;
   applySheetFormatting(db);
 
   // Older workbooks only knew a bare "balance" column. Give them the full
@@ -775,15 +879,18 @@ function migrateDb(db) {
     });
     if (!student.username) student.username = student.id;
     if (!student.accountStatus) student.accountStatus = "active";
-    // Billing is only DERIVED when the sheet predates the billing columns. Once
-    // the columns exist, the workbook is the database: whatever the office
-    // saved in Excel — a fee, a balance, a status — is read back exactly as it
-    // was written. Deriving on every load used to overwrite those edits from
-    // the payment ledger, so an Excel change appeared to "do nothing" on the
-    // site. Site-side writes (payments, approvals) keep both sheets in step
-    // themselves, so the loop stays closed without this re-derivation.
-    if (!hasBillingColumns) syncStudentBilling(db, student);
+    // Split the fee into tuition + miscellaneous for any row still missing the
+    // split — either the columns were just added, or an earlier migration wrote
+    // the header before filling the values. Rows the office has already split
+    // themselves are left exactly as they typed them.
+    if (toNumber(student.tuitionFee) <= 0 && toNumber(student.miscFee) <= 0) {
+      syncStudentBilling(db, student);
+      changed = true; // the split must reach the disk, not just memory
+    }
   });
+  // The Monthly Payments sheet is derived from the ledger, so it is rebuilt
+  // every time the workbook is read — it always agrees with the payments.
+  rebuildMonthlySheet(db);
   writeSheet(db, SHEETS.students, students, STUDENT_COLUMNS);
   return changed;
 }
@@ -3118,13 +3225,16 @@ async function handleApi(req, res, pathname) {
     const after = Object.assign({}, before);
     Object.keys(body).forEach((key) => {
       // amountPaid and balance are derived from the ledger, so an edit may not
-      // set them directly; totalFee and dueDate are what staff actually change.
+      // set them directly; the fee parts, totalFee and dueDate are what staff
+      // actually change.
       if (STUDENT_COLUMNS.includes(key) && DERIVED_STUDENT_FIELDS.indexOf(key) === -1) {
         after[key] = body[key];
       }
     });
     // Keep the tuition figures real numbers. A string like "7000" written to
     // the sheet breaks sorting and SUM formulas in Excel, and compares wrongly.
+    after.tuitionFee = toNumber(after.tuitionFee);
+    after.miscFee = toNumber(after.miscFee);
     after.totalFee = toNumber(after.totalFee);
     syncStudentBilling(db, after);
     students[index] = after;

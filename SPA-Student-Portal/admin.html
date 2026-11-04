@@ -112,16 +112,8 @@
                     <p class="muted" id="viewSubtitle">Manage student records and balances.</p>
                 </div>
                 <div class="topbar-actions">
-                    <button type="button" class="btn btn-secondary theme-toggle" id="themeToggleBtn"
-                            aria-pressed="false" title="Switch between light and dark">
-                        <span class="theme-toggle-icon" id="themeToggleIcon" aria-hidden="true">
-                            <svg class="icon" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36A5.39 5.39 0 0 1 12 3Z"/></svg>
-                        </span>
-                        <span id="themeToggleLabel">Dark</span>
-                    </button>
                     <a class="btn btn-secondary" href="studentportal.html">View site</a>
                     <button type="button" class="btn btn-secondary" id="importExcelBtn" title="Bring students and payments in from another Excel file">Import from Excel</button>
-                    <button type="button" class="btn btn-secondary" id="syncDatabaseBtn" title="Write every student shown here into database.xlsx">Sync to Excel</button>
                     <button type="button" class="btn btn-secondary" id="openDatabaseBtn" title="Download database.xlsx with every student">Excel database</button>
                     <button type="button" class="btn btn-secondary" id="liveExcelBtn" title="Download the live workbook, edit it in Excel, then send your changes straight back">Open in Excel ↺</button>
                     <button type="button" class="btn btn-secondary" id="createAccountBtn">+ Create student account</button>
@@ -180,12 +172,7 @@
                         <span class="sr-only">Search</span>
                         <input type="search" id="adminSearch" placeholder="Search by ID, name, grade, or section…">
                     </label>
-                    <div class="toolbar-stats">
-                        <button type="button" class="btn btn-secondary btn-mini" id="downloadDbBtn"
-                                title="Download every student as database.xlsx">
-                            Open Excel database
-                        </button>
-                    </div>
+                    <div class="toolbar-stats"></div>
                 </div>
 
                 <div class="table-wrap">
@@ -501,13 +488,21 @@
 
                 <h3 class="form-section-title">Tuition</h3>
                 <p class="muted form-note">
-                    The balance is calculated as <strong>Tuition Fee âˆ’ Total Paid</strong>, so it always
-                    matches the payment history. Record payments in <strong>Record payment</strong>;
-                    they cannot be typed in here.
+                    The fee is <strong>Tuition Fee + Miscellaneous Fee</strong>, and the balance is
+                    <strong>Total Fee − Total Paid</strong>, so it always matches the payment history.
+                    Record payments in <strong>Record payment</strong>; they cannot be typed in here.
                 </p>
                 <div class="form-grid">
                     <label class="field">
-                        <span>Tuition Fee (â‚±)</span>
+                        <span>Tuition Fee (₱)</span>
+                        <input name="tuitionFee" type="number" min="0" step="1" placeholder="0" id="studentTuition">
+                    </label>
+                    <label class="field">
+                        <span>Miscellaneous Fee (₱)</span>
+                        <input name="miscFee" type="number" min="0" step="1" placeholder="0" id="studentMisc">
+                    </label>
+                    <label class="field">
+                        <span>Total Fee (₱)</span>
                         <input name="totalFee" type="number" min="0" step="1" placeholder="0" id="studentFee">
                     </label>
                     <label class="field">

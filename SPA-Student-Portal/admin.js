@@ -266,15 +266,7 @@
     applyTheme(saved);
   }
 
-  var themeToggleBtn = $("#themeToggleBtn");
-  if (themeToggleBtn) {
-    themeToggleBtn.addEventListener("click", function () {
-      var next = document.body.classList.contains("theme-dark") ? "light" : "dark";
-      applyTheme(next);
-      try { window.localStorage.setItem(THEME_KEY, next); } catch (e) { /* private mode */ }
-    });
-    initTheme();
-  }
+  initTheme();
 
   $("#logoutBtn").addEventListener("click", function () {
     api("/api/logout", { method: "POST" }).catch(function () {});
@@ -1195,15 +1187,29 @@
 
   /** Only the fields staff actually author are submitted to the server. */
   var EDITABLE_STUDENT_FIELDS = [
-    "id", "name", "grade", "section", "status", "totalFee", "dueDate",
+    "id", "name", "grade", "section", "status",
+    "tuitionFee", "miscFee", "totalFee", "dueDate",
     "guardian", "contact", "email",
   ];
 
   /** Fill the calculated tuition figures so staff see the effect of the fee. */
   function syncStudentBillingPreview() {
-    var fee = Number(studentForm.totalFee.value) || 0;
+    var tuition = Number(studentForm.tuitionFee ? studentForm.tuitionFee.value : 0) || 0;
+    var misc = Number(studentForm.miscFee ? studentForm.miscFee.value : 0) || 0;
+    // The total follows the two parts when either is filled; a bare total
+    // typed on its own is split 85/15 so the three fields never disagree.
+    if (tuition > 0 || misc > 0) {
+      var sum = tuition + misc;
+      if (sum > 0) studentForm.totalFee.value = String(sum);
+    } else {
+      var fee = Number(studentForm.totalFee.value) || 0;
+      if (fee > 0) {
+        studentForm.tuitionFee.value = String(Math.round(fee * 0.85));
+        studentForm.miscFee.value = String(fee - Math.round(fee * 0.85));
+      }
+    }
     var paid = Number(studentForm.amountPaid.value) || 0;
-    var owes = Math.max(fee - paid, 0);
+    var owes = Math.max((Number(studentForm.totalFee.value) || 0) - paid, 0);
     var box = $("#studentBillingPreview");
 
     if (studentForm.balance.dataset.locked === "yes") {
@@ -1215,8 +1221,11 @@
 
     if (box) {
       box.hidden = false;
-      box.innerHTML = "Tuition <strong>" + peso(fee) + "</strong> − Paid <strong>" +
-        peso(paid) + "</strong> = Outstanding <strong>" + peso(owes) + "</strong>";
+      box.innerHTML = "Tuition <strong>" + peso(Number(studentForm.tuitionFee.value) || 0) +
+        "</strong> + Misc <strong>" + peso(Number(studentForm.miscFee.value) || 0) +
+        "</strong> = Fee <strong>" + peso(Number(studentForm.totalFee.value) || 0) +
+        "</strong> − Paid <strong>" + peso(paid) + "</strong> = Outstanding <strong>" +
+        peso(owes) + "</strong>";
       box.classList.toggle("is-clear", owes === 0);
     }
   }
@@ -1252,7 +1261,8 @@
     studentForm.id.focus();
   });
 
-  ["totalFee", "grade"].forEach(function (field) {
+  ["tuitionFee", "miscFee", "totalFee", "grade"].forEach(function (field) {
+    if (!studentForm[field]) return;
     studentForm[field].addEventListener("input", syncStudentBillingPreview);
     studentForm[field].addEventListener("change", syncStudentBillingPreview);
   });
@@ -1261,10 +1271,12 @@
     e.preventDefault();
     var payload = {};
     EDITABLE_STUDENT_FIELDS.forEach(function (key) {
-      payload[key] = studentForm[key].value;
+      if (studentForm[key]) payload[key] = studentForm[key].value;
     });
     // A blank fee means "use the fee for this grade level" on the server.
     if (payload.totalFee === "") delete payload.totalFee;
+    if (payload.tuitionFee === "") delete payload.tuitionFee;
+    if (payload.miscFee === "") delete payload.miscFee;
 
     var existing = state.students.some(function (s) { return String(s.id) === String(payload.id); });
     var request = existing
@@ -1415,36 +1427,11 @@
       .then(function () { if (button) button.disabled = false; });
   }
 
-  $$("#openDatabaseBtn, #downloadDbBtn").forEach(function (btn) {
+  $$("#openDatabaseBtn").forEach(function (btn) {
     btn.addEventListener("click", function () { downloadDatabase(btn); });
   });
 
-  /* ------------------------------------------------ Write the dashboard to Excel
-     "Sync to Excel" saves the live data over database.xlsx straight away. A
-     self-registration and an approval already do this on their own, so the
-     workbook the office opens is never behind the dashboard. */
-  var syncBtn = $("#syncDatabaseBtn");
-  if (syncBtn) {
-    syncBtn.addEventListener("click", function () {
-      syncBtn.disabled = true;
-      fetch(apiUrl("/api/database/sync"), { method: "POST", credentials: "same-origin" })
-        .then(function (res) {
-          return res.json().then(function (data) {
-            if (!res.ok) throw new Error(data.error || "Could not update database.xlsx");
-            return data;
-          });
-        })
-        .then(function (data) {
-          toast(data.file + " updated from the dashboard");
-          loadStudents();
-          loadApprovals();
-        })
-        .catch(function (err) { toast(err.message, true); })
-        .then(function () { syncBtn.disabled = false; });
-    });
-  }
-
-  /* ------------------------------------------------ Open in Excel (live round trip)
+  /*  ------------------------------------------------ Open in Excel (live round trip)
      One button, three steps, no command line:
        1. Downloads the live database.xlsx (the same bytes the website uses).
        2. Watches that file on disk. The moment Excel saves it, the edited
