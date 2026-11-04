@@ -7,7 +7,7 @@
     <title>Admin Dashboard — Saint Patrick's Academy, Inc.</title>
     <link rel="icon" href="logo.png">
     <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="admin.css">
+    <link rel="stylesheet" href="admin.css?v=7">
     <!-- Class-based style hooks for admin.js. The Content-Security-Policy
          forbids inline style, so runtime appearance changes are class names
          defined in admin.css rather than style attributes set by script. -->
@@ -184,18 +184,11 @@
                                 <th scope="col">Grade</th>
                                 <th scope="col">Section</th>
                                 <th scope="col">Status</th>
-                                <th scope="col" class="num">Tuition Fee</th>
-                                <th scope="col" class="num">Paid</th>
-                                <th scope="col" class="num">Balance</th>
-                                <th scope="col">Due Date</th>
-                                <th scope="col">Last Payment</th>
-                                <th scope="col">Guardian</th>
-                                <th scope="col">Contact</th>
                                 <th scope="col">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="adminRows">
-                            <tr><td colspan="13" class="table-empty">Loading…</td></tr>
+                            <tr><td colspan="6" class="table-empty">Loading…</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -787,7 +780,7 @@
         </div>
     </div>
 
-    <script src="admin.js"></script>
+    <script src="admin.js?v=7"></script>
     <script src="cookie-consent.js" defer></script>
 </body>
 </html>

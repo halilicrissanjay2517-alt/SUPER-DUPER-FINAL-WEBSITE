@@ -940,27 +940,9 @@
       statusTd.appendChild(select);
       tr.appendChild(statusTd);
 
-      var owed = Number(s.balance) || 0;
-
-      // Tuition Fee stays editable; Paid and Balance are computed from the
-      // payment ledger, so they are shown but never typed into here.
-      tr.appendChild(moneyCell("totalFee", s.totalFee, true));
-      tr.appendChild(readOnlyCell(peso(s.amountPaid), "money-cell"));
-      tr.appendChild(readOnlyCell(peso(owed), "balance-cell" +
-        (owed > 0 ? " owes" : " settled")));
-
-      var dueTd = document.createElement("td");
-      dueTd.className = "due-cell";
-      dueTd.innerHTML = dueDateCell(s);
-      tr.appendChild(dueTd);
-
-      tr.appendChild(readOnlyCell(
-        s.lastPaymentDate ? niceDate(s.lastPaymentDate) : "No payments yet",
-        "date-cell"
-      ));
-
-      tr.appendChild(textCell("guardian", s.guardian));
-      tr.appendChild(textCell("contact", s.contact));
+      // Money, due date, guardian and contact were moved off the roster: the
+      // list stays scannable, and every figure lives on the student's own
+      // full-screen account page instead.
 
       var actionsTd = document.createElement("td");
       var wrap = document.createElement("div");
