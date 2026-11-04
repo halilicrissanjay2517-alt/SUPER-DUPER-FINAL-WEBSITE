@@ -247,11 +247,12 @@
             <div class="patron-inner">
                 <figure class="patron-portrait">
                     <!-- Swap OIP.jpg for a higher-resolution portrait when one is available.
-                         If the file is ever missing, the onerror handler falls back to a
-                         labelled placeholder instead of showing a broken image. -->
+                         If the file is ever missing, the shared image-fallback
+                         helper in script.js flags the frame for a labelled
+                         placeholder instead of showing a broken image. -->
                     <div class="patron-frame">
                         <img src="OIP.jpg" alt="Saint Patrick, patron saint of Saint Patrick's Academy, Inc."
-                             onerror="this.closest('.patron-frame').classList.add('is-placeholder')">
+                             data-missing-frame="patron-frame" data-missing-class="is-placeholder">
                         <span class="patron-placeholder-text">
                             Saint Patrick &middot; Patron of the Academy
                         </span>

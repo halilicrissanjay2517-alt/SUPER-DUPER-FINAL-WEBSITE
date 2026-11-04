@@ -8,6 +8,34 @@
     return Array.prototype.slice.call((scope || document).querySelectorAll(sel));
   };
 
+  /* ---------- Missing-image fallbacks ----------
+     Photos that are not on the disk yet (a faculty portrait, the patron
+     artwork) would otherwise show the browser's broken-image icon. The old
+     inline onerror= attributes did this, but the site's Content-Security-Policy
+     forbids inline handlers, so the flag moved into data attributes read here.
+     One listener catches every image on the page, including lazy ones that
+     fail later. */
+  function handleBrokenImage(e) {
+    var img = e.target;
+    if (!img || img.tagName !== "IMG" || !img.dataset) return;
+    // faculty.html pattern: swap in the logo and mark the card.
+    if (img.dataset.missingSrc && !img.dataset.missingDone) {
+      img.dataset.missingDone = "1";
+      img.src = img.dataset.missingSrc;
+      if (img.dataset.missingAlt) img.alt = img.dataset.missingAlt;
+      if (img.dataset.missingClass) img.classList.add(img.dataset.missingClass);
+      return;
+    }
+    // patron-frame pattern: flag the surrounding frame so its placeholder
+    // text becomes visible instead.
+    if (img.dataset.missingFrame && !img.dataset.missingDone) {
+      img.dataset.missingDone = "1";
+      var frame = img.closest("." + img.dataset.missingFrame);
+      if (frame && img.dataset.missingClass) frame.classList.add(img.dataset.missingClass);
+    }
+  }
+  document.addEventListener("error", handleBrokenImage, true);
+
   /* ---------- Intro splash ----------
      The splash is shown from the very first paint (see the head script and
      styles.css). Here we lift it once the site is ready, then start the hero
