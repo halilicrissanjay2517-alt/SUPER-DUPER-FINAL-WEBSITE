@@ -2185,9 +2185,18 @@
    * payment history with the FIRST payment at the top — so "what did they pay
    * first and what came after" is one glance, not a scroll.
    */
+  /* The student whose detail modal is open, and the payments fetched for them.
+     Kept so the month filter and the print buttons can re-render without a
+     second round-trip to the server. */
+  var detailStudent = null;
+  var detailPaymentData = null;
+
   function openStudentDetail(student) {
     var modal = $("#studentDetailModal");
     if (!modal) return;
+
+    detailStudent = student;
+    detailPaymentData = null;
 
     $("#detailName").textContent = student.name || "Student";
     var sub = student.id + " · " + (student.grade || "—") +
@@ -2247,40 +2256,8 @@
 
     api("/api/payments?studentId=" + encodeURIComponent(student.id))
       .then(function (data) {
-        var pay = (data.payments || []).slice().sort(function (a, b) {
-          return String(a.date || "").localeCompare(String(b.date || ""));
-        });
-        var first = pay[0];
-        var head = pay.length
-          ? '<div class="detail-firstpay">' +
-            '<span class="detail-label">First payment</span>' +
-            '<span class="detail-firstpay-amount">' + peso(first.amount) + "</span>" +
-            '<span class="detail-firstpay-meta">' + escapeHtml(niceDate(first.date)) +
-            " · " + escapeHtml(first.method || "—") +
-            (first.receiptNo ? " · " + escapeHtml(first.receiptNo) : "") + "</span></div>"
-          : "";
-        if (pay.length === 0) {
-          body.innerHTML = head +
-            '<p class="empty-state">No payments recorded for this student yet.</p>';
-          return;
-        }
-        var html = head +
-          '<div class="table-wrap"><table class="data-table payment-table">' +
-          "<thead><tr><th>#</th><th>Date</th><th>Receipt</th><th>Amount</th>" +
-          "<th>Method</th><th>Note</th></tr></thead><tbody>";
-        pay.forEach(function (p, i) {
-          html +=
-            "<tr><td>" + (i + 1) + "</td>" +
-            "<td>" + escapeHtml(p.date || "—") + "</td>" +
-            "<td>" + escapeHtml(p.receiptNo) + "</td>" +
-            '<td class="amount-cell">' + peso(p.amount) + "</td>" +
-            "<td>" + escapeHtml(p.method || "—") + "</td>" +
-            "<td>" + escapeHtml(p.note || "—") + "</td></tr>";
-        });
-        html += "</tbody></table></div>";
-        html += '<p class="history-total">Total paid: <strong>' + peso(data.total) +
-          "</strong> · " + pay.length + (pay.length === 1 ? " payment" : " payments") + "</p>";
-        body.innerHTML = html;
+        detailPaymentData = data;
+        renderDetailPayments();
       })
       .catch(function (err) {
         body.innerHTML = '<p class="empty-state">' + escapeHtml(err.message) + "</p>";
@@ -2303,8 +2280,317 @@
       modal.hidden = true;
       openPaymentModal(student.id);
     });
+    var printBtn = document.createElement("button");
+    printBtn.type = "button";
+    printBtn.className = "btn btn-secondary";
+    printBtn.textContent = "🖨 Print statement";
+    printBtn.title = "Print every payment on record, month by month";
+    printBtn.addEventListener("click", printDetailStatement);
+    actions.appendChild(printBtn);
     actions.appendChild(editBtn);
     actions.appendChild(payBtn);
+  }
+
+  /** "2026-01" for a payment, used to group the history by month. */
+  function monthKey(dateStr) {
+    return String(dateStr || "").slice(0, 7);
+  }
+
+  /** "January 2026" for a "2026-01" key. */
+  function monthLabel(key) {
+    if (!/^\d{4}-\d{2}$/.test(key)) return "All months";
+    var names = ["January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"];
+    return names[Number(key.slice(5, 7)) - 1] + " " + key.slice(0, 4);
+  }
+
+  /**
+   * Draws the payment history inside the detail modal, filtered to the month
+   * chosen in the dropdown ("All months" shows everything). Each row carries a
+   * print button that produces an official-receipt-style document, and the
+   * filtered total acts as the "collected this month" figure.
+   */
+  function renderDetailPayments() {
+    if (!detailPaymentData) return;
+    var student = detailStudent || {};
+    var data = detailPaymentData;
+    var body = $("#detailPayments");
+    var pay = (data.payments || []).slice().sort(function (a, b) {
+      return String(a.date || "").localeCompare(String(b.date || ""));
+    });
+
+    // Which months actually have payments, newest first, for the dropdown.
+    var months = [];
+    pay.forEach(function (p) {
+      var key = monthKey(p.date);
+      if (key && months.indexOf(key) === -1) months.push(key);
+    });
+    months.sort().reverse();
+
+    var selector = $("#detailMonthSelect");
+    if (selector) {
+      var keep = selector.value || "all";
+      selector.innerHTML = '<option value="all">All months</option>' +
+        months.map(function (m) {
+          return '<option value="' + m + '">' + monthLabel(m) + "</option>";
+        }).join("");
+      // Keep the office's choice when they record a payment and the list
+      // refreshes; fall back to "all" only if that month vanished.
+      selector.value = months.indexOf(keep) !== -1 || keep === "all" ? keep : "all";
+    }
+    var chosen = selector ? selector.value : "all";
+    var shown = chosen === "all" ? pay : pay.filter(function (p) {
+      return monthKey(p.date) === chosen;
+    });
+
+    var monthTotal = shown.reduce(function (sum, p) { return sum + Number(p.amount || 0); }, 0);
+    var first = pay[0];
+    var head = first
+      ? '<div class="detail-firstpay">' +
+        '<span class="detail-label">First payment (down payment)</span>' +
+        '<span class="detail-firstpay-amount">' + peso(first.amount) + "</span>" +
+        '<span class="detail-firstpay-meta">' + escapeHtml(niceDate(first.date)) +
+        " · " + escapeHtml(first.method || "—") +
+        (first.receiptNo ? " · " + escapeHtml(first.receiptNo) : "") + "</span></div>"
+      : "";
+
+    var toolbar =
+      '<div class="detail-monthbar">' +
+      '<label class="field inline-field">' +
+      '<span class="detail-label">Month</span>' +
+      '<select id="detailMonthSelect">' +
+      '<option value="all">All months</option>' +
+      months.map(function (m) {
+        return '<option value="' + m + '">' + monthLabel(m) + "</option>";
+      }).join("") +
+      "</select></label>" +
+      '<span class="detail-monthsum">' +
+      (chosen === "all" ? "Total paid" : monthLabel(chosen)) + ": <strong>" +
+      peso(monthTotal) + "</strong> · " + shown.length +
+      (shown.length === 1 ? " payment" : " payments") + "</span></div>";
+
+    if (!selector) {
+      // First draw: lay down the header, the month dropdown and the summary.
+      body.innerHTML = head + toolbar;
+      var fresh = $("#detailMonthSelect", body);
+      if (fresh) fresh.addEventListener("change", renderDetailPayments);
+    } else {
+      // A month was re-chosen: refresh the summary line and clear the old
+      // table so the list never stacks up. The dropdown keeps its selection.
+      var sum = body.querySelector(".detail-monthsum");
+      if (sum) {
+        sum.innerHTML =
+          (chosen === "all" ? "Total paid" : monthLabel(chosen)) + ": <strong>" +
+          peso(monthTotal) + "</strong> · " + shown.length +
+          (shown.length === 1 ? " payment" : " payments");
+      }
+      $$(".detail-list, .empty-state", body).forEach(function (el) { el.remove(); });
+    }
+
+    if (shown.length === 0) {
+      var empty = document.createElement("p");
+      empty.className = "empty-state";
+      empty.textContent = chosen === "all"
+        ? "No payments recorded for this student yet."
+        : "No payments recorded in " + monthLabel(chosen) + ".";
+      body.appendChild(empty);
+      return;
+    }
+
+    /* Group what is showing by month, oldest month first, and draw one
+       collapsible section per month — like a bank statement: each month has
+       its own header (name, payment count, subtotal) with its rows under it. */
+    var groups = [];
+    shown.forEach(function (p) {
+      var key = monthKey(p.date) || "unknown";
+      var g = null;
+      for (var i = 0; i < groups.length; i++) {
+        if (groups[i].key === key) { g = groups[i]; break; }
+      }
+      if (!g) { g = { key: key, items: [] }; groups.push(g); }
+      g.items.push(p);
+    });
+    groups.sort(function (a, b) { return a.key.localeCompare(b.key); });
+
+    var list = document.createElement("div");
+    list.className = "detail-list";
+    var html = "";
+    groups.forEach(function (g, gi) {
+      var gTotal = g.items.reduce(function (sum, p) { return sum + Number(p.amount || 0); }, 0);
+      html +=
+        '<div class="month-group' + (chosen === "all" && gi > 0 ? " is-collapsed" : "") + '">' +
+        '<button type="button" class="month-head" data-month-toggle="' + escapeHtml(g.key) + '">' +
+        '<span class="month-name">' + escapeHtml(g.key === "unknown" ? "Undated payments" : monthLabel(g.key)) + "</span>" +
+        '<span class="month-meta">' + g.items.length +
+        (g.items.length === 1 ? " payment" : " payments") + " · " +
+        '<strong>' + peso(gTotal) + "</strong></span>" +
+        '<span class="month-caret">▾</span></button>' +
+        '<div class="month-body"><div class="table-wrap"><table class="data-table payment-table">' +
+        "<thead><tr><th>#</th><th>Date</th><th>Receipt</th><th>Amount</th>" +
+        "<th>Method</th><th>Note</th><th></th></tr></thead><tbody>";
+      g.items.forEach(function (p, i) {
+        html +=
+          "<tr><td>" + (i + 1) + "</td>" +
+          "<td>" + escapeHtml(p.date || "—") + "</td>" +
+          "<td>" + escapeHtml(p.receiptNo) + "</td>" +
+          '<td class="amount-cell">' + peso(p.amount) + "</td>" +
+          "<td>" + escapeHtml(p.method || "—") + "</td>" +
+          "<td>" + escapeHtml(p.note || "—") + "</td>" +
+          '<td><button type="button" class="icon-btn" data-print-receipt="' +
+          escapeHtml(String(p.receiptNo || "")) + '" title="Print official receipt">🖨</button></td></tr>';
+      });
+      html += "</tbody></table></div></div></div>";
+    });
+    list.innerHTML = html;
+    body.appendChild(list);
+
+    // Open/close each month section when its header is tapped.
+    $$("[data-month-toggle]", list).forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        btn.closest(".month-group").classList.toggle("is-collapsed");
+      });
+    });
+    $$("[data-print-receipt]", list).forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var receipt = shown.filter(function (p) {
+          return String(p.receiptNo || "") === btn.getAttribute("data-print-receipt");
+        })[0];
+        if (receipt) printReceipt(receipt);
+      });
+    });
+  }
+
+  /** Amount in words for the receipt, Philippine peso style. */
+  function pesoInWords(n) {
+    n = Math.round(Number(n) * 100) / 100;
+    var ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+      "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen",
+      "Seventeen", "Eighteen", "Nineteen"];
+    var tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+    function below1000(x) {
+      var s = "";
+      if (x >= 100) { s += ones[Math.floor(x / 100)] + " Hundred "; x %= 100; }
+      if (x >= 20) { s += tens[Math.floor(x / 10)] + (x % 10 ? "-" + ones[x % 10] : " "); }
+      else if (x > 0) { s += ones[x] + " "; }
+      return s.trim();
+    }
+    if (n === 0) return "Zero";
+    var whole = Math.floor(n), cents = Math.round((n - whole) * 100);
+    var groups = [[1e9, "Billion"], [1e6, "Million"], [1e3, "Thousand"]];
+    var words = "";
+    groups.forEach(function (g) {
+      if (whole >= g[0]) { words += below1000(Math.floor(whole / g[0])) + " " + g[1] + " "; whole %= g[0]; }
+    });
+    if (whole) words += below1000(whole) + " ";
+    words = words.trim();
+    return words + " Pesos" + (cents ? " and " + below1000(cents) + " Centavos" : "") + " Only";
+  }
+
+  /**
+   * Opens a printable official receipt in a new window — school header, OR
+   * number, who paid, the amount in figures and words, the running balance,
+   * and a signature line — the format the office hands over at the window.
+   */
+  function printReceipt(p) {
+    var s = detailStudent || {};
+    var doc = "<!doctype html><html><head><meta charset='utf-8'><title>Official Receipt " +
+      escapeHtml(p.receiptNo || "") + "</title><style>" +
+      "body{font-family:'Segoe UI',Arial,sans-serif;color:#111;margin:24px;}" +
+      ".rcpt{max-width:720px;margin:0 auto;border:2px solid #04231a;padding:24px 32px;}" +
+      ".rcpt-head{display:flex;align-items:center;gap:14px;border-bottom:2px solid #04231a;padding-bottom:12px;}" +
+      ".rcpt-head img{height:64px;}" +
+      ".rcpt-school{font-size:20px;font-weight:700;letter-spacing:.5px;}" +
+      ".rcpt-addr{font-size:11px;color:#444;}" +
+      ".rcpt-title{margin:14px 0 4px;text-align:center;font-weight:700;letter-spacing:3px;font-size:15px;}" +
+      ".rcpt-no{display:flex;justify-content:space-between;font-size:13px;margin-bottom:12px;}" +
+      "table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px;}" +
+      "td,th{border:1px solid #999;padding:7px 10px;text-align:left;}" +
+      ".amt{text-align:right;font-weight:700;white-space:nowrap;}" +
+      ".words{margin-top:10px;font-size:12px;font-style:italic;}" +
+      ".totals{margin-top:14px;font-size:13px;width:46%;margin-left:auto;}" +
+      ".totals td{border:none;padding:3px 0;}" +
+      ".totals .amt{font-size:15px;}" +
+      ".sign{margin-top:48px;display:flex;justify-content:space-between;font-size:12px;}" +
+      ".sign div{border-top:1px solid #111;padding-top:4px;width:220px;text-align:center;}" +
+      ".foot{margin-top:16px;text-align:center;font-size:10px;color:#666;}" +
+      "@media print{body{margin:0}.rcpt{border-color:#000}}" +
+      "</style></head><body><div class='rcpt'>" +
+      "<div class='rcpt-head'><img src='logo.png' alt=''><div>" +
+      "<div class='rcpt-school'>SAINT PATRICK'S ACADEMY, INC.</div>" +
+      "<div class='rcpt-addr'>Official Receipt — Student Fees</div></div></div>" +
+      "<div class='rcpt-title'>OFFICIAL RECEIPT</div>" +
+      "<div class='rcpt-no'><span><strong>OR No.:</strong> " + escapeHtml(p.receiptNo || "—") + "</span>" +
+      "<span><strong>Date:</strong> " + escapeHtml(niceDate(p.date)) + "</span></div>" +
+      "<table><tr><th style='width:30%'>Received from</th><td>" + escapeHtml(s.name || "") +
+      "</td></tr><tr><th>Student ID / Grade & Section</th><td>" +
+      escapeHtml((s.id || "") + " · " + (s.grade || "—") + (s.section ? " – " + s.section : "")) +
+      "</td></tr><tr><th>Particulars</th><td>School fees payment" +
+      (p.note ? " — " + escapeHtml(p.note) : "") + "</td></tr>" +
+      "<tr><th>Payment method</th><td>" + escapeHtml(p.method || "—") + "</td></tr></table>" +
+      "<div class='words'>Amount in words: " + pesoInWords(p.amount) + "</div>" +
+      "<table class='totals'>" +
+      "<tr><td>Total assessment</td><td class='amt'>" + peso(s.totalFee) + "</td></tr>" +
+      "<tr><td>Total paid to date</td><td class='amt'>" + peso(s.amountPaid) + "</td></tr>" +
+      "<tr><td><strong>Remaining balance</strong></td><td class='amt'><strong>" + peso(s.balance) + "</strong></td></tr>" +
+      "</table>" +
+      "<div class='sign'><div>Received by (cashier)</div><div>Payee signature</div></div>" +
+      "<div class='foot'>This receipt serves as proof of payment. Please keep it for your records.</div>" +
+      "</div></body></html>";
+    var w = window.open("", "_blank");
+    if (!w) { toast("Allow pop-ups to print the receipt.", true); return; }
+    w.document.write(doc);
+    w.document.close();
+    w.focus();
+    setTimeout(function () { w.print(); }, 400);
+  }
+
+  /** Prints the whole statement: identity block plus every payment, grouped. */
+  function printDetailStatement() {
+    if (!detailStudent || !detailPaymentData) return;
+    var s = detailStudent;
+    var pay = (detailPaymentData.payments || []).slice().sort(function (a, b) {
+      return String(a.date || "").localeCompare(String(b.date || ""));
+    });
+    var rows = pay.map(function (p, i) {
+      return "<tr><td>" + (i + 1) + "</td><td>" + escapeHtml(niceDate(p.date)) + "</td><td>" +
+        escapeHtml(p.receiptNo || "—") + "</td><td>" + escapeHtml(p.method || "—") +
+        "</td><td class='amt'>" + peso(p.amount) + "</td></tr>";
+    }).join("");
+    var doc = "<!doctype html><html><head><meta charset='utf-8'><title>Statement of account — " +
+      escapeHtml(s.name || "") + "</title><style>" +
+      "body{font-family:'Segoe UI',Arial,sans-serif;color:#111;margin:24px;}" +
+      ".rcpt{max-width:760px;margin:0 auto;}" +
+      ".rcpt-school{font-size:18px;font-weight:700;}" +
+      ".rcpt-addr{font-size:11px;color:#444;margin-bottom:14px;}" +
+      "h2{margin:6px 0 2px;font-size:16px;}" +
+      "table{width:100%;border-collapse:collapse;font-size:12px;margin-top:12px;}" +
+      "td,th{border:1px solid #999;padding:6px 9px;text-align:left;}" +
+      "th{background:#eee;}.amt{text-align:right;white-space:nowrap;}" +
+      ".ids{font-size:12px;color:#333;margin-top:8px;}" +
+      ".totals{margin-top:14px;width:50%;margin-left:auto;font-size:13px;border-collapse:collapse;}" +
+      ".totals td{border:none;padding:3px 0;}" +
+      "</style></head><body><div class='rcpt'>" +
+      "<div class='rcpt-school'>SAINT PATRICK'S ACADEMY, INC.</div>" +
+      "<div class='rcpt-addr'>Statement of Account — Student Fees</div>" +
+      "<h2>" + escapeHtml(s.name || "") + "</h2>" +
+      "<div class='ids'>Student ID: " + escapeHtml(s.id || "—") + " · Grade " +
+      escapeHtml(s.grade || "—") + (s.section ? " – " + escapeHtml(s.section) : "") +
+      " · Status: " + escapeHtml(s.status || "—") + "</div>" +
+      (pay.length
+        ? "<table><thead><tr><th>#</th><th>Date</th><th>Receipt</th><th>Method</th><th>Amount</th></tr></thead><tbody>" +
+          rows + "</tbody></table>"
+        : "<p>No payments recorded.</p>") +
+      "<table class='totals'>" +
+      "<tr><td>Total assessment</td><td class='amt'>" + peso(s.totalFee) + "</td></tr>" +
+      "<tr><td>Total paid</td><td class='amt'>" + peso(detailPaymentData.total) + "</td></tr>" +
+      "<tr><td><strong>Balance</strong></td><td class='amt'><strong>" + peso(s.balance) + "</strong></td></tr>" +
+      "</table></div></body></html>";
+    var w = window.open("", "_blank");
+    if (!w) { toast("Allow pop-ups to print the statement.", true); return; }
+    w.document.write(doc);
+    w.document.close();
+    w.focus();
+    setTimeout(function () { w.print(); }, 400);
   }
 
   function openHistoryModal(student) {

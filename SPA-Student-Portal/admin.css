@@ -1142,6 +1142,95 @@ body.theme-dark .detail-item[data-primary="1"] {
 
 body.theme-dark .detail-firstpay .detail-label { color: #6fcf97; }
 
+body.theme-dark .month-group {
+  border-color: #24352d;
+  background: #16211c;
+}
+
+body.theme-dark .month-head { background: rgba(111, 207, 151, 0.08); }
+
+body.theme-dark .month-head:hover { background: rgba(111, 207, 151, 0.15); }
+
+/* Month picker + summary above the payment table in the detail modal. */
+.detail-monthbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 10px 0 12px;
+}
+
+.detail-monthbar select {
+  padding: 7px 10px;
+  border: 1px solid var(--line, #d7e2da);
+  border-radius: 8px;
+  background: var(--card, #fff);
+  color: var(--ink);
+  font: inherit;
+  min-width: 180px;
+}
+
+.detail-monthsum {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.detail-monthsum strong {
+  color: var(--ink);
+  font-size: 15px;
+}
+
+/* Organized payment history: one collapsible block per month. */
+.month-group {
+  border: 1px solid var(--line, #d7e2da);
+  border-radius: 10px;
+  margin-bottom: 10px;
+  overflow: hidden;
+  background: var(--card, #fff);
+}
+
+.month-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  background: rgba(47, 109, 79, 0.07);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.month-head:hover { background: rgba(47, 109, 79, 0.13); }
+
+.month-name {
+  font-weight: 700;
+  color: var(--ink);
+  flex: 1;
+}
+
+.month-meta {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.month-meta strong { color: var(--ink); }
+
+.month-caret {
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+
+.month-group.is-collapsed .month-caret { transform: rotate(-90deg); }
+
+.month-group.is-collapsed .month-body { display: none; }
+
+.month-body { padding: 0; }
+
+.month-body .table-wrap { border: none; max-height: none; }
+
 body.theme-dark .student-row:hover td { background: rgba(111, 207, 151, 0.08); }
 
 /* ---------------- Logs ---------------- */
