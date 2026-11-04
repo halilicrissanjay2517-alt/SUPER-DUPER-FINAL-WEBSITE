@@ -1208,6 +1208,67 @@ body.theme-dark .month-partial { background: #2a2210; color: #e8b64c; }
 body.theme-dark .month-unpaid { background: #2a1414; color: #e08a8a; }
 body.theme-dark .months-chip { background: #16211c; border-color: #24352d; }
 
+/* ------------- Full-screen student account view ------------- */
+.account-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.account-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.account-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 16px 20px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, rgba(47, 109, 79, 0.14), rgba(47, 109, 79, 0.03));
+  border: 1px solid rgba(47, 109, 79, 0.28);
+  margin-bottom: 14px;
+}
+
+.account-name { margin: 0 0 4px; font-size: 22px; }
+
+.account-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.summary-card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px 14px;
+  background: var(--card, #fff);
+  border: 1px solid var(--line, #dde5df);
+  border-radius: 10px;
+}
+
+.summary-value {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+body.theme-dark .summary-card { background: #16211c; border-color: #24352d; }
+body.theme-dark .account-hero { background: #122019; border-color: #2f6d4f; }
+
+/* Month-plan table rows: the same green/amber/red language as the modal grid. */
+tr.month-paid td { background: rgba(47, 109, 79, 0.08); }
+tr.month-partial td { background: rgba(190, 143, 22, 0.08); }
+tr.month-unpaid td { background: rgba(178, 58, 58, 0.05); }
+body.theme-dark tr.month-paid td { background: rgba(111, 207, 151, 0.08); }
+body.theme-dark tr.month-partial td { background: rgba(232, 182, 76, 0.08); }
+body.theme-dark tr.month-unpaid td { background: rgba(224, 138, 138, 0.07); }
+
 body.theme-dark .month-group {
   border-color: #24352d;
   background: #16211c;

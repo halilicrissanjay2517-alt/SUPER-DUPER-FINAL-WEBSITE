@@ -444,6 +444,56 @@
                 </p>
             </section>
 
+            <!-- ---- STUDENT ACCOUNT VIEW (full screen) ----
+                 Opens when a student row is clicked: the whole dashboard swaps
+                 to this student's page — record summary, the month-by-month
+                 payment table (down payment credited first), and the payment
+                 history. A back button returns to the student list. -->
+            <section class="admin-view" id="viewStudentaccount" hidden>
+                <div class="admin-toolbar account-toolbar">
+                    <button type="button" class="btn btn-secondary" id="accountBackBtn">&larr; Back to students</button>
+                    <div class="account-actions" id="accountActions"></div>
+                </div>
+                <div class="account-hero">
+                    <div>
+                        <h2 class="account-name" id="accountName">Student</h2>
+                        <p class="muted" id="accountSubtitle"></p>
+                    </div>
+                    <span class="badge status-chip status-tone-blue" id="accountStatus"></span>
+                </div>
+                <div class="account-summary" id="accountSummary"></div>
+                <h3 class="detail-payments-title">Monthly payment table <small>June to March · down payment credited first</small></h3>
+                <div class="table-wrap">
+                    <table class="data-table" id="accountMonthTable">
+                        <thead><tr>
+                            <th scope="col">Month</th>
+                            <th scope="col">Monthly due</th>
+                            <th scope="col">Paid this month</th>
+                            <th scope="col">Running balance</th>
+                            <th scope="col">Status</th>
+                        </tr></thead>
+                        <tbody id="accountMonthRows"></tbody>
+                    </table>
+                </div>
+                <h3 class="detail-payments-title">Student record</h3>
+                <div class="detail-grid" id="accountFields"></div>
+                <h3 class="detail-payments-title">Payment history <small>first payment first</small></h3>
+                <div class="table-wrap">
+                    <table class="data-table payment-table" id="accountPayTable">
+                        <thead><tr>
+                            <th scope="col">#</th>
+                            <th scope="col">Date</th>
+                            <th scope="col">Receipt</th>
+                            <th scope="col">Amount</th>
+                            <th scope="col">Method</th>
+                            <th scope="col">Note</th>
+                        </tr></thead>
+                        <tbody id="accountPayRows"></tbody>
+                    </table>
+                </div>
+                <p class="history-total" id="accountPayTotal"></p>
+            </section>
+
             <!-- ---- Logs view ---- -->
             <section class="admin-view" id="viewLogs" hidden>
                 <div class="admin-toolbar">

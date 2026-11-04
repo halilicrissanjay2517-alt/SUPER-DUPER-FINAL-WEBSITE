@@ -2192,20 +2192,46 @@
   var detailPaymentData = null;
 
   function openStudentDetail(student) {
-    var modal = $("#studentDetailModal");
-    if (!modal) return;
+    // Clicking a student swaps the whole dashboard to their account page.
+    showStudentAccount(student);
+  }
 
-    detailStudent = student;
-    detailPaymentData = null;
+  /* ------------------------------------------------ Student account screen */
+  var accountStudent = null;
+  var accountPaymentData = null;
 
-    $("#detailName").textContent = student.name || "Student";
-    var sub = student.id + " · " + (student.grade || "—") +
+  /**
+   * The full-screen student account dashboard. Clicking a student in the list
+   * flips the whole admin shell to this page — header, summary cards, the
+   * month-by-month payment table (down payment credited first), the record,
+   * and the payment history. The back button returns to the student list.
+   */
+  function showStudentAccount(student) {
+    if (!student) return;
+    accountStudent = student;
+    accountPaymentData = null;
+
+    // Flip the shell to the student-account view exactly like a nav click.
+    var view = "studentaccount";
+    $$('[data-view]').forEach(function (b) {
+      b.classList.toggle("is-active", b.getAttribute("data-view") === view);
+    });
+    VIEWS.forEach(function (name) {
+      var section = $("#view" + name.charAt(0).toUpperCase() + name.slice(1));
+      if (section) section.hidden = name !== view;
+    });
+    $("#viewTitle").textContent = student.name || "Student";
+    $("#viewSubtitle").textContent = student.id + " · " + (student.grade || "—") +
       (student.section ? " · " + student.section : "");
-    $("#detailSubtitle").textContent = sub;
+    ["#addStudentBtn", "#addPaymentBtn", "#createAccountBtn"].forEach(function (sel) {
+      var el = $(sel);
+      if (el) el.hidden = true;
+    });
+    var main = $(".admin-main");
+    if (main) main.scrollTop = 0;
 
-    // Re-colour the status chip each time, because a class set by a previous
-    // student would stick otherwise.
-    var chip = $("#detailStatus");
+    // Status chip, re-coloured for this student.
+    var chip = $("#accountStatus");
     chip.textContent = student.status || "—";
     var tone = ({
       "badge-green": "status-tone-green",
@@ -2213,85 +2239,183 @@
       "badge-blue": "status-tone-blue",
     })[badgeFor(student.status)] || "status-tone-blue";
     SpaStyles.setVariant(chip, {
-      tone: "tone", // placeholder key so every previous tone class is cleared
+      tone: "tone",
       "status-tone-green": "status-tone-green",
       "status-tone-amber": "status-tone-amber",
       "status-tone-blue": "status-tone-blue",
     }, tone);
 
-    var rows = [
-      ["Student ID", student.id, true],
-      ["Full name", student.name],
+    // Summary cards up top: the figures the office asks for first.
+    var summary = [
+      ["Student ID", student.id],
       ["Grade", student.grade],
       ["Section", student.section],
-      ["Email", student.email],
-      ["Guardian", student.guardian],
-      ["Guardian contact", student.guardianContact],
-      ["Contact number", student.contact],
-      ["Address", student.address],
-      ["Birthdate", student.birthdate],
-      ["Sex", student.sex],
-      ["Last school", student.lastSchool],
       ["Tuition fee", peso(student.totalFee)],
       ["Amount paid", peso(student.amountPaid)],
       ["Balance", peso(student.balance)],
       ["Due date", student.dueDate ? niceDate(student.dueDate) : "—"],
       ["Last payment", student.lastPaymentDate ? niceDate(student.lastPaymentDate) : "No payments yet"],
-      ["Portal username", student.username],
+      ["Guardian", student.guardian],
+      ["Contact", student.contact],
+    ];
+    $("#accountSummary").innerHTML = summary.map(function (r) {
+      var v = r[1] === undefined || r[1] === null || String(r[1]) === "" ? "—" : r[1];
+      return '<div class="summary-card"><span class="detail-label">' + escapeHtml(r[0]) +
+        '</span><span class="summary-value">' + escapeHtml(v) + '</span></div>';
+    }).join("");
+
+    // The rest of the record, below the payment table.
+    var rows = [
+      ["Full name", student.name], ["Email", student.email],
+      ["Guardian", student.guardian], ["Guardian contact", student.guardianContact],
+      ["Contact number", student.contact], ["Address", student.address],
+      ["Birthdate", student.birthdate], ["Sex", student.sex],
+      ["Last school", student.lastSchool], ["Portal username", student.username],
       ["Registered", student.registeredAt ? niceDate(student.registeredAt) : "—"],
       ["Notes", student.note],
     ];
-    var dl = $("#detailFields");
-    dl.innerHTML = rows.map(function (r) {
-      var value = r[1] === undefined || r[1] === null || String(r[1]) === "" ? "—" : r[1];
-      return "<div class=\"detail-item\"" + (r[2] ? " data-primary=\"1\"" : "") + ">" +
-        "<span class=\"detail-label\">" + escapeHtml(r[0]) + "</span>" +
-        "<span class=\"detail-value\">" + escapeHtml(value) + "</span></div>";
+    $("#accountFields").innerHTML = rows.map(function (r) {
+      var v = r[1] === undefined || r[1] === null || String(r[1]) === "" ? "—" : r[1];
+      return '<div class="detail-item"><span class="detail-label">' + escapeHtml(r[0]) +
+        '</span><span class="detail-value">' + escapeHtml(v) + '</span></div>';
     }).join("");
 
-    var body = $("#detailPayments");
-    body.innerHTML = '<p class="table-empty">Loading payment history…</p>';
-    $("#detailMonths").innerHTML = '<p class="table-empty">Loading payment schedule…</p>';
-    $("#detailModalActions").innerHTML = "";
-    modal.hidden = false;
+    $("#accountMonthRows").innerHTML =
+      '<tr><td colspan="5" class="table-empty">Loading payment schedule…</td></tr>';
+    $("#accountPayRows").innerHTML =
+      '<tr><td colspan="6" class="table-empty">Loading payment history…</td></tr>';
+    $("#accountPayTotal").textContent = "";
 
-    api("/api/payments?studentId=" + encodeURIComponent(student.id))
-      .then(function (data) {
-        detailPaymentData = data;
-        renderDetailMonths(data);
-        renderDetailPayments();
-      })
-      .catch(function (err) {
-        body.innerHTML = '<p class="empty-state">' + escapeHtml(err.message) + "</p>";
-      });
-
-    var actions = $("#detailModalActions");
-    var editBtn = document.createElement("button");
-    editBtn.type = "button";
-    editBtn.className = "btn btn-secondary";
-    editBtn.textContent = "Edit details";
-    editBtn.addEventListener("click", function () {
-      modal.hidden = true;
-      openStudentModal(student);
-    });
-    var payBtn = document.createElement("button");
-    payBtn.type = "button";
-    payBtn.className = "btn btn-primary";
-    payBtn.textContent = "Record payment";
-    payBtn.addEventListener("click", function () {
-      modal.hidden = true;
-      openPaymentModal(student.id);
-    });
+    var actions = $("#accountActions");
+    actions.innerHTML = "";
     var printBtn = document.createElement("button");
     printBtn.type = "button";
     printBtn.className = "btn btn-secondary";
     printBtn.textContent = "🖨 Print statement";
     printBtn.title = "Print every payment on record, month by month";
-    printBtn.addEventListener("click", printDetailStatement);
+    printBtn.addEventListener("click", function () {
+      if (!accountPaymentData) return;
+      // The statement printer reads the shared detail state; point it at
+      // this student's fetched ledger before printing.
+      detailStudent = student;
+      detailPaymentData = accountPaymentData;
+      printDetailStatement();
+    });
+    var editBtn = document.createElement("button");
+    editBtn.type = "button";
+    editBtn.className = "btn btn-secondary";
+    editBtn.textContent = "Edit details";
+    editBtn.addEventListener("click", function () { openStudentModal(student); });
+    var payBtn = document.createElement("button");
+    payBtn.type = "button";
+    payBtn.className = "btn btn-primary";
+    payBtn.textContent = "Record payment";
+    payBtn.addEventListener("click", function () { openPaymentModal(student.id); });
     actions.appendChild(printBtn);
     actions.appendChild(editBtn);
     actions.appendChild(payBtn);
+
+    api("/api/payments?studentId=" + encodeURIComponent(student.id))
+      .then(function (data) {
+        accountPaymentData = data;
+        renderAccountMonths(data);
+        renderAccountPayments(data);
+      })
+      .catch(function (err) {
+        $("#accountMonthRows").innerHTML =
+          '<tr><td colspan="5" class="table-empty">' + escapeHtml(err.message) + '</td></tr>';
+        $("#accountPayRows").innerHTML =
+          '<tr><td colspan="6" class="table-empty">' + escapeHtml(err.message) + '</td></tr>';
+      });
   }
+
+  /**
+   * The month-by-month payment table: one row per school month (Jun → Mar).
+   * The FIRST payment (down payment) is credited against the earliest months,
+   * then each month's own payments; any surplus carries forward. Shows the
+   * monthly due, what landed that month, the running balance after it, and a
+   * Paid / Partial / Unpaid status — same plan as the server's Monthly sheet.
+   */
+  function renderAccountMonths(data) {
+    var student = accountStudent || {};
+    var pay = (data && data.payments) || [];
+    var totalFee = Number(student.totalFee) || 0;
+    var monthlyDue = Math.round(totalFee / SCHOOL_MONTHS_VIEW.length);
+
+    var paid = {};
+    SCHOOL_MONTHS_VIEW.forEach(function (m) { paid[m] = 0; });
+    pay.forEach(function (p) {
+      var day = String(p.date || "");
+      if (!/^\d{4}-\d{2}/.test(day)) return;
+      var m = Number(day.slice(5, 7));
+      var idx = m >= 6 ? m - 6 : m + 4;
+      if (idx >= 0 && idx < SCHOOL_MONTHS_VIEW.length) {
+        paid[SCHOOL_MONTHS_VIEW[idx]] += Number(p.amount) || 0;
+      }
+    });
+
+    var sorted = pay.slice().sort(function (a, b) {
+      return String(a.date || "").localeCompare(String(b.date || ""));
+    });
+    var down = sorted[0] || null;
+    var downAmt = down ? Number(down.amount) || 0 : 0;
+
+    var credit = downAmt;
+    var running = totalFee;
+    var downTagged = false;
+    var html = "";
+    SCHOOL_MONTHS_VIEW.forEach(function (m) {
+      var got = paid[m];
+      var applied = Math.min(credit, monthlyDue);
+      credit -= applied;
+      var own = Math.min(got, monthlyDue - applied);
+      if (own < 0) own = 0;
+      applied += own;
+      credit += Math.max(0, got - own); // surplus rolls to the next month
+      var after = Math.max(0, running - applied);
+      var state = monthlyDue > 0 && applied >= monthlyDue ? "paid" : applied > 0 ? "partial" : "unpaid";
+      var note = "";
+      if (downAmt > 0 && credit <= 0 && !downTagged && applied > 0) {
+        // Tag the month where the down payment finished being used up.
+        note = ' <span class="badge badge-blue">Down payment ' + peso(downAmt) + "</span>";
+        downTagged = true;
+      }
+      html += "<tr class='month-row month-" + state + "'>" +
+        "<td><strong>" + m + "</strong>" + note + "</td>" +
+        '<td class="amount-cell">' + peso(monthlyDue) + "</td>" +
+        '<td class="amount-cell">' + peso(applied) + "</td>" +
+        '<td class="amount-cell">' + peso(after) + "</td>" +
+        '<td><span class="badge ' +
+        (state === "paid" ? 'badge-green">Paid' : state === "partial" ? 'badge-amber">Partial' : 'badge-red">Unpaid') +
+        "</span></td></tr>";
+      running = after;
+    });
+    $("#accountMonthRows").innerHTML = html;
+  }
+
+  /** The flat payment history table under the month plan. */
+  function renderAccountPayments(data) {
+    var rows = (data && data.payments) || [];
+    var tbody = $("#accountPayRows");
+    if (rows.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="table-empty">No payments recorded for this student yet.</td></tr>';
+      $("#accountPayTotal").textContent = "";
+      return;
+    }
+    var html = "";
+    rows.forEach(function (p, i) {
+      html += "<tr><td>" + (i + 1) + "</td>" +
+        "<td>" + escapeHtml(p.date || "—") + "</td>" +
+        "<td>" + escapeHtml(p.receiptNo) + "</td>" +
+        '<td class="amount-cell">' + peso(p.amount) + "</td>" +
+        "<td>" + escapeHtml(p.method || "—") + "</td>" +
+        "<td>" + escapeHtml(p.note || "—") + "</td></tr>";
+    });
+    tbody.innerHTML = html;
+    $("#accountPayTotal").innerHTML = "Total paid: <strong>" + peso(data.total) + "</strong> · " +
+      rows.length + (rows.length === 1 ? " payment" : " payments");
+  }
+
 
   /** The ten school-year months the tuition plan is spread over. */
   var SCHOOL_MONTHS_VIEW = ["Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
@@ -2727,6 +2851,15 @@
   }
 
   /* ---------------------------------------------------------- Modal close */
+  // Back from the full-screen student account to the student list.
+  var backBtn = $("#accountBackBtn");
+  if (backBtn) {
+    backBtn.addEventListener("click", function () {
+      var studentsBtn = $('[data-view="students"]');
+      if (studentsBtn) studentsBtn.click();
+    });
+  }
+
   $$("[data-close-modal]").forEach(function (el) {
     el.addEventListener("click", function () {
       var modal = el.closest(".modal");
