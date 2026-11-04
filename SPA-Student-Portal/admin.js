@@ -142,6 +142,10 @@
       loadPayReqBadge();
     }, 30000);
     loadPayReqBadge();
+
+    // A refresh keeps the admin session; if an Excel watch was running before
+    // the refresh, pick it back up here so it never silently stops.
+    resumeExcelWatch();
   }
 
   var badgeTimer = null;
@@ -1448,9 +1452,65 @@
           the old one, and every open page reloads within seconds via the
           /api/version stamp.
        3. Keeps watching, so every later save updates the site too.
+
+     The watch SURVIVES A REFRESH: the file handle and the last-seen stamp are
+     kept in IndexedDB. On page load (or sign-in) the stored handle is picked
+     up and watching resumes — Chrome remembers the user granted access to
+     that file, so getFile() works again without a new permission prompt.
+     If the handle is stale (file moved/deleted), the button resets.
      Needs the File System Access API (Chrome/Edge). Elsewhere the button
      falls back to download + manual re-upload through a file picker. */
   var liveExcelBtn = $("#liveExcelBtn");
+  var liveExcelBtnLabel = liveExcelBtn ? liveExcelBtn.textContent : "";
+
+  /* IndexedDB plumbing. A plain localStorage cannot hold a FileSystemFileHandle
+     (it is not a serialisable value), but IndexedDB stores them directly. */
+  var LIVE_DB = "spa-live-excel";
+  var LIVE_STORE = "watch";
+
+  function liveDbOpen() {
+    return new Promise(function (resolve, reject) {
+      var req = indexedDB.open(LIVE_DB, 1);
+      req.onupgradeneeded = function () {
+        req.result.createObjectStore(LIVE_STORE);
+      };
+      req.onsuccess = function () { resolve(req.result); };
+      req.onerror = function () { reject(req.error || new Error("IndexedDB unavailable")); };
+    });
+  }
+
+  function liveDbPut(key, value) {
+    return liveDbOpen().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction(LIVE_STORE, "readwrite");
+        tx.objectStore(LIVE_STORE).put(value, key);
+        tx.oncomplete = function () { db.close(); resolve(); };
+        tx.onerror = function () { db.close(); reject(tx.error); };
+      });
+    });
+  }
+
+  function liveDbGet(key) {
+    return liveDbOpen().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction(LIVE_STORE, "readonly");
+        var req = tx.objectStore(LIVE_STORE).get(key);
+        req.onsuccess = function () { db.close(); resolve(req.result); };
+        req.onerror = function () { db.close(); reject(req.error); };
+      });
+    });
+  }
+
+  function liveDbDel(key) {
+    return liveDbOpen().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction(LIVE_STORE, "readwrite");
+        tx.objectStore(LIVE_STORE).delete(key);
+        tx.oncomplete = function () { db.close(); resolve(); };
+        tx.onerror = function () { db.close(); reject(tx.error); };
+      });
+    });
+  }
 
   function pushWorkbook(file, button, done) {
     button.disabled = true;
@@ -1488,32 +1548,112 @@
     input.click();
   }
 
+  /* The shared watcher. `watched` is a FileSystemFileHandle, `last` the last
+     mtime+size pair seen. Both are mirrored into IndexedDB so a refresh can
+     pick them up. A single instance runs per page — startExcelWatch() is
+     idempotent. */
+  var excelWatch = { handle: null, last: null, running: false };
+
+  function startExcelWatch(handle, lastStamp, button) {
+    if (excelWatch.running) return; // already watching on this page
+    excelWatch.handle = handle;
+    excelWatch.last = lastStamp || null;
+    excelWatch.running = true;
+    button.textContent = "Watching Excel…";
+    toast("Watching Excel — the site updates the moment you save.");
+    setTimeout(pollHandle, 3000);
+
+    function pollHandle() {
+      if (!excelWatch.handle || !excelWatch.running) return;
+      excelWatch.handle.getFile().then(function (file) {
+        // mtime and size together say "Excel actually saved something new".
+        if (!excelWatch.last) {
+          excelWatch.last = { mtime: file.lastModified, size: file.size };
+          liveDbPut("last", excelWatch.last).catch(function () {});
+        } else if (
+          file.lastModified !== excelWatch.last.mtime ||
+          file.size !== excelWatch.last.size
+        ) {
+          excelWatch.last = { mtime: file.lastModified, size: file.size };
+          liveDbPut("last", excelWatch.last).catch(function () {});
+          pushWorkbook(file, button, function () {
+            if (excelWatch.handle) setTimeout(pollHandle, 3000); // keep watching
+          });
+          return;
+        }
+        setTimeout(pollHandle, 3000);
+      }).catch(function () {
+        // Stale handle: the file was moved, deleted, or permission was lost.
+        stopExcelWatch(button);
+      });
+    }
+  }
+
+  function stopExcelWatch(button) {
+    excelWatch.handle = null;
+    excelWatch.running = false;
+    excelWatch.last = null;
+    liveDbDel("handle").catch(function () {});
+    liveDbDel("last").catch(function () {});
+    if (button) {
+      button.textContent = liveExcelBtnLabel;
+      button.title = "Download the live workbook, edit it in Excel, then send your changes straight back";
+    }
+    toast("Excel watching stopped.");
+  }
+
+  /* Resume after a refresh. Called once the admin is signed in: if a handle
+     was stored, verify permission is still granted (query first, prompt only
+     as a fallback since a prompt must come from a user gesture) and restart
+     the watcher at the stored stamp. */
+  function resumeExcelWatch() {
+    if (!liveExcelBtn || !window.showSaveFilePicker || !state.signedIn) return;
+    if (excelWatch.running) return;
+    liveDbGet("handle").then(function (handle) {
+      if (!handle) return;
+      return liveDbGet("last").then(function (last) {
+        return handle.queryPermission({ mode: "readwrite" }).then(function (perm) {
+          if (perm === "granted") {
+            startExcelWatch(handle, last, liveExcelBtn);
+          } else {
+            // Permission needs a user gesture again. Arm the button so the
+            // next click re-requests it instead of re-downloading.
+            liveExcelBtn.textContent = "Resume Excel watch ↺";
+            liveExcelBtn.title = "Click to resume watching your saved database.xlsx";
+            liveExcelBtn.dataset.resumePending = "1";
+            liveExcelBtn._resumeHandle = handle;
+          }
+        });
+      });
+    }).catch(function () { /* no stored watch — nothing to resume */ });
+  }
+
   if (liveExcelBtn) {
     liveExcelBtn.addEventListener("click", function () {
       if (!state.signedIn) return;
       var button = liveExcelBtn;
 
+      /* A refresh-resume armed by resumeExcelWatch(): the user clicked to
+         re-grant access to the file they were already watching. */
+      if (button.dataset.resumePending === "1" && button._resumeHandle) {
+        var handle = button._resumeHandle;
+        delete button.dataset.resumePending;
+        button._resumeHandle = null;
+        handle.requestPermission({ mode: "readwrite" }).then(function (perm) {
+          if (perm !== "granted") {
+            toast("Permission denied — watching not resumed.", true);
+            return;
+          }
+          return liveDbGet("last").then(function (last) {
+            startExcelWatch(handle, last, button);
+          });
+        }).catch(function () {
+          toast("Could not resume Excel watching.", true);
+        });
+        return;
+      }
+
       if (window.showSaveFilePicker) {
-        var watched = null;
-        var last = null;
-
-        function pollHandle() {
-          if (!watched) return;
-          watched.getFile().then(function (file) {
-            // mtime and size together say "Excel actually saved something new".
-            if (!last) {
-              last = { mtime: file.lastModified, size: file.size };
-            } else if (file.lastModified !== last.mtime || file.size !== last.size) {
-              last = { mtime: file.lastModified, size: file.size };
-              pushWorkbook(file, button, function () {
-                if (watched) setTimeout(pollHandle, 3000); // keep watching
-              });
-              return;
-            }
-            setTimeout(pollHandle, 3000);
-          }).catch(function () { watched = null; button.textContent = "Open in Excel ↺"; });
-        }
-
         fetch(apiUrl("/api/database"), { credentials: "same-origin" })
           .then(function (res) {
             if (!res.ok) throw new Error("Could not build the database file");
@@ -1530,10 +1670,18 @@
             });
           })
           .then(function (handle) {
-            watched = handle;
-            toast("Saved. Edit in Excel — the site updates the moment you save.");
-            button.textContent = "Watching Excel…";
-            setTimeout(pollHandle, 3000);
+            // Persist the handle and a fresh stamp, so a refresh resumes
+            // watching this exact file without going through the save dialog.
+            liveDbPut("handle", handle).catch(function () {});
+            excelWatch.handle = handle;
+            return handle.getFile();
+          })
+          .then(function (file) {
+            var stamp = { mtime: file.lastModified, size: file.size };
+            excelWatch.last = stamp;
+            return liveDbPut("last", stamp).catch(function () {}).then(function () {
+              startExcelWatch(excelWatch.handle, stamp, button);
+            });
           })
           .catch(function (err) {
             if (err && err.name === "AbortError") return; // save dialog cancelled
