@@ -562,7 +562,42 @@ function readWorkbook() {
 function saveDb(db) {
   // DB_DIR is a mounted volume on Render, so create it if the mount is late.
   if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
-  XLSX.writeFile(db, DB_FILE);
+  // Excel on Windows holds the workbook open and briefly locks it around its
+  // own saves, so a plain write can fail with EBUSY/EPERM right when the office
+  // is editing. Write to a temp file and swap it in, retrying a few times: the
+  // site keeps working (and the Excel watcher keeps pushing) through the lock.
+  // The temp name keeps the .xlsx extension — SheetJS picks the write format
+  // from the extension, and an unknown one (".incoming") makes it refuse.
+  const tmp = path.join(DB_DIR, "database.incoming.xlsx");
+  XLSX.writeFile(db, tmp);
+  const swap = () => {
+    try {
+      fs.renameSync(tmp, DB_FILE);
+      return true;
+    } catch (err) {
+      return false;
+    }
+  };
+  if (swap()) return;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    // Brief, synchronous pause: Excel only holds the lock for the moment it
+    // saves, so a few hundred ms is usually all that is needed.
+    const until = Date.now() + 200;
+    while (Date.now() < until) { /* spin */ }
+    if (swap()) return;
+  }
+  // Last resort: replace the contents rather than the file itself, which
+  // succeeds even when the directory entry is locked.
+  try {
+    fs.copyFileSync(tmp, DB_FILE);
+    fs.unlinkSync(tmp);
+  } catch (err) {
+    try { fs.unlinkSync(tmp); } catch (_) { /* already gone */ }
+    throw new Error(
+      "Could not save " + DB_FILE + " — " + err.message +
+        "\nThe workbook is open and locked in Excel. Close it (or save a copy under another name) and try again."
+    );
+  }
 }
 
 /**
@@ -740,7 +775,14 @@ function migrateDb(db) {
     });
     if (!student.username) student.username = student.id;
     if (!student.accountStatus) student.accountStatus = "active";
-    syncStudentBilling(db, student);
+    // Billing is only DERIVED when the sheet predates the billing columns. Once
+    // the columns exist, the workbook is the database: whatever the office
+    // saved in Excel — a fee, a balance, a status — is read back exactly as it
+    // was written. Deriving on every load used to overwrite those edits from
+    // the payment ledger, so an Excel change appeared to "do nothing" on the
+    // site. Site-side writes (payments, approvals) keep both sheets in step
+    // themselves, so the loop stays closed without this re-derivation.
+    if (!hasBillingColumns) syncStudentBilling(db, student);
   });
   writeSheet(db, SHEETS.students, students, STUDENT_COLUMNS);
   return changed;
@@ -3802,15 +3844,25 @@ const server = http.createServer((req, res) => {
     if (crossSiteRequest(req)) {
       return sendJson(res, 403, { error: "Cross-site requests are not allowed" });
     }
-    // The API speaks JSON only. A form post or text body is refused outright.
+    // The API speaks JSON only. A form post or text body is refused outright —
+    // EXCEPT the workbook push: the office's Excel round trip sends a binary
+    // .xlsx body, and that route (below) reads raw Buffers of its own. Rejecting
+    // it here meant every Excel save bounced with 415 before the route ever
+    // ran, which is why Excel edits never reached the website.
+    const isWorkbookPush = pathname === "/api/database/push" && req.method === "POST";
     if (req.method === "POST" || req.method === "PATCH" || req.method === "PUT") {
       const type = String(req.headers["content-type"] || "").toLowerCase();
-      if (type && type.indexOf("application/json") !== 0) {
+      if (isWorkbookPush) {
+        if (type.indexOf("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") !== 0) {
+          return sendJson(res, 415, { error: "Send the workbook with its .xlsx content type" });
+        }
+      } else if (type && type.indexOf("application/json") !== 0) {
         return sendJson(res, 415, { error: "Send JSON with Content-Type: application/json" });
       }
       const length = Number(req.headers["content-length"] || 0);
-      if (length > 1e6) {
-        return sendJson(res, 413, { error: "Request body is too large" });
+      const limit = isWorkbookPush ? 25e6 : 1e6;
+      if (length > limit) {
+        return sendJson(res, 413, { error: isWorkbookPush ? "Workbook exceeds the 25 MB limit" : "Request body is too large" });
       }
     }
     // API answers are JSON and compress very well. Record on the response
