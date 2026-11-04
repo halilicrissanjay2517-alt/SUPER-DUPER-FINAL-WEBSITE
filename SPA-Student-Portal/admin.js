@@ -1440,6 +1440,116 @@
     });
   }
 
+  /* ------------------------------------------------ Open in Excel (live round trip)
+     One button, three steps, no command line:
+       1. Downloads the live database.xlsx (the same bytes the website uses).
+       2. Watches that file on disk. The moment Excel saves it, the edited
+          workbook is pushed back to the server — which swaps it in, backs up
+          the old one, and every open page reloads within seconds via the
+          /api/version stamp.
+       3. Keeps watching, so every later save updates the site too.
+     Needs the File System Access API (Chrome/Edge). Elsewhere the button
+     falls back to download + manual re-upload through a file picker. */
+  var liveExcelBtn = $("#liveExcelBtn");
+
+  function pushWorkbook(file, button, done) {
+    button.disabled = true;
+    toast("Sending your edits to the website…");
+    file.arrayBuffer().then(function (buffer) {
+      return fetch(apiUrl("/api/database/push"), {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
+        body: buffer,
+      }).then(function (res) {
+        return res.json().then(function (data) {
+          if (!res.ok) throw new Error(data.error || "Upload failed");
+          return data;
+        });
+      });
+    }).then(function (data) {
+      toast("Website updated from Excel (" + data.students + " students)");
+      loadStudents();
+      loadPayments();
+      loadApprovals();
+      loadLogs();
+      if (done) done();
+    }).catch(function (err) { toast(err.message, true); })
+      .then(function () { button.disabled = false; });
+  }
+
+  function pickWorkbookFile(button) {
+    var input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".xlsx";
+    input.addEventListener("change", function () {
+      if (input.files && input.files[0]) pushWorkbook(input.files[0], button);
+    });
+    input.click();
+  }
+
+  if (liveExcelBtn) {
+    liveExcelBtn.addEventListener("click", function () {
+      if (!state.signedIn) return;
+      var button = liveExcelBtn;
+
+      if (window.showSaveFilePicker) {
+        var watched = null;
+        var last = null;
+
+        function pollHandle() {
+          if (!watched) return;
+          watched.getFile().then(function (file) {
+            // mtime and size together say "Excel actually saved something new".
+            if (!last) {
+              last = { mtime: file.lastModified, size: file.size };
+            } else if (file.lastModified !== last.mtime || file.size !== last.size) {
+              last = { mtime: file.lastModified, size: file.size };
+              pushWorkbook(file, button, function () {
+                if (watched) setTimeout(pollHandle, 3000); // keep watching
+              });
+              return;
+            }
+            setTimeout(pollHandle, 3000);
+          }).catch(function () { watched = null; button.textContent = "Open in Excel ↺"; });
+        }
+
+        fetch(apiUrl("/api/database"), { credentials: "same-origin" })
+          .then(function (res) {
+            if (!res.ok) throw new Error("Could not build the database file");
+            return res.blob();
+          })
+          .then(function (blob) {
+            return showSaveFilePicker({
+              suggestedName: "database.xlsx",
+              types: [{ description: "Excel workbook", accept: { "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"] } }],
+            }).then(function (handle) {
+              return handle.createWritable().then(function (w) {
+                return w.write(blob).then(function () { return w.close(); }).then(function () { return handle; });
+              });
+            });
+          })
+          .then(function (handle) {
+            watched = handle;
+            toast("Saved. Edit in Excel — the site updates the moment you save.");
+            button.textContent = "Watching Excel…";
+            setTimeout(pollHandle, 3000);
+          })
+          .catch(function (err) {
+            if (err && err.name === "AbortError") return; // save dialog cancelled
+            toast(err.message || "Could not start live watching", true);
+            downloadDatabase(button);   // at least give the plain download
+            setTimeout(function () { pickWorkbookFile(button); }, 1500);
+          });
+      } else {
+        // Firefox/Safari: no File System Access, so download then offer the
+        // picker to send the edited copy back.
+        downloadDatabase(button);
+        setTimeout(function () { pickWorkbookFile(button); }, 1500);
+      }
+    });
+  }
+
   /* ------------------------------------------------ Import from Excel
      Another list of students and payments, held in its own .xlsx, is brought
      INTO the live database. The file is parsed here in the browser with the

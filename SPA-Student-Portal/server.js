@@ -2087,6 +2087,72 @@ async function handleApi(req, res, pathname) {
     return res.end(data);
   }
 
+  /* ---- POST /api/database/push  (replace the live workbook with an admin upload) ----
+     The round trip behind "Open in Excel": the office downloads the workbook,
+     edits it in Excel on their PC, and uploads the saved copy back. Same safety
+     rules as restore-db — PK header check, parse before write, timestamped
+     backup, atomic rename — but guarded by the signed-in ADMIN SESSION rather
+     than the operator token, so it can live behind a dashboard button.
+     A whole workbook does not fit the 1 MB JSON limit, so like restore-db this
+     is handled before the /api/ block and reads raw binary. */
+  if (pathname === "/api/database/push" && req.method === "POST") {
+    const session = requireAuth(req, res, ["admin"]);
+    if (!session) return;
+    const MAX_WORKBOOK = 25e6;
+    readBinary(req, MAX_WORKBOOK)
+      .then((buf) => {
+        if (!buf.length) throw new Error("Empty body");
+        if (buf[0] !== 0x50 || buf[1] !== 0x4b) {
+          return sendJson(res, 400, { error: "Not an .xlsx file (missing PK header)" });
+        }
+        let incoming;
+        try {
+          incoming = XLSX.read(buf, { type: "buffer" });
+        } catch (err) {
+          return sendJson(res, 400, { error: "Workbook could not be parsed" });
+        }
+        if (!incoming.SheetNames.includes(SHEETS.students)) {
+          return sendJson(res, 400, {
+            error: "Workbook has no \"" + SHEETS.students + "\" sheet — wrong file?",
+          });
+        }
+
+        if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
+        let backup = null;
+        if (fs.existsSync(DB_FILE)) {
+          const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+          backup = path.join(DB_DIR, "database.before-push-" + stamp + ".xlsx");
+          fs.copyFileSync(DB_FILE, backup);
+        }
+        const tmp = DB_FILE + ".incoming";
+        fs.writeFileSync(tmp, buf);
+        fs.renameSync(tmp, DB_FILE);
+
+        const db = loadDb();
+        const students = readSheet(db, SHEETS.students);
+        appendLog(db, session.username, "database-push", "database.xlsx",
+          "Excel database replaced from an uploaded workbook");
+        saveDb(db);
+        console.log(
+          "Workbook replaced from dashboard upload: " + students.length + " students" +
+            (backup ? "; previous saved to " + backup : "")
+        );
+        return sendJson(res, 200, {
+          ok: true,
+          students: students.length,
+          backup: backup ? path.basename(backup) : null,
+        });
+      })
+      .catch((err) => {
+        console.error("database push failed:", err);
+        const tooLarge = /Payload too large/.test(err.message || "");
+        sendJson(res, tooLarge ? 413 : 400, {
+          error: tooLarge ? "Workbook exceeds the 25 MB limit" : err.message,
+        });
+      });
+    return;
+  }
+
   /* ---- POST /api/database/sync  (write the dashboard state into the workbook) ---- */
   if (pathname === "/api/database/sync" && req.method === "POST") {
     const session = requireAuth(req, res);
