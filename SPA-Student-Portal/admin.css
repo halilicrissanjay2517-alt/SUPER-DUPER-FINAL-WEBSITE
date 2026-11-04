@@ -1355,8 +1355,25 @@ body.theme-dark .student-row:hover td { background: rgba(111, 207, 151, 0.08); }
 }
 
 /* ---------------- Modals ---------------- */
+/* A wide modal's content (student detail with the month grid + full payment
+   history) is taller than the screen. Without a height cap the card simply
+   extends past the viewport and the page behind it cannot scroll, so the
+   lower half is unreachable. Capping the card and letting IT scroll keeps
+   the backdrop centred and every part of the record reachable. */
 .modal-wide {
   width: min(660px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Same problem exists on small screens for the narrower cards: cap them too. */
+@media (max-height: 760px) {
+  .modal-card {
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
 }
 
 .form-grid {
