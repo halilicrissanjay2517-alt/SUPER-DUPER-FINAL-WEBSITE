@@ -2710,8 +2710,8 @@
     var s = detailStudent || {};
     var doc = "<!doctype html><html><head><meta charset='utf-8'><title>Official Receipt " +
       escapeHtml(p.receiptNo || "") + "</title><style>" +
-      "body{font-family:'Segoe UI',Arial,sans-serif;color:#111;margin:24px;}" +
-      ".rcpt{max-width:720px;margin:0 auto;border:2px solid #04231a;padding:24px 32px;}" +
+      "body{font-family:'Segoe UI',Arial,sans-serif;color:#111;margin:24px;background:#fff;}" +
+      ".rcpt{max-width:720px;margin:0 auto;border:2px solid #04231a;padding:24px 32px;background:#fff;}" +
       ".rcpt-head{display:flex;align-items:center;gap:14px;border-bottom:2px solid #04231a;padding-bottom:12px;}" +
       ".rcpt-head img{height:64px;}" +
       ".rcpt-school{font-size:20px;font-weight:700;letter-spacing:.5px;}" +
@@ -2728,7 +2728,7 @@
       ".sign{margin-top:48px;display:flex;justify-content:space-between;font-size:12px;}" +
       ".sign div{border-top:1px solid #111;padding-top:4px;width:220px;text-align:center;}" +
       ".foot{margin-top:16px;text-align:center;font-size:10px;color:#666;}" +
-      "@media print{body{margin:0}.rcpt{border-color:#000}}" +
+      "@media print{html,body{background:#fff!important;margin:0}.rcpt{border-color:#000;background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}" +
       "</style></head><body><div class='rcpt'>" +
       "<div class='rcpt-head'><img src='logo.png' alt=''><div>" +
       "<div class='rcpt-school'>SAINT PATRICK'S ACADEMY, INC.</div>" +
@@ -2773,8 +2773,8 @@
     }).join("");
     var doc = "<!doctype html><html><head><meta charset='utf-8'><title>Statement of account — " +
       escapeHtml(s.name || "") + "</title><style>" +
-      "body{font-family:'Segoe UI',Arial,sans-serif;color:#111;margin:24px;}" +
-      ".rcpt{max-width:760px;margin:0 auto;}" +
+      "body{font-family:'Segoe UI',Arial,sans-serif;color:#111;margin:24px;background:#fff;}" +
+      ".rcpt{max-width:760px;margin:0 auto;background:#fff;}" +
       ".rcpt-school{font-size:18px;font-weight:700;}" +
       ".rcpt-addr{font-size:11px;color:#444;margin-bottom:14px;}" +
       "h2{margin:6px 0 2px;font-size:16px;}" +
@@ -2784,6 +2784,7 @@
       ".ids{font-size:12px;color:#333;margin-top:8px;}" +
       ".totals{margin-top:14px;width:50%;margin-left:auto;font-size:13px;border-collapse:collapse;}" +
       ".totals td{border:none;padding:3px 0;}" +
+      "@media print{html,body{background:#fff!important;margin:0}th{background:#eee!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}" +
       "</style></head><body><div class='rcpt'>" +
       "<div class='rcpt-school'>SAINT PATRICK'S ACADEMY, INC.</div>" +
       "<div class='rcpt-addr'>Statement of Account — Student Fees</div>" +
