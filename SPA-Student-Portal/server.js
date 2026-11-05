@@ -237,14 +237,20 @@ const STUDENT_COLUMNS = [
   "note",
 ];
 
-/** Default tuition by grade level, used when a student is added without a fee. */
+/** Default billing by grade level, used when a student is added without a fee.
+ *  The school's actual rates: tuition ₱18,531.05 (non-voucher) plus a
+ *  miscellaneous fee of ₱2,286, billed together as one total of ₱20,817.05.
+ *  The same tuition/misc pair applies at every level for now — adjust an
+ *  individual grade here if the office ever bills levels differently. */
+const DEFAULT_TUITION_FEE = 18531.05;
+const DEFAULT_MISC_FEE = 2286;
 const DEFAULT_FEES = {
-  "Grade 7": 28000,
-  "Grade 8": 29000,
-  "Grade 9": 30000,
-  "Grade 10": 31000,
-  "Grade 11": 34000,
-  "Grade 12": 35000,
+  "Grade 7": DEFAULT_TUITION_FEE + DEFAULT_MISC_FEE,
+  "Grade 8": DEFAULT_TUITION_FEE + DEFAULT_MISC_FEE,
+  "Grade 9": DEFAULT_TUITION_FEE + DEFAULT_MISC_FEE,
+  "Grade 10": DEFAULT_TUITION_FEE + DEFAULT_MISC_FEE,
+  "Grade 11": DEFAULT_TUITION_FEE + DEFAULT_MISC_FEE,
+  "Grade 12": DEFAULT_TUITION_FEE + DEFAULT_MISC_FEE,
 };
 
 /* -------------------------------------------------------------- Date helpers */
@@ -334,12 +340,18 @@ function syncStudentBilling(db, student) {
   let tuition = toNumber(student.tuitionFee);
   let misc = toNumber(student.miscFee);
   let fee = toNumber(student.totalFee);
-  if (tuition <= 0 && misc <= 0 && fee > 0) {
+  // A total edited on its own (Excel or the dashboard) is split back across
+  // the two parts so the three columns never disagree — unless the parts
+  // already sum to that total, in which case the parts are simply confirmed.
+  if (tuition > 0 || misc > 0) {
+    if (fee > 0 && tuition + misc !== fee) {
+      tuition = Math.round(fee * 0.85);
+      misc = fee - tuition;
+    }
+    fee = tuition + misc;
+  } else if (fee > 0) {
     tuition = Math.round(fee * 0.85);
     misc = fee - tuition;
-  }
-  if (tuition > 0 || misc > 0) {
-    fee = tuition + misc;
   } else if (fee <= 0 && paid <= 0) {
     // No usable fee on record (absent, or left at 0) means "billed from the
     // grade" rather than "owes nothing". A roster entry added with a misspelt
@@ -347,8 +359,8 @@ function syncStudentBilling(db, student) {
     // rows on the next write. A student who has already paid is left alone,
     // since an explicit 0 is then a deliberate scholarship, not a missing fee.
     fee = feeForGrade(student.grade);
-    tuition = fee;
-    misc = 0;
+    tuition = Math.round(fee * 0.85);
+    misc = fee - tuition;
   }
 
   student.tuitionFee = tuition;
@@ -732,16 +744,19 @@ function createSeedDb() {
   // Sample ledger for the seed only: real payable amounts, the dates they were
   // paid, and the due dates the balances belong to. Every figure below is
   // derived again by syncStudentBilling, so the four sheets agree from the start.
+  // Fees use the school's real rates: tuition ₱18,531.05 (non-voucher) +
+  // miscellaneous ₱2,286 = ₱20,817.05 per student.
+  const SEED_FEE = DEFAULT_TUITION_FEE + DEFAULT_MISC_FEE; // 20817.05
   const students = [
-    { id: "2024-001", name: "Maria Santos", grade: "Grade 10", section: "St. Patrick", status: "Enrolled", totalFee: 31000, dueDate: "2025-03-31", guardian: "Rosa Santos", contact: "0917-555-0101", email: "maria@example.com", accountStatus: "active", username: "2024-001" },
-    { id: "2024-002", name: "Jose Ramos", grade: "Grade 9", section: "St. Brigid", status: "Enrolled", totalFee: 30000, dueDate: "2025-03-31", guardian: "Pedro Ramos", contact: "0917-555-0102", email: "jose@example.com", accountStatus: "active", username: "2024-002" },
-    { id: "2024-003", name: "Ana Cruz", grade: "Grade 12", section: "St. Columba", status: "Pending", totalFee: 35000, dueDate: "2025-02-28", guardian: "Lita Cruz", contact: "0917-555-0103", email: "ana@example.com", accountStatus: "none", username: "2024-003" },
-    { id: "2024-004", name: "Liam Reyes", grade: "Grade 8", section: "St. Ita", status: "Partial", totalFee: 29000, dueDate: "2025-04-15", guardian: "Mark Reyes", contact: "0917-555-0104", email: "liam@example.com", accountStatus: "none", username: "2024-004" },
+    { id: "2024-001", name: "Maria Santos", grade: "Grade 10", section: "St. Patrick", status: "Enrolled", totalFee: SEED_FEE, dueDate: "2025-03-31", guardian: "Rosa Santos", contact: "0917-555-0101", email: "maria@example.com", accountStatus: "active", username: "2024-001" },
+    { id: "2024-002", name: "Jose Ramos", grade: "Grade 9", section: "St. Brigid", status: "Enrolled", totalFee: SEED_FEE, dueDate: "2025-03-31", guardian: "Pedro Ramos", contact: "0917-555-0102", email: "jose@example.com", accountStatus: "active", username: "2024-002" },
+    { id: "2024-003", name: "Ana Cruz", grade: "Grade 12", section: "St. Columba", status: "Pending", totalFee: SEED_FEE, dueDate: "2025-02-28", guardian: "Lita Cruz", contact: "0917-555-0103", email: "ana@example.com", accountStatus: "none", username: "2024-003" },
+    { id: "2024-004", name: "Liam Reyes", grade: "Grade 8", section: "St. Ita", status: "Partial", totalFee: SEED_FEE, dueDate: "2025-04-15", guardian: "Mark Reyes", contact: "0917-555-0104", email: "liam@example.com", accountStatus: "none", username: "2024-004" },
   ];
 
   const payments = [
     { date: "2024-06-03", receiptNo: "R-1001", studentId: "2024-001", studentName: "Maria Santos", amount: 12000, method: "Bank Transfer", receivedBy: "admin", note: "First installment" },
-    { date: "2024-06-05", receiptNo: "R-1002", studentId: "2024-002", studentName: "Jose Ramos", amount: 30000, method: "Cash", receivedBy: "admin", note: "Paid in full" },
+    { date: "2024-06-05", receiptNo: "R-1002", studentId: "2024-002", studentName: "Jose Ramos", amount: 20817.05, method: "Cash", receivedBy: "admin", note: "Paid in full" },
     { date: "2024-06-10", receiptNo: "R-1003", studentId: "2024-003", studentName: "Ana Cruz", amount: 13000, method: "GCash", receivedBy: "admin", note: "Reservation and partial" },
     { date: "2024-06-18", receiptNo: "R-1004", studentId: "2024-004", studentName: "Liam Reyes", amount: 15000, method: "Cash", receivedBy: "registrar", note: "Down payment" },
   ];
@@ -797,13 +812,17 @@ function createSeedDb() {
   const logs = [];
 
   writeSheet(db, SHEETS.payments, payments, PAYMENT_COLUMNS);
-  // Split each seed fee into tuition + miscellaneous (85/15, the usual
-  // ratio) so the new columns are populated from the very first workbook.
+  // Split each seed fee into tuition + miscellaneous at the school's real
+  // rates (tuition ₱18,531.05 non-voucher + misc ₱2,286), then derive the
+  // paid totals, balances and statuses from the payment ledger so the first
+  // workbook is complete — amountPaid and balance are never left blank.
   students.forEach(function (s) {
     const fee = Number(s.totalFee) || 0;
-    s.tuitionFee = Math.round(fee * 0.85);
-    s.miscFee = fee - s.tuitionFee;
+    if (fee <= 0) return;
+    s.tuitionFee = DEFAULT_TUITION_FEE;
+    s.miscFee = fee - DEFAULT_TUITION_FEE;
   });
+  students.forEach(function (s) { syncStudentBilling(db, s); });
   writeSheet(db, SHEETS.students, students, STUDENT_COLUMNS);
   writeSheet(db, SHEETS.admins, admins, ADMIN_COLUMNS);
   writeSheet(db, SHEETS.logs, logs, LOG_COLUMNS);

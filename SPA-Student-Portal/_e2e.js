@@ -185,8 +185,8 @@ function waitForServer(attempts = 40) {
       body: { id: "T-997", name: "Loose Grade", grade: "grade 12" },
     });
     check("a lowercased grade still bills the grade's default fee",
-      looseGrade.status === 201 && Number(looseGrade.body.student.totalFee) === 35000 &&
-        Number(looseGrade.body.student.balance) === 35000,
+      looseGrade.status === 201 && Number(looseGrade.body.student.totalFee) === 20817.05 &&
+        Number(looseGrade.body.student.balance) === 20817.05,
       `fee=${looseGrade.body.student && looseGrade.body.student.totalFee} balance=${looseGrade.body.student && looseGrade.body.student.balance}`);
 
     // 7d. An existing row that was stored with a 0 fee is repaired on the next
@@ -196,14 +196,14 @@ function waitForServer(attempts = 40) {
       body: { id: "T-996", name: "Zero Row", grade: "Grade 10", totalFee: 0 },
     });
     check("a brand-new zero fee is filled from the grade, not kept at 0",
-      zeroRow.status === 201 && Number(zeroRow.body.student.totalFee) === 31000,
+      zeroRow.status === 201 && Number(zeroRow.body.student.totalFee) === 20817.05,
       `fee=${zeroRow.body.student && zeroRow.body.student.totalFee}`);
     const repairEdit = await call("/api/students/T-996", {
       method: "PATCH", token, body: { section: "St. Ita" },
     });
     check("editing a stored zero-fee row restores its grade fee",
-      repairEdit.status === 200 && Number(repairEdit.body.student.totalFee) === 31000 &&
-        Number(repairEdit.body.student.balance) === 31000,
+      repairEdit.status === 200 && Number(repairEdit.body.student.totalFee) === 20817.05 &&
+        Number(repairEdit.body.student.balance) === 20817.05,
       `fee=${repairEdit.body.student && repairEdit.body.student.totalFee} balance=${repairEdit.body.student && repairEdit.body.student.balance}`);
 
     // 8. Duplicate ID rejected
