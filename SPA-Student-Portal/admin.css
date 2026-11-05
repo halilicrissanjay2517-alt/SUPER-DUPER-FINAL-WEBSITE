@@ -2420,8 +2420,27 @@ body.theme-dark .balance-preview         { background: #0f2b1d; color: #9fd4b4; 
 body.theme-dark .balance-preview.is-clear { background: #2c2310; color: var(--gold-400); }
 body.theme-dark .balance-preview.is-overdue { background: #2e1717; color: #e37d7d; }
 
+/* Editable cells inherit the light-mode --ink colour; on the dark table that
+   renders near-invisible, so give them their own ink and hover treatment. */
+body.theme-dark .admin-table input.cell-input,
+body.theme-dark .admin-table select.cell-input {
+  color: #dbe7e0;
+}
+
+/* The status dropdown is a native select: without an explicit dark background
+   it keeps the UA's white box and its dark text vanishes against it. */
+body.theme-dark .admin-table select.cell-input {
+  background-color: #14231c;
+}
+
+body.theme-dark .admin-table select.cell-input option {
+  background-color: #14231c;
+  color: #dbe7e0;
+}
+
 body.theme-dark .admin-table input.cell-input:focus {
   background: #14231c;
+  color: #e6f2ea;
 }
 
 body.theme-dark .admin-table input.cell-input:hover {
