@@ -230,11 +230,9 @@ img {
   flex-wrap: wrap;
 }
 
-/* Partner seal (CASPI) sitting at the right end of the header, matching the
-   SPA brand logo on the left.
-   The nav is a `space-between` flex row, so `.nav-links` and the seal were each
-   pushed to opposite ends and landed a third of a screen apart. Grouping them
-   lets the menu links sit beside the seal at the right, which closes that gap. */
+/* The links, the signage and the menu button travel together as one group at
+   the right end of the nav, instead of being spread across the whole bar by
+   the nav's space-between. */
 .nav-right {
   display: flex;
   align-items: center;
