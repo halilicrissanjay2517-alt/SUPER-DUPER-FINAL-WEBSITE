@@ -580,6 +580,25 @@
   line-height: 1.25;
 }
 
+/* Pay now / pay early: the button on the balance card that jumps to the
+   payment form below. Gold so it reads as the one action that matters. */
+.dash-paynow {
+  margin-top: 12px;
+  align-self: flex-start;
+  background: var(--gold-400);
+  border-color: var(--gold-400);
+  color: #1c1503;
+  font-weight: 700;
+}
+.dash-paynow:hover { filter: brightness(1.08); }
+.dash-paynow:disabled {
+  background: var(--green-100);
+  border-color: var(--green-100);
+  color: var(--green-800);
+  filter: none;
+  cursor: default;
+}
+
 /* The due card quietens when the account is already settled. */
 .account-card.is-settled .account-card-value {
   color: var(--green-700);

@@ -1147,9 +1147,16 @@
       }
     }
     // A settled account has nothing to file.
-    if (payToggle && payStudentBalance <= 0) {
-      payToggle.disabled = true;
-      payToggle.textContent = "Fully settled";
+    if (payStudentBalance <= 0) {
+      if (payToggle) {
+        payToggle.disabled = true;
+        payToggle.textContent = "Fully settled";
+      }
+      var topBtn = $("#dashPayNowBtn");
+      if (topBtn) {
+        topBtn.disabled = true;
+        topBtn.textContent = "Fully paid 🎉";
+      }
     }
     if (payStudentBalance > 0) loadPayMine();
   }
@@ -1163,6 +1170,23 @@
         var first = $("#payRequestMethod");
         if (first) first.focus();
       }
+    });
+  }
+
+  /* Pay now / pay early from the balance card up top: open the same payment
+      form, scroll to it, and say early payments are welcome. */
+  var payNowTop = $("#dashPayNowBtn");
+  if (payNowTop) {
+    payNowTop.addEventListener("click", function () {
+      if (!payForm || !payToggle) return;
+      if (payToggle.disabled) return; // fully settled — nothing to file
+      if (payForm.hidden) {
+        payForm.hidden = false;
+        payToggle.textContent = "Close";
+      }
+      payBox.scrollIntoView({ behavior: "smooth", block: "start" });
+      var first = $("#payRequestMethod");
+      if (first) first.focus({ preventScroll: true });
     });
   }
 

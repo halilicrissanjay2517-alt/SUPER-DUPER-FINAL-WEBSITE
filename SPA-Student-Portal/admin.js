@@ -269,6 +269,16 @@
 
   initTheme();
 
+  var themeToggleBtn = $("#themeToggleBtn");
+  if (themeToggleBtn) {
+    themeToggleBtn.addEventListener("click", function () {
+      var dark = !document.body.classList.contains("theme-dark");
+      var next = dark ? "dark" : "light";
+      applyTheme(next);
+      try { window.localStorage.setItem(THEME_KEY, next); } catch (e) {}
+    });
+  }
+
   $("#logoutBtn").addEventListener("click", function () {
     api("/api/logout", { method: "POST" }).catch(function () {});
     state.admin = null;
