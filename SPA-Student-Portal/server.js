@@ -593,9 +593,115 @@ function applyColumnWidths(db, name, widths) {
   if (sheet) sheet["!cols"] = widths.map(function (w) { return { wch: w }; });
 }
 
-/** Read a sheet into an array of plain objects. */
+/**
+ * Header normalisation for readSheet.
+ *
+ * The office edits database.xlsx in Excel by hand, and a hand-typed header
+ * ("STUDENT ID" instead of studentId, "RECEIPT NO" instead of receiptNo, a
+ * stray blank column Excel labels __EMPTY) used to come back as object keys
+ * that matched nothing — a payment then counted for the balance but vanished
+ * from the payment history, so the admin dashboard and the student dashboard
+ * disagreed about who had paid.
+ *
+ * Normalisation is PER SHEET: every sheet has its own set of canonical column
+ * names (the same arrays writeSheet uses), and each raw header is resolved to
+ * the canonical name it stands for — case-insensitively, ignoring spaces and
+ * punctuation. A header that is already canonical ("amountPaid", "id") stays
+ * exactly as it is; one that is merely a differently-cased or differently-
+ * spaced spelling ("AMOUNT PAID", "student id") maps to its canonical twin.
+ * Only the Payments sheet accepts extra aliases ("OR No", "reference"),
+ * because that is the sheet the office retypes by hand.
+ */
+const SHEET_COLUMNS = {
+  [SHEETS.students]: STUDENT_COLUMNS,
+  [SHEETS.payments]: PAYMENT_COLUMNS,
+  [SHEETS.admins]: ADMIN_COLUMNS,
+  [SHEETS.logs]: LOG_COLUMNS,
+  [SHEETS.accounts]: ACCOUNT_COLUMNS,
+  [SHEETS.payRequests]: PAY_REQUEST_COLUMNS,
+  [SHEETS.monthly]: ["id", "name", "grade", "monthlyDue"].concat(
+    SCHOOL_MONTHS, ["totalPaid", "balance", "status"]
+  ),
+};
+
+// Extra spellings accepted on top of the canonical names, per sheet. Keys and
+// values are compared in "squashed" form (lowercase, alphanumerics only).
+const SHEET_HEADER_ALIASES = {
+  [SHEETS.payments]: {
+    date: ["paymentdate", "datepaid"],
+    receiptno: ["receipt", "orno", "referenceno"],
+    studentid: ["studentno"],
+    studentname: ["fullname"],
+    amount: ["amountpaid", "payment", "paid"],
+    method: ["paymentmethod", "modeofpayment"],
+    receivedby: ["received"],
+    note: ["notes", "remarks"],
+    examperiod: ["period"],
+  },
+  [SHEETS.students]: {
+    grade: ["gradelevel", "yearlevel"],
+    guardian: ["parent", "parentname"],
+    guardiancontact: ["parentcontact", "guardianno"],
+    contact: ["contactno", "phone", "mobilenumber"],
+    email: ["emailaddress"],
+    birthdate: ["birthday", "dateofbirth"],
+    sex: ["gender"],
+    address: ["homeaddress"],
+    lastschool: ["previousschool"],
+    note: ["notes", "remarks"],
+  },
+};
+
+const squash = (s) => String(s || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+
+/**
+ * Resolve one raw header cell to the canonical column name it stands for on
+ * this sheet, or null when the column carries no usable header (a stray blank
+ * Excel appends as "__EMPTY").
+ */
+function canonicalHeader(raw, columns, aliases) {
+  const key = squash(raw);
+  if (!key) return null;
+  // A header that IS a canonical name (any casing) maps to itself first, so
+  // "amountPaid", "AmountPaid" and "AMOUNT PAID" all come back "amountPaid"
+  // while a column the sheet simply names differently keeps its own name.
+  const exact = columns.find((col) => squash(col) === key);
+  if (exact) return exact;
+  for (const canon of Object.keys(aliases || {})) {
+    if (aliases[canon].some((a) => squash(a) === key)) return canon;
+  }
+  // Not canonical and not an alias: keep the squashed name. It will not match
+  // anything writeSheet reads (so it cannot overwrite a real column), but it
+  // survives the round trip instead of being silently dropped.
+  return key;
+}
+
+/**
+ * Read a sheet into an array of plain objects with normalised headers.
+ *
+ * Reads as a matrix rather than sheet_to_json's object mode so the FIRST row
+ * is always treated as the header (a hand-added blank top row in Excel used
+ * to shift every column one step and blank out the whole sheet), blank rows
+ * are dropped, and every canonical key the rest of the code reads is
+ * guaranteed present on every row.
+ */
 function readSheet(db, name) {
-  const rows = db.Sheets[name] ? XLSX.utils.sheet_to_json(db.Sheets[name], { defval: "" }) : [];
+  if (!db.Sheets[name]) return [];
+  const matrix = XLSX.utils.sheet_to_json(db.Sheets[name], { header: 1, defval: "" });
+  if (matrix.length === 0) return [];
+  const columns = SHEET_COLUMNS[name] || [];
+  const aliases = SHEET_HEADER_ALIASES[name] || {};
+  const header = matrix[0].map((raw) => canonicalHeader(raw, columns, aliases));
+  const rows = [];
+  for (let i = 1; i < matrix.length; i++) {
+    const raw = matrix[i];
+    if (raw.every((cell) => cell === "" || cell === null || cell === undefined)) continue;
+    const row = {};
+    header.forEach((h, c) => {
+      if (h) row[h] = raw[c] === undefined ? "" : raw[c];
+    });
+    rows.push(row);
+  }
   return rows;
 }
 
