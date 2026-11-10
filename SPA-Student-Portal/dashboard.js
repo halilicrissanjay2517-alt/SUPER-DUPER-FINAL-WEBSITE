@@ -268,12 +268,31 @@
       var day = String(payment.date || "").slice(0, 10);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return;
       var monthNumber = Number(day.slice(5, 7));
-      var index = monthNumber >= 6 ? monthNumber - 6 : monthNumber + 4;
+      var index = monthNumber >= 6 ? monthNumber - 6 : monthNumber + 6;
       if (index >= 0 && index < months.length) {
         derived[months[index]] += Number(payment.amount) || 0;
       }
     });
     return derived;
+  }
+
+  function statementTotalPaid(student, payments) {
+    var months = ["Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
+    var recorded = monthlyValuesFor(student, payments);
+    var ledgerByMonth = {};
+    months.forEach(function (month) { ledgerByMonth[month] = 0; });
+    var outsidePlan = 0;
+    (payments || []).forEach(function (payment) {
+      var amount = Number(payment.amount) || 0;
+      var day = String(payment.date || "").slice(0, 10);
+      var monthNumber = /^\d{4}-\d{2}-\d{2}$/.test(day) ? Number(day.slice(5, 7)) : 0;
+      var index = monthNumber >= 6 ? monthNumber - 6 : monthNumber >= 1 ? monthNumber + 6 : -1;
+      if (index >= 0 && index < months.length) ledgerByMonth[months[index]] += amount;
+      else outsidePlan += amount;
+    });
+    return outsidePlan + months.reduce(function (sum, month) {
+      return sum + Math.max(Number(recorded[month]) || 0, ledgerByMonth[month]);
+    }, 0);
   }
 
   function renderMonthlyPlan(student) {
@@ -580,9 +599,7 @@
       return String(a.date || "").localeCompare(String(b.date || ""));
     });
     var totalAssessment = Number(s.totalFee) || 0;
-    var totalPaid = pay.reduce(function (sum, payment) {
-      return sum + (Number(payment.amount) || 0);
-    }, 0);
+    var totalPaid = statementTotalPaid(s, pay);
     var balance = Math.max(totalAssessment - totalPaid + (Number(s.balanceAdjustment) || 0), 0);
     var rows = pay.map(function (p, i) {
       return "<tr><td>" + (i + 1) + "</td><td>" + escapeHtml(niceDate(p.date)) + "</td><td>" +

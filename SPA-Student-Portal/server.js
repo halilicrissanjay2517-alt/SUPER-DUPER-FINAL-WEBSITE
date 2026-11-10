@@ -1126,7 +1126,7 @@ function rebuildMonthlySheet(db) {
       // the same plan (indices 7–9). April/May (summer) fall outside the plan
       // and are skipped rather than folded into a wrong month.
       const m = Number(day.slice(5, 7));
-      const idx = m >= 6 ? m - 6 : m + 4;
+      const idx = m >= 6 ? m - 6 : m + 6;
       if (idx >= 0 && idx < SCHOOL_MONTHS.length) {
         row[SCHOOL_MONTHS[idx]] = (row[SCHOOL_MONTHS[idx]] || 0) + (Number(p.amount) || 0);
       }
@@ -1167,7 +1167,7 @@ function adjustMonthlyPayment(db, payment, delta) {
   const day = toDate(payment.date);
   if (!day) return;
   const monthNumber = Number(day.slice(5, 7));
-  const monthIndex = monthNumber >= 6 ? monthNumber - 6 : monthNumber + 4;
+  const monthIndex = monthNumber >= 6 ? monthNumber - 6 : monthNumber + 6;
   if (monthIndex < 0 || monthIndex >= SCHOOL_MONTHS.length) return;
   if (!db.Sheets[SHEETS.monthly]) rebuildMonthlySheet(db);
   const rows = readSheet(db, SHEETS.monthly);
