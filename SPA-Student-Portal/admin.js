@@ -2435,12 +2435,13 @@
     var student = accountStudent || {};
     var pay = (data && data.payments) || [];
     var totalFee = Number(student.totalFee) || 0;
-    var monthlyDue = student.monthlyDue === undefined || student.monthlyDue === null
-      ? Math.round(totalFee / SCHOOL_MONTHS_VIEW.length) : Number(student.monthlyDue) || 0;
+    var monthlyDue = Number(student.monthlyDue) || Math.round(totalFee / SCHOOL_MONTHS_VIEW.length);
 
     var paid = {};
     SCHOOL_MONTHS_VIEW.forEach(function (m) { paid[m] = 0; });
-    var hasMonthly = student.monthlyPayments && typeof student.monthlyPayments === "object";
+    var hasMonthly = SCHOOL_MONTHS_VIEW.some(function (month) {
+      return student.monthlyPayments && Object.prototype.hasOwnProperty.call(student.monthlyPayments, month);
+    });
     if (hasMonthly) SCHOOL_MONTHS_VIEW.forEach(function (m) {
       paid[m] = Number(student.monthlyPayments[m]) || 0;
     });
@@ -2498,6 +2499,27 @@
   /** The ten school-year months the tuition plan is spread over. */
   var SCHOOL_MONTHS_VIEW = ["Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
 
+  function monthlyValuesFor(student, payments) {
+    var workbookValues = student.monthlyPayments || {};
+    var hasWorkbookRow = SCHOOL_MONTHS_VIEW.some(function (month) {
+      return Object.prototype.hasOwnProperty.call(workbookValues, month);
+    });
+    if (hasWorkbookRow) return workbookValues;
+
+    var derived = {};
+    SCHOOL_MONTHS_VIEW.forEach(function (month) { derived[month] = 0; });
+    (payments || []).forEach(function (payment) {
+      var day = String(payment.date || "").slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return;
+      var monthNumber = Number(day.slice(5, 7));
+      var index = monthNumber >= 6 ? monthNumber - 6 : monthNumber + 4;
+      if (index >= 0 && index < SCHOOL_MONTHS_VIEW.length) {
+        derived[SCHOOL_MONTHS_VIEW[index]] += Number(payment.amount) || 0;
+      }
+    });
+    return derived;
+  }
+
   /**
    * Draws the monthly payment progress grid in the detail modal.
    *
@@ -2522,15 +2544,17 @@
     var down = sorted[0] || null;
 
     var totalFee = Number(student.totalFee) || 0;
-    var monthlyDue = student.monthlyDue === undefined || student.monthlyDue === null
-      ? Math.round(totalFee / SCHOOL_MONTHS_VIEW.length) : Number(student.monthlyDue) || 0;
+    var monthlyDue = Number(student.monthlyDue) || Math.round(totalFee / SCHOOL_MONTHS_VIEW.length);
 
     // Sum what was paid into each school month. June–December are plan
     // months 1–7; Jan–March continue the same plan; summer is skipped,
     // matching the server's Monthly Payments sheet.
     var paid = {};
     SCHOOL_MONTHS_VIEW.forEach(function (m) { paid[m] = 0; });
-    if (student.monthlyPayments && typeof student.monthlyPayments === "object") {
+    var hasWorkbookMonths = SCHOOL_MONTHS_VIEW.some(function (m) {
+      return student.monthlyPayments && Object.prototype.hasOwnProperty.call(student.monthlyPayments, m);
+    });
+    if (hasWorkbookMonths) {
       SCHOOL_MONTHS_VIEW.forEach(function (m) { paid[m] = Number(student.monthlyPayments[m]) || 0; });
     } else pay.forEach(function (p) {
       var day = String(p.date || "");
@@ -2840,11 +2864,11 @@
     if (!detailStudent || !detailPaymentData) return;
     var s = detailStudent;
     var schoolMonths = SCHOOL_MONTHS_VIEW.slice();
-    var monthValues = s.monthlyPayments || {};
+    var monthValues = monthlyValuesFor(s, detailPaymentData.payments || []);
     var hasMonthly = schoolMonths.some(function (month) {
       return monthValues[month] !== undefined && monthValues[month] !== null && monthValues[month] !== "";
     });
-    var monthlyDue = Number(s.monthlyDue) || 0;
+    var monthlyDue = Number(s.monthlyDue) || Math.round((Number(s.totalFee) || 0) / schoolMonths.length);
     var monthlyRows = hasMonthly ? schoolMonths.map(function (month) {
       return "<tr><td>" + month + "</td><td class='amt'>" + peso(monthlyDue) +
         "</td><td class='amt'>" + peso(monthValues[month]) + "</td></tr>";

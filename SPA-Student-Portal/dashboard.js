@@ -250,19 +250,40 @@
     paintPaymentRows();
   }
 
+  function monthlyValuesFor(student, payments) {
+    var months = ["Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
+    var workbookValues = student.monthlyPayments || {};
+    var hasWorkbookRow = months.some(function (month) {
+      return Object.prototype.hasOwnProperty.call(workbookValues, month);
+    });
+    if (hasWorkbookRow) return workbookValues;
+
+    // Older/newly-added accounts may not have a Monthly Payments row yet.
+    // Rebuild the month display from the actual payment ledger in that case.
+    var derived = {};
+    months.forEach(function (month) { derived[month] = 0; });
+    (payments || []).forEach(function (payment) {
+      var day = String(payment.date || "").slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return;
+      var monthNumber = Number(day.slice(5, 7));
+      var index = monthNumber >= 6 ? monthNumber - 6 : monthNumber + 4;
+      if (index >= 0 && index < months.length) {
+        derived[months[index]] += Number(payment.amount) || 0;
+      }
+    });
+    return derived;
+  }
+
   function renderMonthlyPlan(student) {
     var host = $("#dashMonthlyPayments");
     if (!host) return;
     var months = ["Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
-    var values = student.monthlyPayments || {};
-    var hasWorkbookValues = months.some(function (month) {
-      return values[month] !== undefined && values[month] !== null && values[month] !== "";
-    });
-    if (!hasWorkbookValues) {
+    var values = monthlyValuesFor(student, student.payments);
+    var due = Number(student.monthlyDue) || Math.round((Number(student.totalFee) || 0) / months.length);
+    if (!due && !(student.payments || []).length) {
       host.innerHTML = '<p class="muted">No monthly payment data is on file.</p>';
       return;
     }
-    var due = Number(student.monthlyDue) || 0;
     var html = "";
     months.forEach(function (month) {
       var paid = Number(values[month]) || 0;
@@ -543,11 +564,11 @@
     if (!lastStudent) return;
     var s = lastStudent;
     var schoolMonths = ["Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
-    var monthValues = s.monthlyPayments || {};
+    var monthValues = monthlyValuesFor(s, paymentsAll);
     var hasMonthly = schoolMonths.some(function (month) {
       return monthValues[month] !== undefined && monthValues[month] !== null && monthValues[month] !== "";
     });
-    var monthlyDue = Number(s.monthlyDue) || 0;
+    var monthlyDue = Number(s.monthlyDue) || Math.round((Number(s.totalFee) || 0) / schoolMonths.length);
     var monthlyRows = hasMonthly ? schoolMonths.map(function (month) {
       var amount = Number(monthValues[month]) || 0;
       return "<tr><td>" + month + "</td><td class='amt'>" + peso(monthlyDue) +
