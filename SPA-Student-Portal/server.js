@@ -330,7 +330,9 @@ function syncStudentBilling(db, student) {
   // Sum the payment history for this student (the ledger is the authority
   // on how much has been paid, so an edit cannot invent money).
   const paid = readSheet(db, SHEETS.payments).reduce(function (sum, p) {
-    return String(p.studentId) === String(student.id) ? sum + (Number(p.amount) || 0) : sum;
+    return studentIdKey(p.studentId) === studentIdKey(student.id)
+      ? sum + (Number(p.amount) || 0)
+      : sum;
   }, 0);
   // The fee is billed as tuition + miscellaneous. Either part may be edited
   // (in Excel or on the dashboard); the total always follows their sum. When
@@ -369,7 +371,7 @@ function syncStudentBilling(db, student) {
   student.amountPaid = paid;
   student.balance = Math.max(fee - paid, 0);
   student.dueDate = toDate(student.dueDate);
-  student.lastPaymentDate = latestPaymentDate(db, student.id) || toDate(student.lastPaymentDate);
+  student.lastPaymentDate = latestPaymentDate(db, student.id);
   student.status = billingStatus(student, paid);
   return student;
 }
@@ -378,7 +380,7 @@ function syncStudentBilling(db, student) {
 function latestPaymentDate(db, studentId) {
   let latest = "";
   readSheet(db, SHEETS.payments).forEach(function (p) {
-    if (String(p.studentId) !== String(studentId)) return;
+    if (studentIdKey(p.studentId) !== studentIdKey(studentId)) return;
     const day = toDate(p.date);
     if (day && day > latest) latest = day;
   });
@@ -469,6 +471,11 @@ const ACCOUNT_COLUMNS = [
   // "new" when the applicant's own answers become the record once an
   // administrator approves the account. Either way the account starts pending.
   "rosterMatch",
+  // A current statement summary mirrored from Students and Payments.
+  "totalFee",
+  "amountPaid",
+  "balance",
+  "lastPaymentDate",
 ];
 
 /** Human-readable names for the account fields, used to build an audit line. */
@@ -745,10 +752,13 @@ function syncAccountProfilesFromRoster(db) {
       ["section", "section"], ["birthdate", "birthdate"], ["sex", "sex"],
       ["address", "address"], ["contact", "contact"], ["guardian", "guardian"],
       ["guardianContact", "guardianContact"], ["lastSchool", "lastSchool"],
+      ["totalFee", "totalFee"], ["amountPaid", "amountPaid"],
+      ["balance", "balance"], ["lastPaymentDate", "lastPaymentDate"],
     ].forEach(function (pair) {
       const value = student[pair[0]];
-      if (value === undefined || value === null || String(value).trim() === "") return;
-      if (String(account[pair[1]] || "") !== String(value)) {
+      const derived = ["totalFee", "amountPaid", "balance", "lastPaymentDate"].includes(pair[0]);
+      if (value === undefined || value === null || (!derived && String(value).trim() === "")) return;
+      if (String(account[pair[1]] === undefined ? "" : account[pair[1]]) !== String(value)) {
         account[pair[1]] = value;
         changed = true;
       }
@@ -821,6 +831,9 @@ function readWorkbook() {
 }
 
 function saveDb(db) {
+  // Keep the Accounts sheet's displayed profile and statement summary current
+  // in the same workbook write as its Students and Payments source rows.
+  syncAccountProfilesFromRoster(db);
   // DB_DIR is a mounted volume on Render, so create it if the mount is late.
   if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
   // Excel on Windows holds the workbook open and briefly locks it around its
@@ -1009,7 +1022,7 @@ function rebuildMonthlySheet(db) {
     };
     SCHOOL_MONTHS.forEach(function (m) { row[m] = 0; });
     payments.forEach(function (p) {
-      if (String(p.studentId) !== String(student.id)) return;
+      if (studentIdKey(p.studentId) !== studentIdKey(student.id)) return;
       const day = toDate(p.date);
       if (!day) return;
       // June–December are plan months 1–7 (indices 0–6); Jan–March continue
@@ -1079,6 +1092,14 @@ function migrateDb(db) {
     XLSX.utils.sheet_to_json(db.Sheets[SHEETS.students], { header: 1 })[0]) || []);
   if (!studentHeader.includes("tuitionFee")) changed = true;
   applySheetFormatting(db);
+  const accountHeader = ((db.Sheets[SHEETS.accounts] &&
+    XLSX.utils.sheet_to_json(db.Sheets[SHEETS.accounts], { header: 1 })[0]) || []);
+  if (["totalFee", "amountPaid", "balance", "lastPaymentDate"].some(function (col) {
+    return !accountHeader.includes(col);
+  })) {
+    writeSheet(db, SHEETS.accounts, readSheet(db, SHEETS.accounts), ACCOUNT_COLUMNS);
+    changed = true;
+  }
 
   // Older workbooks only knew a bare "balance" column. Give them the full
   // tuition picture: derive totalFee from the old balance plus what has already
@@ -1093,7 +1114,9 @@ function migrateDb(db) {
   students.forEach((student) => {
     if (!hasBillingColumns) {
       const paid = readSheet(db, SHEETS.payments).reduce((sum, p) => {
-        return String(p.studentId) === String(student.id) ? sum + (Number(p.amount) || 0) : sum;
+        return studentIdKey(p.studentId) === studentIdKey(student.id)
+          ? sum + (Number(p.amount) || 0)
+          : sum;
       }, 0);
       student.totalFee = (Number(student.balance) || 0) + paid;
     }
@@ -1113,13 +1136,21 @@ function migrateDb(db) {
     });
     if (!student.username) student.username = student.id;
     if (!student.accountStatus) student.accountStatus = "active";
-    // Split the fee into tuition + miscellaneous for any row still missing the
-    // split — either the columns were just added, or an earlier migration wrote
-    // the header before filling the values. Rows the office has already split
-    // themselves are left exactly as they typed them.
-    if (toNumber(student.tuitionFee) <= 0 && toNumber(student.miscFee) <= 0) {
-      syncStudentBilling(db, student);
-      changed = true; // the split must reach the disk, not just memory
+    // The Payments sheet is the ledger of record. Recompute every student's
+    // paid amount, balance, last-payment date and billing status whenever the
+    // workbook is loaded, so direct Excel edits and portal accounts stay in
+    // sync with the same payment rows.
+    const billingBefore = [
+      student.tuitionFee, student.miscFee, student.totalFee, student.amountPaid,
+      student.balance, student.dueDate, student.lastPaymentDate, student.status,
+    ].map(function (value) { return String(value === undefined || value === null ? "" : value); });
+    syncStudentBilling(db, student);
+    const billingAfter = [
+      student.tuitionFee, student.miscFee, student.totalFee, student.amountPaid,
+      student.balance, student.dueDate, student.lastPaymentDate, student.status,
+    ].map(function (value) { return String(value === undefined || value === null ? "" : value); });
+    if (billingBefore.some(function (value, index) { return value !== billingAfter[index]; })) {
+      changed = true;
     }
   });
   // The Monthly Payments sheet is derived from the ledger, so it is rebuilt
@@ -1200,6 +1231,10 @@ function accountFromRow(row, credential, email) {
   merged.section = row.section || merged.section || "";
   merged.guardian = row.guardian || merged.guardian || "";
   merged.contact = row.contact || merged.contact || "";
+  ["totalFee", "amountPaid", "balance", "lastPaymentDate"].forEach(function (col) {
+    if (row[col] !== undefined && row[col] !== null && row[col] !== "") merged[col] = row[col];
+    else if (credential && credential[col] !== undefined) merged[col] = credential[col];
+  });
   if (!merged.username) merged.username = merged.studentId;
 
   if (credential) {
@@ -1262,6 +1297,8 @@ function studentsForDashboard(db) {
       ["email", "email"], ["contact", "contact"], ["guardian", "guardian"],
       ["guardianContact", "guardianContact"], ["birthdate", "birthdate"],
       ["sex", "sex"], ["address", "address"], ["lastSchool", "lastSchool"],
+      ["totalFee", "totalFee"], ["amountPaid", "amountPaid"],
+      ["balance", "balance"], ["lastPaymentDate", "lastPaymentDate"],
     ].forEach(function (pair) {
       if (account[pair[0]] !== undefined && String(account[pair[0]]).trim() !== "") {
         student[pair[1]] = account[pair[0]];
@@ -1531,6 +1568,10 @@ function publicAccount(account) {
     guardian: account.guardian || "",
     guardianContact: account.guardianContact || "",
     lastSchool: account.lastSchool || "",
+    totalFee: Number(account.totalFee) || 0,
+    amountPaid: Number(account.amountPaid) || 0,
+    balance: Number(account.balance) || 0,
+    lastPaymentDate: account.lastPaymentDate || "",
   };
 }
 
@@ -1557,6 +1598,7 @@ function studentProfileFor(db, account) {
   const student = readSheet(db, SHEETS.students).find(
     (s) => studentIdKey(s.id) === studentIdKey(account.studentId)
   );
+  const statement = studentRecordFor(db, account.studentId);
   return {
     studentId: account.studentId,
     fullname: student && student.name ? student.name : account.fullname,
@@ -1571,6 +1613,11 @@ function studentProfileFor(db, account) {
     guardian: student && student.guardian ? student.guardian : account.guardian || "",
     guardianContact: student && student.guardianContact ? student.guardianContact : account.guardianContact || "",
     lastSchool: student && student.lastSchool ? student.lastSchool : account.lastSchool || "",
+    totalFee: statement ? statement.totalFee : Number(account.totalFee) || 0,
+    amountPaid: statement ? statement.amountPaid : Number(account.amountPaid) || 0,
+    balance: statement ? statement.balance : Number(account.balance) || 0,
+    lastPaymentDate: statement ? statement.lastPaymentDate : account.lastPaymentDate || "",
+    payments: statement ? statement.payments : [],
   };
 }
 
@@ -1692,9 +1739,11 @@ function studentRecordFor(db, studentId) {
         grade: account.gradeLevel,
         section: account.section,
         status: account.status,
-        totalFee: 0,
-        amountPaid: 0,
-        balance: 0,
+        totalFee: Number(account.totalFee) || 0,
+        amountPaid: Number(account.amountPaid) || 0,
+        balance: Number(account.balance) || 0,
+        dueDate: account.dueDate || "",
+        lastPaymentDate: account.lastPaymentDate || "",
       };
     }
   }
@@ -2883,7 +2932,7 @@ async function handleApi(req, res, pathname) {
     const db = loadDb();
     const accounts = readAccounts(db);
     const index = accounts.findIndex(
-      (a) => String(a.studentId) === String(session.studentId)
+      (a) => studentIdKey(a.studentId) === studentIdKey(session.studentId)
     );
     if (index === -1) return sendJson(res, 404, { error: "Account not found" });
 
@@ -2976,7 +3025,7 @@ async function handleApi(req, res, pathname) {
     // One open request at a time: a second filing while the first is still
     // waiting would double-count the same money once both were verified.
     const open = readSheet(db, SHEETS.payRequests).some(function (r) {
-      return String(r.studentId) === String(session.studentId) &&
+      return studentIdKey(r.studentId) === studentIdKey(session.studentId) &&
         String(r.status).toLowerCase() === "pending";
     });
     if (open) {
@@ -3089,7 +3138,7 @@ async function handleApi(req, res, pathname) {
     if (!session) return;
     const db = loadDb();
     const mine = readSheet(db, SHEETS.payRequests)
-      .filter(function (r) { return String(r.studentId) === String(session.studentId); })
+      .filter(function (r) { return studentIdKey(r.studentId) === studentIdKey(session.studentId); })
       .sort(function (a, b) { return String(b.requestedAt).localeCompare(String(a.requestedAt)); });
     return sendJson(res, 200, { requests: mine });
   }
@@ -3242,7 +3291,7 @@ async function handleApi(req, res, pathname) {
     const db = loadDb();
     const accounts = readAccounts(db);
     const index = accounts.findIndex(
-      (a) => String(a.studentId) === String(session.studentId)
+      (a) => studentIdKey(a.studentId) === studentIdKey(session.studentId)
     );
     if (index === -1) return sendJson(res, 404, { error: "Account not found" });
 
@@ -3769,7 +3818,7 @@ async function handleApi(req, res, pathname) {
     let payments = readSheet(db, SHEETS.payments);
     const wanted = new URL(req.url, "http://localhost").searchParams.get("studentId");
     if (wanted) {
-      payments = payments.filter((p) => String(p.studentId) === String(wanted));
+      payments = payments.filter((p) => studentIdKey(p.studentId) === studentIdKey(wanted));
     }
     // Newest first, so the most recent payment date leads the list.
     payments = payments
@@ -3802,7 +3851,9 @@ async function handleApi(req, res, pathname) {
 
     const db = loadDb();
     const students = readSheet(db, SHEETS.students);
-    const index = students.findIndex((s) => String(s.id) === String(body.studentId));
+    const index = students.findIndex(
+      (s) => studentIdKey(s.id) === studentIdKey(body.studentId)
+    );
     if (index === -1) return sendJson(res, 404, { error: "Student not found" });
 
     const student = students[index];
