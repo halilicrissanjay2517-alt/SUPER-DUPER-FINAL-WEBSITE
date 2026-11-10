@@ -2,7 +2,7 @@
 
 This is the Render deployment guide. The repo already contains a
 Blueprint (`../render.yaml`), so the code side is a few clicks. The part that
-needs care is the **data**: `database.xlsx` is deliberately git-ignored — it
+needs care is the **data**: `student-database-2026-10-28.xlsx` is deliberately git-ignored — it
 holds real students' names, contacts, balances and password hashes — so it
 never travels with the code. You copy it up to the server's disk once, over
 HTTPS, with `push-db.ps1`.
@@ -19,14 +19,14 @@ HTTPS, with `push-db.ps1`.
 | Thing            | Where it lives on Render                       | Survives a deploy? |
 | ---------------- | ---------------------------------------------- | ------------------ |
 | The website/code | the checkout (`rootDir: SPA-Student-Portal`)   | No — rebuilt       |
-| `database.xlsx`  | `/var/data/database.xlsx` (`DB_DIR`)           | **Yes** (disk)     |
+| `student-database-2026-10-28.xlsx`  | `/var/data/student-database-2026-10-28.xlsx` (`DB_DIR`)           | **Yes** (disk)     |
 | Profile pictures | `/var/data/avatars/...` (beside the workbook)  | **Yes** (disk)     |
 | Login sessions   | server memory                                  | No — users sign in again after a restart |
 
 The single most important line in the deploy log is:
 
 ```
-Data   : /var/data/database.xlsx
+Data   : /var/data/student-database-2026-10-28.xlsx
 ```
 
 If it shows anything under `/opt/render/project/...` instead, the disk is not
@@ -36,12 +36,12 @@ covering the data and **every change will be lost on the next deploy**.
 
 ## Step 1 — Put the code on GitHub
 
-`database.xlsx` and its backups are excluded by `.gitignore`, so the push
+`student-database-2026-10-28.xlsx` and its backups are excluded by `.gitignore`, so the push
 carries code only.
 
 ```powershell
 cd "c:\Users\ADMIN\OneDrive\Desktop\SUPER FINAL WEBSITE"
-git status                     # database.xlsx must NOT be listed
+git status                     # student-database-2026-10-28.xlsx must NOT be listed
 git add render.yaml SPA-Student-Portal
 git commit -m "Render deployment: blueprint, Node pin, RENDER.md"
 git push origin main
@@ -153,7 +153,7 @@ What the path tells you:
 added 9 packages, and audited 10 packages in 2s
 ==> Running 'npm start'
 Saint Patrick's Academy portal running at https://...
-  Data   : /var/data/database.xlsx      <-- this line is the one that matters
+  Data   : /var/data/student-database-2026-10-28.xlsx      <-- this line is the one that matters
 ```
 
 ## Step 3 — Confirm the site is alive
@@ -167,11 +167,11 @@ Open `https://<your-service>.onrender.com` — the static pages load, and
 Saint Patrick's Academy portal running at https://...
   Portal : https://.../
   Admin  : https://.../admin.html
-  Data   : /var/data/database.xlsx
+  Data   : /var/data/student-database-2026-10-28.xlsx
 ```
 
-The `Data :` line must say `/var/data/database.xlsx`. If it says
-`/opt/render/project/src/SPA-Student-Portal/database.xlsx`, stop: the disk is not
+The `Data :` line must say `/var/data/student-database-2026-10-28.xlsx`. If it says
+`/opt/render/project/src/student-database-2026-10-28.xlsx`, stop: the disk is not
 attached or `DB_DIR` is wrong.
 
 On a fresh disk there is **no workbook**, and this app deliberately refuses to
@@ -179,7 +179,7 @@ create an empty one on a host (`mustNeverSeed()` in `server.js`). So the log
 shows this instead, and it is **expected**:
 
 ```
-  !! FATAL: No workbook at /var/data/database.xlsx — refusing to create an empty one on a host.
+  !! FATAL: No workbook at /var/data/student-database-2026-10-28.xlsx — refusing to create an empty one on a host.
      The site will stay up but /healthz reports 503.
 ```
 
@@ -196,12 +196,12 @@ from the project root:
 
 ```powershell
 cd "c:\Users\ADMIN\OneDrive\Desktop\SUPER FINAL WEBSITE"
-git check-ignore -v "SPA-Student-Portal/database.xlsx"   # must print a .gitignore: line
-([System.IO.File]::ReadAllBytes(".\SPA-Student-Portal\database.xlsx")[0..1] | ForEach-Object { $_.ToString("X2") }) -join " "
+git check-ignore -v "student-database-2026-10-28.xlsx"   # must print a .gitignore: line
+([System.IO.File]::ReadAllBytes(".\student-database-2026-10-28.xlsx")[0..1] | ForEach-Object { $_.ToString("X2") }) -join " "
 ```
 
 - The first command proves the workbook is still **not** in git. It must print a
-  `SPA-Student-Portal/.gitignore:...:database.xlsx` line; if it prints nothing,
+  `.gitignore:...:student-database-2026-10-28.xlsx` line; if it prints nothing,
   **stop** — a real student file is about to be committed.
 - The second prints `50 4B` (`PK`, the ZIP header of an `.xlsx`). Any other value
   means the file is corrupt or is not a workbook.
@@ -209,18 +209,18 @@ git check-ignore -v "SPA-Student-Portal/database.xlsx"   # must print a .gitigno
 
   ```powershell
   cd SPA-Student-Portal
-  node -e "const X=require('xlsx'),w=X.readFile('database.xlsx');console.log(w.SheetNames.join(', '));console.log('students:',X.utils.sheet_to_json(w.Sheets['Students']).length)"
+  node -e "const X=require('xlsx'),w=X.readFile('../student-database-2026-10-28.xlsx');console.log(w.SheetNames.join(', '));console.log('students:',X.utils.sheet_to_json(w.Sheets['Students']).length)"
   ```
 
-  It should list `Students, Admins, Logs, Payments, Accounts` — the upload is
+  It should list `Payments, Students, Admins, Logs, Accounts` — the upload is
   rejected if there is no `Students` sheet.
 
-> Your current `database.xlsx` holds **10 students**. The upload response repeats
-> that number; it is how you confirm the right file landed.
+> Your current `student-database-2026-10-28.xlsx` holds **142 students**, 138 accounts and 43 payment rows. The upload response repeats
+> the student and account counts to confirm the right file landed.
 
 ## Step 5 — Upload your existing database
 
-Your workbook is ~85 KB, well under the 25 MB upload limit. From this folder:
+Your workbook is ~480 KB, well under the 25 MB upload limit. From this folder:
 
 ```powershell
 cd "c:\Users\ADMIN\OneDrive\Desktop\SUPER FINAL WEBSITE\SPA-Student-Portal"
@@ -244,7 +244,7 @@ Uploaded. Server said:
 {"ok":true,"students":10,"accounts":<n>,"backup":"database.before-upload-....xlsx", ...}
 ```
 
-(`students` is the row count in your workbook — your current `database.xlsx`
+(`students` is the row count in your workbook — your current `student-database-2026-10-28.xlsx`
 holds 10 — so the number is your check that the right file landed.)
 
 - The server keeps a timestamped copy of whatever it replaced, so a wrong file
@@ -258,7 +258,7 @@ Then **redeploy** the service: **Manual Deploy → Deploy latest commit**.
 
 The upload only wrote the file to the disk — the running server still holds the
 "no workbook" state from step 3, so `/healthz` keeps returning 503 until the
-process restarts. After the redeploy the log shows `Data : /var/data/database.xlsx`
+process restarts. After the redeploy the log shows `Data : /var/data/student-database-2026-10-28.xlsx`
 without the FATAL line, and Render marks the deploy healthy.
 
 Finally sign in at `/admin.html` with `admin` and your `SPA_ADMIN_PASSWORD` (the
@@ -266,13 +266,13 @@ password is stored **inside** the workbook, so the one that works is whichever
 was set on the version you just uploaded) and check that your real roster,
 payments and logins are there.
 
-> **Why a script instead of a git push:** committing `database.xlsx` to a
+> **Why a script instead of a git push:** committing `student-database-2026-10-28.xlsx` to a
 > public repo publishes every student record and password hash to anyone who
 > finds it. `.gitignore` blocks it on purpose. Do not override that.
 
 ## Step 6 — Final checks
 
-- [ ] `Data : /var/data/database.xlsx` in the log, and **no**
+- [ ] `Data : /var/data/student-database-2026-10-28.xlsx` in the log, and **no**
       `!! WARNING: no volume is mounted` line
 - [ ] Real roster visible in the dashboard after a redeploy
 - [ ] A student can sign in with their existing password (the upload carries
@@ -286,7 +286,7 @@ payments and logins are there.
 
 ## Backups (this file *is* the database)
 
-`database.xlsx` holds everything. Treat a copy of it like the database itself.
+`student-database-2026-10-28.xlsx` holds everything. Treat a copy of it like the database itself.
 
 - Download it any time: **Dashboard → sign in → "Open Excel database"**
   (`GET /api/database`), or run `push-db.ps1` in reverse by simply keeping the
@@ -300,9 +300,9 @@ payments and logins are there.
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
-| `Refusing to create database.xlsx with the default admin password` | `SPA_ADMIN_PASSWORD` not visible to the process that booted | See **Fixing the "Refusing to create" error** below. This is the safety net, not a bug. |
-| `Could not read /var/data/database.xlsx` / health check failing | Workbook unreadable or disk missing | Check the disk is mounted at `/var/data`; re-run step 5. |
-| `No workbook at /var/data/database.xlsx — refusing to create an empty one` | The disk mounted but is empty (fresh disk, or mount path changed) | This is on purpose: the server will never re-seed over a live school. Run step 5 (`push-db.ps1`), then **redeploy** so the process picks the workbook up. For a throwaway demo instance, set `SPA_ALLOW_SEED=1`. |
+| `Refusing to create student-database-2026-10-28.xlsx with the default admin password` | `SPA_ADMIN_PASSWORD` not visible to the process that booted | See **Fixing the "Refusing to create" error** below. This is the safety net, not a bug. |
+| `Could not read /var/data/student-database-2026-10-28.xlsx` / health check failing | Workbook unreadable or disk missing | Check the disk is mounted at `/var/data`; re-run step 5. |
+| `No workbook at /var/data/student-database-2026-10-28.xlsx — refusing to create an empty one` | The disk mounted but is empty (fresh disk, or mount path changed) | This is on purpose: the server will never re-seed over a live school. Run step 5 (`push-db.ps1`), then **redeploy** so the process picks the workbook up. For a throwaway demo instance, set `SPA_ALLOW_SEED=1`. |
 | Deploy fails with **Health check failed (503)** on a first deploy | Same as above — the app is up, but there is no workbook yet | Expected until step 5. Upload, then redeploy. |
 | Data gone after every deploy | `DB_DIR` not pointing at the disk | Blueprint sets `/var/data`; confirm in **Environment** and the disk's mount path. |
 | `restore-db` returns **404** | `SPA_DB_UPLOAD_TOKEN` unset (the route is disabled by design) | Set it, redeploy, retry. |
@@ -351,7 +351,7 @@ guard only runs when creating a fresh one.
 
 **Already has a workbook?** The guard lives in `createSeedDb()`, which only runs
 when `DB_FILE` does not exist. If uploads already placed
-`/var/data/database.xlsx`, the workbook's own stored password is what counts and
+`/var/data/student-database-2026-10-28.xlsx`, the workbook's own stored password is what counts and
 this error would not appear at all — so if you see it, the disk is empty or
 `DB_DIR` is wrong. Check the `Data :` line in the startup log.
 

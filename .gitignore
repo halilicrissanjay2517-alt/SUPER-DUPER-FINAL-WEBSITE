@@ -21,3 +21,7 @@ desktop.ini
 
 # Nothing installed or generated at the root is worth committing.
 node_modules/
+
+# The primary workbook contains student contact, payment and login records.
+/student-database-2026-10-28.xlsx
+/student-database-2026-10-28.*.xlsx

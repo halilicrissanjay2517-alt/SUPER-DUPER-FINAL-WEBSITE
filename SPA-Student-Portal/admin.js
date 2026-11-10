@@ -1,5 +1,5 @@
 /* Saint Patrick's Academy, Inc. — Admin dashboard.
-   Talks to the JSON API in server.js, which persists to database.xlsx. */
+   Talks to the JSON API in server.js, which persists to the Excel source workbook. */
 (function () {
   "use strict";
 
@@ -1300,7 +1300,7 @@
   });
 
   /* ---------------------------------------------- Create a student account
-     One button, one job: write a working login into database.xlsx. The account
+     One button, one job: write a working login into the Excel source workbook. The account
      is created active, so the office is not left with a pending request to
      approve later — the same click both records it and lets the student in. */
 
@@ -1404,7 +1404,7 @@
   function downloadDatabase(button) {
     if (!state.signedIn) return;
     if (button) button.disabled = true;
-    toast("Preparing database.xlsx…");
+    toast("Preparing the student database…");
     fetch(apiUrl("/api/database"), { credentials: "same-origin" })
       .then(function (res) {
         if (!res.ok) throw new Error("Could not build the database file");
@@ -1414,14 +1414,14 @@
         var url = URL.createObjectURL(blob);
         var link = document.createElement("a");
         link.href = url;
-        link.download = "student-database-" + todayISO() + ".xlsx";
+        link.download = "student-database-2026-10-28.xlsx";
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         // Give the browser a moment to start the download before the blob is
         // released, otherwise a slow disk can produce a broken file.
         setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
-        toast("database.xlsx downloaded");
+        toast("Student database downloaded");
       })
       .catch(function (err) { toast(err.message, true); })
       .then(function () { if (button) button.disabled = false; });
@@ -1433,7 +1433,7 @@
 
   /*  ------------------------------------------------ Open in Excel (live round trip)
      One button, three steps, no command line:
-       1. Downloads the live database.xlsx (the same bytes the website uses).
+       1. Downloads the live student database (the same bytes the website uses).
        2. Watches that file on disk. The moment Excel saves it, the edited
           workbook is pushed back to the server — which swaps it in, backs up
           the old one, and every open page reloads within seconds via the
@@ -1606,7 +1606,7 @@
             // Permission needs a user gesture again. Arm the button so the
             // next click re-requests it instead of re-downloading.
             liveExcelBtn.textContent = "Resume Excel watch ↺";
-            liveExcelBtn.title = "Click to resume watching your saved database.xlsx";
+            liveExcelBtn.title = "Click to resume watching your saved student database";
             liveExcelBtn.dataset.resumePending = "1";
             liveExcelBtn._resumeHandle = handle;
           }
@@ -1648,7 +1648,7 @@
           })
           .then(function (blob) {
             return showSaveFilePicker({
-              suggestedName: "database.xlsx",
+              suggestedName: "student-database-2026-10-28.xlsx",
               types: [{ description: "Excel workbook", accept: { "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"] } }],
             }).then(function (handle) {
               return handle.createWritable().then(function (w) {
@@ -1764,7 +1764,7 @@
 
   /* ------------------------------------------------ Live Excel sync
      The workbook is the database, so when it changes under us — the office
-     saved database.xlsx in Excel, an import ran on another tab, a payment was
+     saved student database in Excel, an import ran on another tab, a payment was
      recorded — reload everything this dashboard shows, within seconds, with
      no refresh and no button. */
   if (window.SpaLiveSync) {

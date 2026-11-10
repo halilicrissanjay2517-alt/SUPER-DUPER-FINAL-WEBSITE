@@ -27,7 +27,7 @@ Keep that window open while using the site. Closing it stops the server.
 
 ## Opening the Excel file (for teachers)
 
-Open `database.xlsx` in this folder with Excel.
+Open `../student-database-2026-10-28.xlsx` in the project root with Excel.
 
 Once open, click the sheet tabs at the bottom:
 
@@ -128,7 +128,7 @@ things about it:
   Upload photo** (PNG, JPG, WEBP or GIF, up to 2 MB). It appears in the corner of
   the header and beside their name; **Remove** clears it again. Only the filename
   is written into the workbook — the image itself is stored in an `avatars/`
-  folder beside `database.xlsx`, so it persists with the volume and is never
+  folder beside `student-database-2026-10-28.xlsx`, so it persists with the volume and is never
   inlined into the sheet. A student can fetch **only their own** picture; the
   office can see any student's picture from the dashboard.
 - **The 3-line menu.** The header carries a menu button that gathers every
@@ -154,7 +154,7 @@ publicly.**
 | `registrar` | `ChangeMe!Records2025` | registrar | Edit student records only |
 
 These are the defaults for a **new** database only. The passwords in this
-project's own `database.xlsx` have already been changed, and that file is not
+project's own `student-database-2026-10-28.xlsx` have already been changed, and that file is not
 published, so these rows are just documentation of what a fresh seed contains.
 
 Set your own before first run:
@@ -166,7 +166,7 @@ node server.js
 ```
 
 **Change these passwords before putting the site on a real network.**
-An existing `database.xlsx` keeps whatever passwords it already has — starting
+An existing `student-database-2026-10-28.xlsx` keeps whatever passwords it already has — starting
 the server never silently changes a working login.
 
 > On a public host (one that sets `PORT`) the server **refuses to start** if it
@@ -175,7 +175,7 @@ the server never silently changes a working login.
 > `SPA_INSECURE_DEFAULTS=1` — never on a real host.
 
 ## The database
-`database.xlsx` is created automatically on first run with these sheets:
+`student-database-2026-10-28.xlsx` is created automatically on first run with these sheets:
 
 - **Students** — `id, name, grade, section, status, totalFee, amountPaid, balance, dueDate, lastPaymentDate, guardian, contact, email` plus the account columns below
 - **Accounts** — `studentId, fullname, email, passwordHash, salt, status, createdAt, approvedBy, approvedAt, note, gradeLevel, section, birthdate, sex, address, contact, guardian, guardianContact, lastSchool, rosterMatch, avatar`
@@ -281,7 +281,7 @@ workflow** (including that a pending account is refused, that a student session
 cannot reach any admin route, and that no plaintext password is ever stored),
 persistence to the Excel file, and path-traversal protection.
 
-It moves your `database.xlsx` aside for the run and puts it back afterwards, so
+It moves your `student-database-2026-10-28.xlsx` aside for the run and puts it back afterwards, so
 the suite is safe to run against real data — it asserts against a **fresh** seed
 (expecting the sample students and the default passwords), which a live workbook
 cannot satisfy. The restore runs on every exit path, including a crash.
@@ -294,15 +294,15 @@ cannot satisfy. The restore runs on every exit path, including a crash.
 | `admin.html` / `admin.css` / `admin.js` | The admin dashboard. |
 | `studentportal.html` / `styles.css` / `script.js` | The public portal. |
 | `features.html` | The "Portal Services" guide page. |
-| `database.xlsx` | The database. **Not in the repo** — see below. |
+| `student-database-2026-10-28.xlsx` | The database. **Not in the repo** — see below. |
 | `LAUNCH.md` | Checklist to go live: passwords, sample data, hosting. |
 | `RENDER.md` | Step-by-step: deploying to Render, including the disk and the workbook upload. |
-| `push-db.ps1` | Uploads your local `database.xlsx` (and profile pictures) to the deployed server. |
+| `push-db.ps1` | Uploads your local `student-database-2026-10-28.xlsx` (and profile pictures) to the deployed server. |
 | `_e2e.js` | End-to-end tests (103 checks). |
 | `_launch_check.cjs` | Public-launch safety guards (6 checks). |
 | `index.test.mjs` | Page-level tests (4 checks). |
 
-> **`database.xlsx` is not in this repository, by design.** It holds real
+> **`student-database-2026-10-28.xlsx` is not in this repository, by design.** It holds real
 > students' names, contacts, tuition balances and password hashes, so it is
 > listed in `.gitignore`. The server creates a fresh seeded workbook on first
 > start if the file is missing, so a clone runs without it.
@@ -314,7 +314,7 @@ cannot satisfy. The restore runs on every exit path, including a crash.
 - Sign-in and sign-up are rate limited (10 attempts per 10 minutes per address),
   so password guessing is throttled. Behind a proxy the limit uses
   `X-Forwarded-For`, so set that header at your reverse proxy.
-- Only one server process should write to `database.xlsx` at a time. The
+- Only one server process should write to `student-database-2026-10-28.xlsx` at a time. The
   workbook is rewritten in full on every change, so avoid editing it in Excel
   while the site is in use.
 - The public record look-up is rate limited too, so it cannot be used to walk

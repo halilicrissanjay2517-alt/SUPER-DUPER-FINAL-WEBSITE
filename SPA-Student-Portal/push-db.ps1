@@ -2,7 +2,7 @@
 # push-db.ps1 — copy the live workbook from this PC to the deployed server.
 #
 # WHY THIS EXISTS
-#   database.xlsx is git-ignored on purpose: it holds real students' names,
+#   The student database workbook is git-ignored on purpose: it holds real students' names,
 #   contact details, tuition balances and password hashes, and it must never
 #   land in a public repo. So the repo deploys the CODE only. This script moves
 #   the DATA over HTTPS afterwards, straight onto the server's persistent disk
@@ -15,7 +15,7 @@
 #   3. Run from this folder:
 #        .\push-db.ps1 -Url https://your-app.onrender.com -Token <that string>
 #   4. Optional flags:
-#        -File database.xlsx        workbook to send (default: live one)
+#        -File ..\student-database-2026-10-28.xlsx  workbook to send (default: live one)
 #        -Dir  .\photos             also upload profile pictures, if used
 #        -WhatIf                    show what would happen, send nothing
 #
@@ -29,7 +29,7 @@
 param(
     [Parameter(Mandatory = $true)][string]$Url,
     [Parameter(Mandatory = $true)][string]$Token,
-    [string]$File = (Join-Path $PSScriptRoot "database.xlsx"),
+    [string]$File = (Join-Path (Split-Path $PSScriptRoot -Parent) "student-database-2026-10-28.xlsx"),
     [string]$Dir
 )
 

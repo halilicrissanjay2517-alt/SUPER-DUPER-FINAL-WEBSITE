@@ -2,7 +2,7 @@
  * Saint Patrick's Academy, Inc. — Student Portal backend.
  *
  * Serves the static site AND exposes a small JSON API backed by a single
- * Excel workbook (database.xlsx). The workbook is the database:
+ * Excel workbook (student-database-2026-10-28.xlsx). The workbook is the database:
  *
  *   Students sheet : id, name, grade, section, status, totalFee, amountPaid,
  *                    balance, dueDate, lastPaymentDate, guardian, contact, email
@@ -34,14 +34,16 @@ const ROOT = __dirname;
 // Where the workbook lives. The code and the data are separate concerns: on a
 // host the repo is overwritten on every deploy, while a mounted disk
 // survives. Pointing DB_DIR at that mount keeps students, payments and
-// approvals across restarts. Locally nothing is set, so the file stays next to
-// server.js exactly as a plain `node server.js` expects.
+// approvals across restarts. Locally the workbook sits in the project root,
+// beside the SPA-Student-Portal folder.
 //
 // The order matters:
 //   DB_DIR  — explicit choice, used on Render (/var/data) and locally
-//   ROOT    — no host, no disk: plain local run
-const DB_DIR = path.resolve(process.env.DB_DIR || ROOT);
-const DB_FILE = path.join(DB_DIR, "database.xlsx");
+//   project root — local data workbook beside the SPA-Student-Portal folder
+const LOCAL_DATA_DIR = path.resolve(ROOT, "..");
+const DB_DIR = path.resolve(process.env.DB_DIR || LOCAL_DATA_DIR);
+const DB_FILENAME = "student-database-2026-10-28.xlsx";
+const DB_FILE = path.join(DB_DIR, DB_FILENAME);
 // Student profile pictures live beside the workbook, on the same persistent
 // volume. Only the filename is recorded in the sheet; the bytes stay on disk so
 // the workbook never balloons and an image is never inlined into a spreadsheet.
@@ -603,7 +605,7 @@ function applyColumnWidths(db, name, widths) {
 /**
  * Header normalisation for readSheet.
  *
- * The office edits database.xlsx in Excel by hand, and a hand-typed header
+ * The office edits student-database-2026-10-28.xlsx in Excel by hand, and a hand-typed header
  * ("STUDENT ID" instead of studentId, "RECEIPT NO" instead of receiptNo, a
  * stray blank column Excel labels __EMPTY) used to come back as object keys
  * that matched nothing — a payment then counted for the balance but vanished
@@ -875,7 +877,7 @@ function saveDb(db) {
 }
 
 /**
- * Rewrite database.xlsx from the live data, right now.
+ * Rewrite student-database-2026-10-28.xlsx from the live data, right now.
  *
  * Called after a self-registration and after an approval, so the file on disk
  * reflects the dashboard the moment the office looks at it instead of waiting
@@ -941,7 +943,7 @@ function createSeedDb() {
     process.env.SPA_INSECURE_DEFAULTS !== "1";
   if (looksPublic && !process.env.SPA_ADMIN_PASSWORD) {
     throw new Error(
-      "Refusing to create database.xlsx with the default admin password on a public host.\n" +
+      "Refusing to create " + DB_FILENAME + " with the default admin password on a public host.\n" +
         "Set SPA_ADMIN_PASSWORD (and SPA_REGISTRAR_PASSWORD) before starting.\n" +
         "Locally this is skipped, so running node server.js on your own machine still works."
     );
@@ -1064,7 +1066,7 @@ function applySheetFormatting(db) {
 
 /**
  * Add any sheet that is missing from an older workbook, so an existing
- * database.xlsx gains Payments (and anything else new) on the next start
+ * student-database-2026-10-28.xlsx gains Payments (and anything else new) on the next start
  * without losing the data already in it.
  */
 function migrateDb(db) {
@@ -1122,7 +1124,7 @@ function migrateDb(db) {
     }
     // Give every student row the account columns. A workbook written before the
     // login details moved onto this sheet has them only in Accounts, so they are
-    // copied across here — otherwise the office would open database.xlsx and
+    // copied across here — otherwise the office would open student-database-2026-10-28.xlsx and
     // find an approved student with no sign of their account.
     const credential = credentials.find(
       (a) => String(a.studentId || "").trim().toLowerCase() ===
@@ -2375,7 +2377,7 @@ async function handleApi(req, res, pathname) {
         : "New-student application: Student ID not on the roster yet (pending approval)"
     );
     saveDb(db);
-    // Rebuild the workbook once the log line is in it too, so database.xlsx is
+    // Rebuild the workbook once the log line is in it too, so student-database-2026-10-28.xlsx is
     // complete the moment the sign-up succeeds.
     saveWorkbook();
     clearLoginAttempts(req, "signup");
@@ -2503,7 +2505,7 @@ async function handleApi(req, res, pathname) {
 
   /* ---- POST /api/students/:id/login  (give a student a sign-in) ----
      The "Create account" button. One action does everything the office asked
-     for: the login is written straight into database.xlsx and the account is
+     for: the login is written straight into student-database-2026-10-28.xlsx and the account is
      live immediately, so there is no separate approval step to forget. */
   const loginMatch = pathname.match(/^\/api\/students\/([^/]+)\/login$/);
   if (loginMatch && req.method === "POST") {
@@ -2590,7 +2592,7 @@ async function handleApi(req, res, pathname) {
       session.username,
       "create-account",
       student.id,
-      "Created the portal account for " + student.name + " (active, written to database.xlsx)"
+      "Created the portal account for " + student.name + " (active, written to student-database-2026-10-28.xlsx)"
     );
     saveDb(db);
 
@@ -2656,7 +2658,7 @@ async function handleApi(req, res, pathname) {
       session.username,
       "account-approve",
       student.id,
-      "Approved the account for " + student.name + " — written to database.xlsx"
+      "Approved the account for " + student.name + " — written to student-database-2026-10-28.xlsx"
     );
     saveDb(db);
     saveWorkbook();
@@ -2668,7 +2670,7 @@ async function handleApi(req, res, pathname) {
     });
   }
 
-  /* ---- GET /api/database  (download database.xlsx) ----
+  /* ---- GET /api/database  (download student-database-2026-10-28.xlsx) ----
      The "Open Excel database" button. The workbook is written to the live file
      and then streamed back, so what the office downloads is exactly what the
      website is using — not whatever a browser tab happened to cache. */
@@ -2680,7 +2682,7 @@ async function handleApi(req, res, pathname) {
     const data = fs.readFileSync(DB_FILE);
     res.writeHead(200, {
       "Content-Type": MIME[".xlsx"],
-      "Content-Disposition": 'attachment; filename="student-database.xlsx"',
+      "Content-Disposition": 'attachment; filename="student-database-2026-10-28.xlsx"',
       "Content-Length": data.length,
       "Cache-Control": "no-store",
     });
@@ -2724,7 +2726,7 @@ async function handleApi(req, res, pathname) {
         let backup = null;
         if (fs.existsSync(DB_FILE)) {
           const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-          backup = path.join(DB_DIR, "database.before-push-" + stamp + ".xlsx");
+          backup = path.join(DB_DIR, DB_FILENAME.replace(/\.xlsx$/i, ".before-push-" + stamp + ".xlsx"));
           fs.copyFileSync(DB_FILE, backup);
         }
         const tmp = DB_FILE + ".incoming";
@@ -2733,7 +2735,7 @@ async function handleApi(req, res, pathname) {
 
         const db = loadDb();
         const students = readSheet(db, SHEETS.students);
-        appendLog(db, session.username, "database-push", "database.xlsx",
+        appendLog(db, session.username, "database-push", DB_FILENAME,
           "Excel database replaced from an uploaded workbook");
         saveDb(db);
         console.log(
@@ -2762,7 +2764,7 @@ async function handleApi(req, res, pathname) {
     if (!session) return;
     saveWorkbook();
     const db = loadDb();
-    appendLog(db, session.username, "database-sync", "database.xlsx",
+    appendLog(db, session.username, "database-sync", DB_FILENAME,
       "Excel database refreshed from the dashboard");
     saveDb(db);
     return sendJson(res, 200, { ok: true, file: path.basename(DB_FILE), savedAt: new Date().toISOString() });
@@ -2906,7 +2908,7 @@ async function handleApi(req, res, pathname) {
     students.forEach((s) => syncStudentBilling(db, s));
     writeSheet(db, SHEETS.students, students, STUDENT_COLUMNS);
     appendLog(db, session.username, "import",
-      "database.xlsx",
+      DB_FILENAME,
       "Imported " + added + " new, updated " + updated + " students; " +
         paymentsAdded + " payments added, " + paymentsSkipped + " duplicates skipped" +
         (skipped ? "; " + skipped + " student rows skipped (no ID)" : ""));
@@ -3482,7 +3484,7 @@ async function handleApi(req, res, pathname) {
 
     // Approving is the moment the record becomes complete, so it is re-derived
     // from the reviewed answers and written to the sheet in the same breath as
-    // the status change. This is what puts the student into database.xlsx as a
+    // the status change. This is what puts the student into student-database-2026-10-28.xlsx as a
     // fully approved row in a single, atomic step — there is no window in which
     // an account is approved but the workbook does not know it.
     if (action === "approve") {
@@ -4213,7 +4215,7 @@ function serveStatic(req, res, pathname) {
   const PUBLIC_EXT = [".html", ".css", ".js", ".png", ".jpg", ".jpeg", ".svg", ".ico", ".webp"];
   const PRIVATE_FILES = [
     "server.js",
-    "database.xlsx",
+    DB_FILENAME,
     "package.json",
     "package-lock.json",
   ];
@@ -4329,7 +4331,7 @@ const server = http.createServer((req, res) => {
         let backup = null;
         if (fs.existsSync(DB_FILE)) {
           const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-          backup = path.join(DB_DIR, "database.before-upload-" + stamp + ".xlsx");
+          backup = path.join(DB_DIR, DB_FILENAME.replace(/\.xlsx$/i, ".before-upload-" + stamp + ".xlsx"));
           fs.copyFileSync(DB_FILE, backup);
         }
         // Write to a temp file and rename: a rename is atomic, so a crash mid-write
@@ -4389,7 +4391,7 @@ const server = http.createServer((req, res) => {
 
   /* ---- GET /api/version  (the workbook's change stamp) ----
    * Every page that shows student data polls this every few seconds. When the
-   * stamp moves — the office saved database.xlsx in Excel, an import ran, or a
+   * stamp moves — the office saved student-database-2026-10-28.xlsx in Excel, an import ran, or a
    * payment was recorded — the page knows its figures are stale and refreshes
    * itself, so an Excel edit appears on the site within seconds, live.
    * Deliberately public (no session needed): it carries only a timestamp and a
@@ -4480,7 +4482,7 @@ const server = http.createServer((req, res) => {
 if (!fs.existsSync(DB_FILE)) {
   try {
     loadDb();
-    console.log("Created database.xlsx with starter data.");
+    console.log("Created " + DB_FILENAME + " with starter data.");
     console.log("  Workbook: " + DB_FILE);
     // Never print the passwords themselves: host logs persist and are readable
     // long after the seed passwords have been changed.
@@ -4523,7 +4525,7 @@ server.listen(PORT, () => {
   // a volume IS in use. ROOT_RESOLVED normalises ROOT so the comparison is
   // genuinely resolved-vs-resolved.
   const ROOT_RESOLVED = path.resolve(ROOT);
-  const onVolume = DB_DIR !== ROOT_RESOLVED;
+  const onVolume = !!process.env.DB_DIR && DB_DIR !== ROOT_RESOLVED && DB_DIR !== LOCAL_DATA_DIR;
   if (!onVolume && (process.env.PORT || process.env.SPA_PUBLIC_URL)) {
     console.log("");
     console.log("  !! WARNING: no disk is mounted, so data is on the host's temporary");
