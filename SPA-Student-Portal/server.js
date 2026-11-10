@@ -12,12 +12,12 @@
  *
  * The tuition figures form one closed loop, so every sheet always agrees:
  *
- *   balance = totalFee - amountPaid
+ *   balance = max(totalFee - amountPaid + balanceAdjustment, 0)
  *
  * Recording a payment writes a row to Payments, adds to the student's
  * amountPaid, refreshes lastPaymentDate, then recomputes balance from the
- * formula above (never by subtracting, which would drift). The current
- * balance and the full payment history therefore can never disagree.
+ * ledger and any explicit Excel adjustment, so an office balance edit remains
+ * effective without inventing or deleting payment history.
  *
  * Run:  node server.js      ->  http://localhost:3000
  */
@@ -27,7 +27,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const zlib = require("zlib");
-const XLSX = require("xlsx");
+const XLSX = require("xlsx-js-style");
 
 const ROOT = __dirname;
 
@@ -210,6 +210,9 @@ const STUDENT_COLUMNS = [
   "totalFee",
   "amountPaid",
   "balance",
+  // Manual balance changes from Excel are stored as an adjustment so the
+  // payment ledger and the assessed total remain visible and reconcilable.
+  "balanceAdjustment",
   "dueDate",
   "lastPaymentDate",
   "guardian",
@@ -371,7 +374,8 @@ function syncStudentBilling(db, student) {
   student.miscFee = misc;
   student.totalFee = fee;
   student.amountPaid = paid;
-  student.balance = Math.max(fee - paid, 0);
+  student.balanceAdjustment = toNumber(student.balanceAdjustment);
+  student.balance = Math.max(fee - paid + student.balanceAdjustment, 0);
   student.dueDate = toDate(student.dueDate);
   student.lastPaymentDate = latestPaymentDate(db, student.id);
   student.status = billingStatus(student, paid);
@@ -379,6 +383,47 @@ function syncStudentBilling(db, student) {
 }
 
 /** Most recent payment date on record for a student, or "" if none. */
+/**
+ * Carry deliberate balance edits from an uploaded Excel workbook into the
+ * ledger-backed model. If the office changes only `balance`, save the
+ * difference as balanceAdjustment; the next payment still reduces that edited
+ * balance while amountPaid continues to come from the Payments ledger.
+ */
+function applyExcelBalanceEdits(currentDb, incomingDb) {
+  const currentById = new Map();
+  if (currentDb) {
+    readSheet(currentDb, SHEETS.students).forEach(function (student) {
+      const key = studentIdKey(student.id);
+      if (key) currentById.set(key, student);
+    });
+  }
+
+  const students = readSheet(incomingDb, SHEETS.students);
+  students.forEach(function (student) {
+    if (student.balance === "" || student.balance === undefined || student.balance === null) return;
+    const key = studentIdKey(student.id);
+    if (!key) return;
+
+    const current = currentById.get(key);
+    const balanceChanged = !current || toNumber(student.balance) !== toNumber(current.balance);
+    if (current && !balanceChanged) {
+      // The adjustment is managed from the Balance cell, not edited directly.
+      // Preserve the server's value so an older local copy cannot erase it.
+      student.balanceAdjustment = toNumber(current.balanceAdjustment);
+      return;
+    }
+
+    // A changed balance cell is the explicit Excel input. Calculate the base
+    // balance using the incoming payment ledger, then store only its difference.
+    // This also preserves an initial workbook's supplied balance on first upload.
+    const base = Object.assign({}, student, { balanceAdjustment: 0 });
+    syncStudentBilling(incomingDb, base);
+    student.balanceAdjustment = toNumber(student.balance) - toNumber(base.balance);
+  });
+  writeSheet(incomingDb, SHEETS.students, students, STUDENT_COLUMNS);
+}
+
+/** Most recent payment date on record for a student, or empty when none. */
 function latestPaymentDate(db, studentId) {
   let latest = "";
   readSheet(db, SHEETS.payments).forEach(function (p) {
@@ -401,7 +446,7 @@ function billingStatus(student, paid) {
 }
 
 /** Bar a student's field-level update from moving the money directly. */
-const DERIVED_STUDENT_FIELDS = ["amountPaid", "balance", "lastPaymentDate"];
+const DERIVED_STUDENT_FIELDS = ["amountPaid", "balance", "balanceAdjustment", "lastPaymentDate"];
 
 const ADMIN_COLUMNS = ["username", "name", "role", "passwordHash", "salt", "active"];
 
@@ -728,7 +773,27 @@ function writeSheet(db, name, rows, columns) {
     return out;
   });
   db.Sheets[name] = XLSX.utils.json_to_sheet(normalized, { header: columns });
+  styleSheetHeader(db.Sheets[name], columns.length);
   if (!db.SheetNames.includes(name)) db.SheetNames.push(name);
+}
+
+/** Keep a consistent school-branded header whenever the server rewrites a sheet. */
+function styleSheetHeader(sheet, columnCount) {
+  const style = {
+    fill: { patternType: "solid", fgColor: { rgb: "17365D" } },
+    font: { name: "Aptos", sz: 10, bold: true, color: { rgb: "FFFFFF" } },
+    alignment: { horizontal: "center", vertical: "center", wrapText: true },
+    border: {
+      bottom: { style: "medium", color: { rgb: "D6B45A" } },
+      right: { style: "thin", color: { rgb: "D9E2F3" } },
+    },
+  };
+  for (let column = 0; column < columnCount; column++) {
+    const address = XLSX.utils.encode_cell({ r: 0, c: column });
+    if (sheet[address]) sheet[address].s = style;
+  }
+  sheet["!rows"] = sheet["!rows"] || [];
+  sheet["!rows"][0] = Object.assign({}, sheet["!rows"][0], { hpt: 30 });
 }
 
 function studentIdKey(value) {
@@ -1051,7 +1116,7 @@ function rebuildMonthlySheet(db) {
 /** Column widths for every sheet, so the workbook opens tidy in Excel. */
 function applySheetFormatting(db) {
   applyColumnWidths(db, SHEETS.students, [
-    11, 22, 10, 16, 12, 12, 12, 12, 12, 12, 16, 18, 16, 26,
+    11, 22, 10, 16, 12, 12, 12, 12, 12, 12, 14, 16, 18, 16, 26,
     13, 13, 16, 22, 16, 22, 12, 7, 30, 18, 22, 30, 12, 14,
   ]);
   applyColumnWidths(db, SHEETS.payments, [12, 11, 11, 20, 11, 15, 13, 28]);
@@ -1062,6 +1127,12 @@ function applySheetFormatting(db) {
   applyColumnWidths(db, SHEETS.monthly, [11, 22, 10, 12, 14].concat(
     SCHOOL_MONTHS.map(function () { return 11; }), [13, 13, 12]
   ));
+  Object.keys(db.Sheets).forEach(function (name) {
+    const range = db.Sheets[name] && db.Sheets[name]["!ref"];
+    if (!range) return;
+    const endColumn = XLSX.utils.decode_range(range).e.c;
+    styleSheetHeader(db.Sheets[name], endColumn + 1);
+  });
 }
 
 /**
@@ -1093,6 +1164,8 @@ function migrateDb(db) {
   const studentHeader = ((db.Sheets[SHEETS.students] &&
     XLSX.utils.sheet_to_json(db.Sheets[SHEETS.students], { header: 1 })[0]) || []);
   if (!studentHeader.includes("tuitionFee")) changed = true;
+  const hasBalanceAdjustmentColumn = studentHeader.includes("balanceAdjustment");
+  if (!hasBalanceAdjustmentColumn) changed = true;
   applySheetFormatting(db);
   const accountHeader = ((db.Sheets[SHEETS.accounts] &&
     XLSX.utils.sheet_to_json(db.Sheets[SHEETS.accounts], { header: 1 })[0]) || []);
@@ -1144,12 +1217,22 @@ function migrateDb(db) {
     // sync with the same payment rows.
     const billingBefore = [
       student.tuitionFee, student.miscFee, student.totalFee, student.amountPaid,
-      student.balance, student.dueDate, student.lastPaymentDate, student.status,
+      student.balance, student.balanceAdjustment, student.dueDate, student.lastPaymentDate, student.status,
     ].map(function (value) { return String(value === undefined || value === null ? "" : value); });
+    if (!hasBalanceAdjustmentColumn) {
+      if (student.balance !== "" && student.balance !== undefined && student.balance !== null) {
+        const targetBalance = toNumber(student.balance);
+        const base = Object.assign({}, student, { balanceAdjustment: 0 });
+        syncStudentBilling(db, base);
+        student.balanceAdjustment = targetBalance - toNumber(base.balance);
+      } else {
+        student.balanceAdjustment = 0;
+      }
+    }
     syncStudentBilling(db, student);
     const billingAfter = [
       student.tuitionFee, student.miscFee, student.totalFee, student.amountPaid,
-      student.balance, student.dueDate, student.lastPaymentDate, student.status,
+      student.balance, student.balanceAdjustment, student.dueDate, student.lastPaymentDate, student.status,
     ].map(function (value) { return String(value === undefined || value === null ? "" : value); });
     if (billingBefore.some(function (value, index) { return value !== billingAfter[index]; })) {
       changed = true;
@@ -2722,6 +2805,15 @@ async function handleApi(req, res, pathname) {
           });
         }
 
+        let currentDb = null;
+        if (fs.existsSync(DB_FILE)) {
+          try { currentDb = loadDb(); } catch (err) {
+            console.warn("Could not read the old workbook before restore; accepting the verified upload:", err.message);
+          }
+        }
+        applyExcelBalanceEdits(currentDb, incoming);
+        const preparedWorkbook = XLSX.write(incoming, { type: "buffer", bookType: "xlsx" });
+
         if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
         let backup = null;
         if (fs.existsSync(DB_FILE)) {
@@ -2730,7 +2822,7 @@ async function handleApi(req, res, pathname) {
           fs.copyFileSync(DB_FILE, backup);
         }
         const tmp = DB_FILE + ".incoming";
-        fs.writeFileSync(tmp, buf);
+        fs.writeFileSync(tmp, preparedWorkbook);
         fs.renameSync(tmp, DB_FILE);
 
         const db = loadDb();
@@ -4325,6 +4417,15 @@ const server = http.createServer((req, res) => {
           });
         }
 
+        let currentDb = null;
+        if (fs.existsSync(DB_FILE)) {
+          try { currentDb = loadDb(); } catch (err) {
+            console.warn("Could not read the old workbook before restore; accepting the verified upload:", err.message);
+          }
+        }
+        applyExcelBalanceEdits(currentDb, incoming);
+        const preparedWorkbook = XLSX.write(incoming, { type: "buffer", bookType: "xlsx" });
+
         if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
         // Keep the workbook being replaced, with a timestamp, so a bad upload is
         // recoverable from the disk without needing this PC.
@@ -4337,7 +4438,7 @@ const server = http.createServer((req, res) => {
         // Write to a temp file and rename: a rename is atomic, so a crash mid-write
         // can never leave a half-written workbook as the live database.
         const tmp = DB_FILE + ".incoming";
-        fs.writeFileSync(tmp, buf);
+        fs.writeFileSync(tmp, preparedWorkbook);
         fs.renameSync(tmp, DB_FILE);
 
         const db = loadDb();

@@ -51,7 +51,8 @@
           lastStamp = stamp;
           return;
         }
-        if (stamp.mtime !== lastStamp.mtime || stamp.students !== lastStamp.students) {
+        if (stamp.mtime !== lastStamp.mtime || stamp.size !== lastStamp.size ||
+            stamp.students !== lastStamp.students) {
           lastStamp = stamp;
           if (handler) handler(stamp);
         }
