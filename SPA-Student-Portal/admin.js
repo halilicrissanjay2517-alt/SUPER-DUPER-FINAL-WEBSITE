@@ -434,8 +434,15 @@
 
       var when = relativeTime(a.createdAt);
 
+      // An account with no Student ID must say so. Rendering an empty pill made
+      // the row look like a rendering fault rather than a record that needs one.
+      var idText = String(a.studentId || "").trim();
+      var idCell = idText
+        ? '<span class="id-chip">' + escapeHtml(idText) + "</span>"
+        : '<span class="id-chip is-missing">No ID</span>';
+
       tr.innerHTML =
-        '<td data-label="Student ID"><span class="id-chip">' + escapeHtml(a.studentId) + "</span></td>" +
+        '<td data-label="Student ID">' + idCell + "</td>" +
         '<td data-label="Registered as">' + nameCell(a.fullname, "Sign-in: " + (a.username || a.studentId), a.studentId) + "</td>" +
         '<td data-label="Email" class="acct-meta"><span class="acct-name">' + escapeHtml(a.email || "—") + "</span>" +
           (a.contact ? '<span class="acct-sub">' + escapeHtml(a.contact) + "</span>" : "") + "</td>" +

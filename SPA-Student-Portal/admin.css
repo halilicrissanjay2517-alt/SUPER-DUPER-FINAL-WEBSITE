@@ -574,14 +574,40 @@ body.theme-dark .welcome-banner {
   font-size: 12.5px;
 }
 
-/* Approvals — 7 columns. */
-.table-approvals th:nth-child(1) { width: 13%; }  /* Student ID */
-.table-approvals th:nth-child(2) { width: 20%; }  /* Registered as */
-.table-approvals th:nth-child(3) { width: 21%; }  /* Email */
+/* Approvals — 7 columns. The Student ID column is the widest of the three
+   text columns on purpose: the ID is drawn as a padded monospace pill, and at
+   the old 13% the pill was wider than its cell, so the cell clipped it and the
+   row read as having no ID at all. */
+.table-approvals th:nth-child(1) { width: 18%; }  /* Student ID */
+.table-approvals th:nth-child(2) { width: 19%; }  /* Registered as */
+.table-approvals th:nth-child(3) { width: 18%; }  /* Email */
 .table-approvals th:nth-child(4) { width: 12%; }  /* On roster */
 .table-approvals th:nth-child(5) { width: 11%; }  /* Requested */
 .table-approvals th:nth-child(6) { width: 11%; }  /* Status */
-.table-approvals th:nth-child(7) { width: 12%; }  /* Actions */
+.table-approvals th:nth-child(7) { width: 11%; }  /* Actions */
+
+/* The ID cell must be allowed to show the whole pill. `nowrap` on the first
+   column plus `overflow: hidden` on every cell is what hid it. */
+.table-approvals td:nth-child(1) {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.table-approvals .id-chip {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+/* A student with no ID at all says so, instead of rendering an empty pill. */
+.id-chip.is-missing {
+  background: #fdf2f2;
+  border-color: #f0c9c9;
+  color: #9b2c2c;
+  font-family: inherit;
+  font-weight: 600;
+}
 
 /* ---------------- Account cells ----------------
    The account list is where the office scans for a name, not an ID, so each

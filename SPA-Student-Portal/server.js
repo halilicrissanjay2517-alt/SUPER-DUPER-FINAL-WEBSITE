@@ -1222,7 +1222,15 @@ function readAccounts(db) {
     // account is one with a credential, or one a student created themselves
     // (which is stamped with a registration time when they sign up).
     const credential = credentials.get(id.toLowerCase());
-    if (!credential && !row.registeredAt) return;
+    // A row the office has already approved is an account too, even when it
+    // carries no credential of its own. The roster imported from the school's
+    // own workbook is exactly that: every student is on the list with
+    // accountStatus "active", but only the ones who registered themselves have
+    // a password row. Skipping them left the admin dashboard with no Student ID
+    // for those students and made their sign-in answer "Incorrect Student
+    // ID/email or password", because findAccount could not see them at all.
+    const approved = String(row.accountStatus || "").trim().toLowerCase() === "active";
+    if (!credential && !row.registeredAt && !approved) return;
     seen.add(id.toLowerCase());
     accounts.push(accountFromRow(row, credential));
   });
@@ -2240,6 +2248,17 @@ async function handleApi(req, res, pathname) {
       return sendJson(res, 401, { error: "Incorrect Student ID/email or password" });
     };
     if (!account) return wrong();
+
+    // A student the office approved but who has never been given a password
+    // cannot sign in yet. Saying so is not a leak — the ID is already on the
+    // school list — and it is the difference between "your account is not set
+    // up" and the misleading "Incorrect Student ID/email or password".
+    if (!account.passwordHash) {
+      return sendJson(res, 403, {
+        status: "no-password",
+        error: "This Student ID has no password yet. Ask the Registrar to create your portal account.",
+      });
+    }
 
     const studentVerdict = verifyPassword(body.password || "", account.salt, account.passwordHash);
     if (studentVerdict === "fail") {
@@ -3405,6 +3424,12 @@ async function handleApi(req, res, pathname) {
       ACCOUNT_LINK_FIELDS.forEach(function (col) {
         if (STUDENT_COLUMNS.indexOf(col) !== -1) students[rowIndex][col] = "";
       });
+      // `accountStatus` is not an ACCOUNT_LINK_FIELD, but readAccounts now treats
+      // an "active" one as an account in its own right. Leaving it behind would
+      // make the deleted login reappear as a credential-less zombie. "none" is
+      // the roster's own word for "this student has no portal login", so the
+      // row stays a student without becoming an account again.
+      students[rowIndex].accountStatus = "none";
       writeSheet(db, SHEETS.students, students, STUDENT_COLUMNS);
     }
     sessions.forEach((value, key) => {
