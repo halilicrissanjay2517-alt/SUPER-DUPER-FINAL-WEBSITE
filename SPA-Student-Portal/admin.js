@@ -1408,15 +1408,23 @@
 
   var LIVE_WORKBOOK_NAME = "student-database-2026-10-28.xlsx";
 
+  function fetchLiveWorkbook() {
+    return fetch(apiUrl("/api/database"), { credentials: "same-origin", cache: "no-store" })
+      .then(function (res) {
+        if (res.ok) return res.blob();
+        return res.json().catch(function () { return {}; }).then(function (data) {
+          var err = new Error(data.error || "The website could not read its student database (HTTP " + res.status + ").");
+          err.status = res.status;
+          throw err;
+        });
+      });
+  }
+
   function downloadDatabase(button) {
     if (!state.signedIn) return;
     if (button) button.disabled = true;
     toast("Preparing the student database…");
-    fetch(apiUrl("/api/database"), { credentials: "same-origin" })
-      .then(function (res) {
-        if (!res.ok) throw new Error("Could not build the database file");
-        return res.blob();
-      })
+    fetchLiveWorkbook()
       .then(function (blob) {
         var url = URL.createObjectURL(blob);
         var link = document.createElement("a");
@@ -1535,12 +1543,12 @@
       .then(function () { button.disabled = false; });
   }
 
-  function pickWorkbookFile(button) {
+  function pickWorkbookFile(button, onUploaded) {
     var input = document.createElement("input");
     input.type = "file";
     input.accept = ".xlsx";
     input.addEventListener("change", function () {
-      if (input.files && input.files[0]) pushWorkbook(input.files[0], button);
+      if (input.files && input.files[0]) pushWorkbook(input.files[0], button, onUploaded);
     });
     input.click();
   }
@@ -1564,11 +1572,7 @@
         toast("Excel has local edits. They will sync before the workbook refreshes.");
         return false;
       }
-      return fetch(apiUrl("/api/database"), { credentials: "same-origin", cache: "no-store" })
-        .then(function (res) {
-          if (!res.ok) throw new Error("Could not download the latest Excel database.");
-          return res.blob();
-        })
+      return fetchLiveWorkbook()
         .then(function (blob) {
           return handle.createWritable().then(function (writer) {
             return writer.write(blob).then(function () { return writer.close(); });
@@ -1581,8 +1585,8 @@
         });
     }).then(function (updated) {
       if (updated) toast("The local Excel database now includes the website's latest records.");
-    }).catch(function () {
-      toast("The website database is updated. Close Excel, then use Open Excel to refresh your local copy.", true);
+    }).catch(function (err) {
+      toast(err.message || "Could not refresh the local Excel database.", true);
     }).then(function () {
       excelWatch.refreshing = false;
     });
@@ -1700,11 +1704,7 @@
       }
 
       if (window.showSaveFilePicker) {
-        fetch(apiUrl("/api/database"), { credentials: "same-origin" })
-          .then(function (res) {
-            if (!res.ok) throw new Error("Could not build the database file");
-            return res.blob();
-          })
+        fetchLiveWorkbook()
           .then(function (blob) {
             return showSaveFilePicker({
               suggestedName: LIVE_WORKBOOK_NAME,
@@ -1734,9 +1734,17 @@
           })
           .catch(function (err) {
             if (err && err.name === "AbortError") return; // save dialog cancelled
-            toast(err.message || "Could not start live watching", true);
-            downloadDatabase(button);   // at least give the plain download
-            setTimeout(function () { pickWorkbookFile(button); }, 1500);
+            if (err.status === 401 || err.status === 403) {
+              toast(err.message || "Your admin sign-in expired. Sign in again to watch Excel.", true);
+              return;
+            }
+            toast((err.message || "Could not build the website database file.") +
+              " Choose your existing " + LIVE_WORKBOOK_NAME + " to restore it to the website.", true);
+            setTimeout(function () {
+              pickWorkbookFile(button, function () {
+                toast("Workbook restored to the website. Click Watch Excel again to start watching it.");
+              });
+            }, 500);
           });
       } else {
         // Firefox/Safari: no File System Access, so download then offer the
@@ -2439,19 +2447,8 @@
 
     var paid = {};
     SCHOOL_MONTHS_VIEW.forEach(function (m) { paid[m] = 0; });
-    var hasMonthly = SCHOOL_MONTHS_VIEW.some(function (month) {
-      return student.monthlyPayments && Object.prototype.hasOwnProperty.call(student.monthlyPayments, month);
-    });
-    if (hasMonthly) SCHOOL_MONTHS_VIEW.forEach(function (m) {
-      paid[m] = Number(student.monthlyPayments[m]) || 0;
-    });
-    else pay.forEach(function (p) {
-      var day = String(p.date || "");
-      if (!/^\d{4}-\d{2}/.test(day)) return;
-      var m = Number(day.slice(5, 7));
-      var idx = m >= 6 ? m - 6 : m + 4;
-      if (idx >= 0 && idx < SCHOOL_MONTHS_VIEW.length) paid[SCHOOL_MONTHS_VIEW[idx]] += Number(p.amount) || 0;
-    });
+    var monthValues = monthlyValuesFor(student, pay);
+    SCHOOL_MONTHS_VIEW.forEach(function (m) { paid[m] = Number(monthValues[m]) || 0; });
 
     var running = totalFee;
     var html = "";
@@ -2504,7 +2501,13 @@
     var hasWorkbookRow = SCHOOL_MONTHS_VIEW.some(function (month) {
       return Object.prototype.hasOwnProperty.call(workbookValues, month);
     });
-    if (hasWorkbookRow) return workbookValues;
+    var workbookHasPayments = SCHOOL_MONTHS_VIEW.some(function (month) {
+      return Number(workbookValues[month]) > 0;
+    });
+    var ledgerHasPayments = (payments || []).some(function (payment) {
+      return Number(payment.amount) > 0;
+    });
+    if (hasWorkbookRow && (workbookHasPayments || !ledgerHasPayments)) return workbookValues;
 
     var derived = {};
     SCHOOL_MONTHS_VIEW.forEach(function (month) { derived[month] = 0; });
@@ -2551,18 +2554,8 @@
     // matching the server's Monthly Payments sheet.
     var paid = {};
     SCHOOL_MONTHS_VIEW.forEach(function (m) { paid[m] = 0; });
-    var hasWorkbookMonths = SCHOOL_MONTHS_VIEW.some(function (m) {
-      return student.monthlyPayments && Object.prototype.hasOwnProperty.call(student.monthlyPayments, m);
-    });
-    if (hasWorkbookMonths) {
-      SCHOOL_MONTHS_VIEW.forEach(function (m) { paid[m] = Number(student.monthlyPayments[m]) || 0; });
-    } else pay.forEach(function (p) {
-      var day = String(p.date || "");
-      if (!/^\d{4}-\d{2}/.test(day)) return;
-      var m = Number(day.slice(5, 7));
-      var idx = m >= 6 ? m - 6 : m + 4;
-      if (idx >= 0 && idx < SCHOOL_MONTHS_VIEW.length) paid[SCHOOL_MONTHS_VIEW[idx]] += Number(p.amount) || 0;
-    });
+    var monthValues = monthlyValuesFor(student, pay);
+    SCHOOL_MONTHS_VIEW.forEach(function (m) { paid[m] = Number(monthValues[m]) || 0; });
 
     var downAmt = down ? Number(down.amount) || 0 : 0;
     // The workbook's month allocations are displayed directly so the admin

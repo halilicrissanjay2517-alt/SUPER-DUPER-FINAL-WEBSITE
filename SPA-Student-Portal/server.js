@@ -2868,8 +2868,17 @@ async function handleApi(req, res, pathname) {
     // loadDb applies any pending schema migration. A plain download must not
     // rewrite an unchanged workbook, since that would look like an edit to the
     // live watcher and trigger an unnecessary download/upload loop.
-    loadDb();
-    const data = fs.readFileSync(DB_FILE);
+    let data;
+    try {
+      loadDb();
+      data = fs.readFileSync(DB_FILE);
+    } catch (err) {
+      console.error("Could not build the database download:", err.message);
+      return sendJson(res, 503, {
+        error: "The live student workbook is missing or unreadable on the server. Choose your existing " +
+          DB_FILENAME + " in the Excel file picker to restore it.",
+      });
+    }
     res.writeHead(200, {
       "Content-Type": MIME[".xlsx"],
       "Content-Disposition": 'attachment; filename="student-database-2026-10-28.xlsx"',

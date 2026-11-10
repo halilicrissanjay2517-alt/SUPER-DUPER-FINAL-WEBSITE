@@ -256,7 +256,9 @@
     var hasWorkbookRow = months.some(function (month) {
       return Object.prototype.hasOwnProperty.call(workbookValues, month);
     });
-    if (hasWorkbookRow) return workbookValues;
+    var workbookHasPayments = months.some(function (month) { return Number(workbookValues[month]) > 0; });
+    var ledgerHasPayments = (payments || []).some(function (payment) { return Number(payment.amount) > 0; });
+    if (hasWorkbookRow && (workbookHasPayments || !ledgerHasPayments)) return workbookValues;
 
     // Older/newly-added accounts may not have a Monthly Payments row yet.
     // Rebuild the month display from the actual payment ledger in that case.
