@@ -1961,6 +1961,7 @@ function studentRecordFor(db, studentId) {
     status: student.status,
     totalFee: Number(student.totalFee) || 0,
     amountPaid: Number(student.amountPaid) || 0,
+    balanceAdjustment: Number(student.balanceAdjustment) || 0,
     balance: Number(student.balance) || 0,
     dueDate: student.dueDate || "",
     lastPaymentDate: student.lastPaymentDate || "",

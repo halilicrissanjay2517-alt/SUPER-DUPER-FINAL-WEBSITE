@@ -579,6 +579,11 @@
     var pay = paymentsAll.slice().sort(function (a, b) {
       return String(a.date || "").localeCompare(String(b.date || ""));
     });
+    var totalAssessment = Number(s.totalFee) || 0;
+    var totalPaid = pay.reduce(function (sum, payment) {
+      return sum + (Number(payment.amount) || 0);
+    }, 0);
+    var balance = Math.max(totalAssessment - totalPaid + (Number(s.balanceAdjustment) || 0), 0);
     var rows = pay.map(function (p, i) {
       return "<tr><td>" + (i + 1) + "</td><td>" + escapeHtml(niceDate(p.date)) + "</td><td>" +
         escapeHtml(p.receiptNo || "—") + "</td><td>" + escapeHtml(p.method || "—") +
@@ -620,9 +625,9 @@
           rows + "</tbody></table>"
         : "<p>No payments recorded.</p>") +
       "<table class='totals'>" +
-      "<tr><td>Total assessment</td><td class='amt'>" + peso(s.totalFee) + "</td></tr>" +
-      "<tr><td>Total paid</td><td class='amt'>" + peso(s.amountPaid) + "</td></tr>" +
-      "<tr><td><strong>Balance</strong></td><td class='amt'><strong>" + peso(s.balance) + "</strong></td></tr>" +
+      "<tr><td>Total assessment</td><td class='amt'>" + peso(totalAssessment) + "</td></tr>" +
+      "<tr><td>Total paid</td><td class='amt'>" + peso(totalPaid) + "</td></tr>" +
+      "<tr><td><strong>Balance</strong></td><td class='amt'><strong>" + peso(balance) + "</strong></td></tr>" +
       "</table><p class='printed'>Printed from the live student database: " +
       escapeHtml(new Date().toLocaleString("en-PH")) + "</p></div></body></html>";
     printWindow(doc, "Allow pop-ups to print the statement.", targetWindow);
