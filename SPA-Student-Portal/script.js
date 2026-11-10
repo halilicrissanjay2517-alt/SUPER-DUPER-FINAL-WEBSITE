@@ -928,6 +928,22 @@
   var reducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var revealTargets = $$("main > section");
 
+  // A section scrolled to by the browser's own "scroll to anchor" (a link on
+  // another page, a reload onto #hash, or a hash typed in the address bar)
+  // never passes through motion, so the observer's entries can already be
+  // settled by the time it runs — leaving the target stuck invisible at
+  // opacity 0. Any section holding the location hash is shown straight away.
+  function settleHashTarget() {
+    var id = location.hash.slice(1);
+    if (!id) return;
+    var el = document.getElementById(id);
+    if (!el) return;
+    var section = el.closest ? el.closest("main > section") : null;
+    if (section) section.classList.add("is-visible");
+  }
+  settleHashTarget();
+  window.addEventListener("hashchange", settleHashTarget);
+
   if (!reducedMotion && "IntersectionObserver" in window && revealTargets.length) {
     revealTargets.forEach(function (section) { section.classList.add("reveal"); });
 
@@ -940,6 +956,8 @@
     }, { rootMargin: "0px 0px -12% 0px", threshold: 0.08 });
 
     revealTargets.forEach(function (section) { revealObserver.observe(section); });
+    // The jump may have happened before the observer existed.
+    if (location.hash) requestAnimationFrame(settleHashTarget);
 
     // Sections still waiting below the fold should not hold a GPU layer while a
     // dialog is open — that is memory a phone wants for typing. Hand it back on
@@ -960,6 +978,23 @@
       }).observe(document.body, { attributes: true, attributeFilter: ["class"] });
     }
   }
+
+  /* ---------- Un-hide a section that a jump targets ----------
+     Announcements and the record look-up start hidden and are meant to appear
+     when their link is used. The browser cannot scroll to a hidden element — it
+     has no layout — so such a link (or a reload onto #records-panel, or a link
+     from another page) did nothing and the section stayed unreachable. Revealing
+     it also marks it as shown, or the scroll reveal above would keep it at
+     opacity 0 after being un-hidden. */
+  function openHiddenTarget(target) {
+    if (!target || !target.hidden) return;
+    target.hidden = false;
+    target.classList.add("is-visible");
+  }
+  if (location.hash) openHiddenTarget(document.getElementById(location.hash.slice(1)));
+  window.addEventListener("hashchange", function () {
+    openHiddenTarget(document.getElementById(location.hash.slice(1)));
+  });
 
   /* ---------- Animated hero counters ----------
      "56+", "4" and "24/7" count up the first time they scroll into view. */
@@ -998,17 +1033,15 @@
   }
 
   /* ---------- Reveal a hidden section before jumping to it ----------
-     Announcements and the record look-up start hidden and are meant to appear
-     when their link is used. The browser cannot scroll to a hidden element — it
-     has no layout — so an anchor click simply did nothing and the section stayed
-     unreachable. Un-hide the target first, then let the jump happen. */
+     Same idea as above, for an anchor clicked on this page: un-hide the target
+     first, then let the jump happen. */
   $$("a[href^='#']").forEach(function (link) {
     link.addEventListener("click", function () {
       var hash = link.getAttribute("href");
       if (!hash || hash === "#") return;
       var target = document.getElementById(hash.slice(1));
       if (!target) return;
-      if (target.hidden) target.hidden = false;
+      openHiddenTarget(target);
       // A frame's delay so the revealing reflow happens before the scroll,
       // otherwise the browser jumps to where the element was not yet measured.
       requestAnimationFrame(function () {
@@ -1016,6 +1049,11 @@
         catch (err) { target.scrollIntoView(); }
       });
     });
+  });
+
+  if (location.hash) openHiddenTarget(document.getElementById(location.hash.slice(1)));
+  window.addEventListener("hashchange", function () {
+    openHiddenTarget(document.getElementById(location.hash.slice(1)));
   });
 
   /* ---------- Active section in the header nav ---------- */
