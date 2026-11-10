@@ -1401,6 +1401,8 @@
      Streams the live workbook back, so the file the office gets is exactly the
      one the website is writing to — every student, every account, every figure. */
 
+  var LIVE_WORKBOOK_NAME = "student-database-2026-10-28.xlsx";
+
   function downloadDatabase(button) {
     if (!state.signedIn) return;
     if (button) button.disabled = true;
@@ -1414,7 +1416,7 @@
         var url = URL.createObjectURL(blob);
         var link = document.createElement("a");
         link.href = url;
-        link.download = "student-database-2026-10-28.xlsx";
+        link.download = LIVE_WORKBOOK_NAME;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -1500,6 +1502,10 @@
   }
 
   function pushWorkbook(file, button, done) {
+    if (!file || file.name !== LIVE_WORKBOOK_NAME) {
+      toast("Choose " + LIVE_WORKBOOK_NAME + " to update the website.", true);
+      return;
+    }
     button.disabled = true;
     toast("Sending your edits to the website…");
     file.arrayBuffer().then(function (buffer) {
@@ -1542,12 +1548,17 @@
   var excelWatch = { handle: null, last: null, running: false };
 
   function startExcelWatch(handle, lastStamp, button) {
+    if (!handle || handle.name !== LIVE_WORKBOOK_NAME) {
+      toast("The Excel watch must use " + LIVE_WORKBOOK_NAME + ".", true);
+      return;
+    }
     if (excelWatch.running) return; // already watching on this page
     excelWatch.handle = handle;
     excelWatch.last = lastStamp || null;
     excelWatch.running = true;
     button.textContent = "Watching Excel…";
-    toast("Watching Excel — the site updates the moment you save.");
+    button.title = "Watching " + LIVE_WORKBOOK_NAME + "; saves are sent to the website";
+    toast("Watching " + LIVE_WORKBOOK_NAME + " — saves update the website.");
     setTimeout(pollHandle, 3000);
 
     function pollHandle() {
@@ -1598,6 +1609,13 @@
     if (excelWatch.running) return;
     liveDbGet("handle").then(function (handle) {
       if (!handle) return;
+      if (handle.name !== LIVE_WORKBOOK_NAME) {
+        liveDbDel("handle").catch(function () {});
+        liveDbDel("last").catch(function () {});
+        liveExcelBtn.title = "Choose " + LIVE_WORKBOOK_NAME + " to resume watching Excel";
+        toast("The saved Excel watch was for a different file. Choose " + LIVE_WORKBOOK_NAME + ".", true);
+        return;
+      }
       return liveDbGet("last").then(function (last) {
         return handle.queryPermission({ mode: "readwrite" }).then(function (perm) {
           if (perm === "granted") {
@@ -1648,9 +1666,12 @@
           })
           .then(function (blob) {
             return showSaveFilePicker({
-              suggestedName: "student-database-2026-10-28.xlsx",
+              suggestedName: LIVE_WORKBOOK_NAME,
               types: [{ description: "Excel workbook", accept: { "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"] } }],
             }).then(function (handle) {
+              if (!handle || handle.name !== LIVE_WORKBOOK_NAME) {
+                throw new Error("Save the live workbook as " + LIVE_WORKBOOK_NAME + " to start watching it.");
+              }
               return handle.createWritable().then(function (w) {
                 return w.write(blob).then(function () { return w.close(); }).then(function () { return handle; });
               });

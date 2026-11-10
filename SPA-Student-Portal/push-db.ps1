@@ -29,12 +29,32 @@
 param(
     [Parameter(Mandatory = $true)][string]$Url,
     [Parameter(Mandatory = $true)][string]$Token,
-    [string]$File = (Join-Path (Split-Path $PSScriptRoot -Parent) "student-database-2026-10-28.xlsx"),
+    [string]$File,
     [string]$Dir
 )
 
 $ErrorActionPreference = "Stop"
 Add-Type -AssemblyName System.Net.Http | Out-Null
+
+# Some PowerShell launchers leave $PSScriptRoot empty while evaluating default
+# parameter expressions. Resolve the script folder after param binding, with
+# the caller's current directory as a fallback for the documented invocation.
+$scriptDirectory = $PSScriptRoot
+if ([string]::IsNullOrWhiteSpace($scriptDirectory)) {
+    $scriptPath = $MyInvocation.MyCommand.Path
+    if ([string]::IsNullOrWhiteSpace($scriptPath)) {
+        $scriptPath = $PSCommandPath
+    }
+    if (-not [string]::IsNullOrWhiteSpace($scriptPath)) {
+        $scriptDirectory = Split-Path -Parent $scriptPath
+    } else {
+        $scriptDirectory = (Get-Location).Path
+    }
+}
+if ([string]::IsNullOrWhiteSpace($File)) {
+    $projectDirectory = Split-Path -Parent $scriptDirectory
+    $File = Join-Path $projectDirectory "student-database-2026-10-28.xlsx"
+}
 
 if (-not (Test-Path -LiteralPath $File)) {
     throw "Workbook not found: $File"

@@ -1,7 +1,7 @@
 /**
  * Saint Patrick's Academy, Inc. — live Excel sync.
  *
- * The workbook (database.xlsx) is the database. When it changes on disk — the
+ * The workbook (student-database-2026-10-28.xlsx) is the database. When it changes on disk — the
  * office saved it in Excel, an import ran, a payment was recorded — every page
  * including this script notices within a few seconds and calls `onChange`, so
  * what the screen shows is never behind the file.
