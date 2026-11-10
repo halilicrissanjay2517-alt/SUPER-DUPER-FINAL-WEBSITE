@@ -746,12 +746,16 @@
       method: "PATCH",
       body: { action: action },
     })
-      .then(function () {
+      .then(function (result) {
         toast(
-          action === "approve" ? "Approved " + account.fullname :
+          action === "approve"
+            ? (result.onRoster
+              ? "Approved " + account.fullname + " — student saved to Excel database"
+              : "Approved " + account.fullname + " — student row is missing") :
           action === "reject" ? "Rejected " + account.fullname :
           "Access withdrawn for " + account.fullname
         );
+        loadStudents();
         loadApprovals();
         loadLogs();
       })

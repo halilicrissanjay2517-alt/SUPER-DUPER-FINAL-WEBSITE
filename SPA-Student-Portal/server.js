@@ -1853,40 +1853,40 @@ function enrichAccountForRoster(db, account) {
 function createStudentFromAccount(db, account) {
   const students = readSheet(db, SHEETS.students);
   const studentId = String(account.studentId).trim();
-  if (students.some((s) => String(s.id).trim().toLowerCase() === studentId.toLowerCase())) {
-    return "exists";
-  }
+  const index = students.findIndex((s) => studentIdKey(s.id) === studentIdKey(studentId));
+  const created = index === -1;
+  const record = created ? {} : students[index];
+  if (created) STUDENT_COLUMNS.forEach((col) => { record[col] = ""; });
 
-  const record = {};
-  STUDENT_COLUMNS.forEach((col) => { record[col] = ""; });
-  record.id = studentId;
-  record.name = String(account.fullname || "").trim();
-  record.grade = String(account.gradeLevel || "").trim();
-  record.section = String(account.section || "").trim();
-  record.status = "Enrolled";
-  record.totalFee = feeForGrade(record.grade);
-  record.guardian = String(account.guardian || "").trim();
-  record.contact = String(account.contact || "").trim();
-  record.email = String(account.email || "").trim();
-  // Carry the account history across too. A sign-up normally writes these with
-  // the row already; this is the repair path for a workbook that only has the
-  // credential, so an approved student is never missing from the visible sheet.
-  record.username = account.username || studentId;
-  record.accountStatus = account.status || "pending";
-  record.registeredAt = account.createdAt || "";
-  record.approvedBy = account.approvedBy || "";
-  record.approvedAt = account.approvedAt || "";
-  record.passwordNote = account.passwordNote || "";
-  record.birthdate = String(account.birthdate || "").trim();
-  record.sex = String(account.sex || "").trim();
-  record.address = String(account.address || "").trim();
-  record.guardianContact = String(account.guardianContact || "").trim();
-  record.lastSchool = String(account.lastSchool || "").trim();
+  const newApplicant = String(account.rosterMatch || "").toLowerCase() === "new";
+  const profile = [
+    ["fullname", "name"], ["gradeLevel", "grade"], ["section", "section"],
+    ["email", "email"], ["guardian", "guardian"], ["contact", "contact"],
+    ["birthdate", "birthdate"], ["sex", "sex"], ["address", "address"],
+    ["guardianContact", "guardianContact"], ["lastSchool", "lastSchool"], ["note", "note"],
+  ];
+  record.id = record.id || studentId;
+  profile.forEach(function (pair) {
+    const value = account[pair[0]];
+    if (value === undefined || value === null || String(value).trim() === "") return;
+    // For a newly registered student, the reviewed application supplies their
+    // record. Existing roster students keep the school's non-empty values.
+    if (newApplicant || !String(record[pair[1]] || "").trim()) record[pair[1]] = value;
+  });
+  if (!record.status || /^pending$/i.test(String(record.status))) record.status = "Enrolled";
+  if (!Number(record.totalFee)) record.totalFee = feeForGrade(record.grade);
+  // Keep the account state and all sign-up metadata visible in the same row.
+  record.username = account.username || record.username || studentId;
+  record.accountStatus = "active";
+  record.registeredAt = record.registeredAt || account.createdAt || "";
+  record.approvedBy = account.approvedBy || record.approvedBy || "";
+  record.approvedAt = account.approvedAt || record.approvedAt || "";
+  record.passwordNote = account.passwordNote || record.passwordNote || "";
   syncStudentBilling(db, record);
-
-  students.push(record);
+  if (created) students.push(record);
+  else students[index] = record;
   writeSheet(db, SHEETS.students, students, STUDENT_COLUMNS);
-  return "created";
+  return created ? "created" : "exists";
 }
 
 /** The student record a signed-in student is allowed to see: their own. */
@@ -3721,6 +3721,15 @@ async function handleApi(req, res, pathname) {
       );
     }
     saveDb(db);
+    const savedDb = loadDb();
+    const savedStudent = readSheet(savedDb, SHEETS.students).find(
+      (s) => studentIdKey(s.id) === studentIdKey(account.studentId)
+    );
+    if (action === "approve" && !savedStudent) {
+      return sendJson(res, 500, {
+        error: "The account was approved, but its student row could not be confirmed in " + DB_FILENAME + ". Please try again.",
+      });
+    }
 
     // Sign the student out immediately if their access was withdrawn.
     if (action !== "approve") {
@@ -3733,8 +3742,8 @@ async function handleApi(req, res, pathname) {
 
     return sendJson(res, 200, {
       account: publicAccount(account),
-      onRoster: readSheet(db, SHEETS.students).some(
-        (s) => String(s.id).trim().toLowerCase() === String(account.studentId).trim().toLowerCase()
+      onRoster: readSheet(savedDb, SHEETS.students).some(
+        (s) => studentIdKey(s.id) === studentIdKey(account.studentId)
       ),
       studentCreated: createdStudent,
       student: drafted,
