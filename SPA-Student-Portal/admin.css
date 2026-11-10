@@ -495,11 +495,11 @@ body.theme-dark .welcome-banner {
   table-layout: fixed;
 }
 
-/* The students table is the widest on the sheet. A pixel floor keeps its
-   thirteen columns legible at every size; when the viewport is narrower than
-   the floor the wrapper scrolls to reach the rest instead of crushing columns. */
+/* The students table keeps a pixel floor so its columns stay legible at every
+   size; when the viewport is narrower than the floor the wrapper scrolls to
+   reach the rest instead of crushing columns. */
 .table-students {
-  min-width: 1100px;
+  min-width: 880px;
 }
 
 /* Below the tablet breakpoint the fixed percentage columns stop being legible,
@@ -510,7 +510,7 @@ body.theme-dark .welcome-banner {
   }
 
   .table-students {
-    min-width: 1100px;
+    min-width: 880px;
   }
 
   .table-admins {
@@ -547,21 +547,17 @@ body.theme-dark .welcome-banner {
    different column counts, so the budget is scoped by the modifier class
    on each table. */
 
-/* Students — 13 columns. Money and date columns need room for "₱31,000" and
-   "Sep 20, 2025" on one line; the text columns can ellipsize instead. */
-.table-students th:nth-child(1)  { width: 8%; }   /* ID */
-.table-students th:nth-child(2)  { width: 9%; }   /* Name */
-.table-students th:nth-child(3)  { width: 8%; }   /* Grade */
-.table-students th:nth-child(4)  { width: 7%; }   /* Section */
-.table-students th:nth-child(5)  { width: 8%; }   /* Status */
-.table-students th:nth-child(6)  { width: 8%; }   /* Tuition Fee */
-.table-students th:nth-child(7)  { width: 6%; }   /* Paid */
-.table-students th:nth-child(8)  { width: 8%; }   /* Balance */
-.table-students th:nth-child(9)  { width: 8%; }   /* Due Date */
-.table-students th:nth-child(10) { width: 7%; }   /* Last Payment */
-.table-students th:nth-child(11) { width: 8%; }   /* Guardian */
-.table-students th:nth-child(12) { width: 8%; }   /* Contact */
-.table-students th:nth-child(13) { width: 7%; }   /* Actions */
+/* Students — 6 columns, matching the <thead> in admin.html: ID, Name, Grade,
+   Section, Status, Actions. Under `table-layout: fixed` these widths are the
+   whole budget, so they MUST match the real column count: extra rules for
+   columns that do not exist left the real ones starved, and the narrow Grade
+   and Section cells clipped their values ("814", "911 -"). */
+.table-students th:nth-child(1) { width: 12%; }   /* ID */
+.table-students th:nth-child(2) { width: 30%; }   /* Name */
+.table-students th:nth-child(3) { width: 12%; }   /* Grade */
+.table-students th:nth-child(4) { width: 26%; }   /* Section */
+.table-students th:nth-child(5) { width: 10%; }   /* Status */
+.table-students th:nth-child(6) { width: 10%; }   /* Actions */
 
 /* Numbers and dates must never split across a line — a wrapped "₱31,000" reads
    as two different figures. */
