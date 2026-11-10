@@ -1663,8 +1663,11 @@ function syncStudentAccountRows(db, accounts) {
       changed = true;
     }
     ACCOUNT_LINK_FIELDS.forEach(function (col) {
-      if (account[col] === undefined) return;
-      const next = account[col] === null ? "" : account[col];
+      const source = col === "accountStatus"
+        ? (account.accountStatus || account.status)
+        : account[col];
+      if (source === undefined) return;
+      const next = source === null ? "" : source;
       if (String(row[col] === undefined ? "" : row[col]) !== String(next)) {
         row[col] = next;
         changed = true;
@@ -2510,6 +2513,7 @@ async function handleApi(req, res, pathname) {
       passwordHash: hashPassword(password, salt),
       salt,
       status: "pending",
+      accountStatus: "pending",
       createdAt: new Date().toISOString(),
       approvedBy: "",
       approvedAt: "",

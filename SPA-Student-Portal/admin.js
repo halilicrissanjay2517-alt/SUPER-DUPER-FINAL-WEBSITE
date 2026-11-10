@@ -1189,7 +1189,8 @@
   var EDITABLE_STUDENT_FIELDS = [
     "id", "name", "grade", "section", "status",
     "tuitionFee", "miscFee", "totalFee", "dueDate",
-    "guardian", "contact", "email",
+    "guardian", "contact", "email", "birthdate", "sex", "address",
+    "guardianContact", "lastSchool", "note",
   ];
 
   /** Fill the calculated tuition figures so staff see the effect of the fee. */
