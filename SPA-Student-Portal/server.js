@@ -1194,6 +1194,59 @@ function studentForApi(row) {
 const STUDENT_ACCOUNT_LINK_FIELDS = ACCOUNT_LINK_FIELDS.concat(["username"]);
 
 /**
+ * Build the dashboard roster with Accounts as the identity source. The
+ * Students sheet owns school and billing fields, while Accounts owns the
+ * Student ID and the profile captured for portal access. This also keeps an
+ * account visible when an Excel edit has left its Students row without an ID.
+ */
+function studentsForDashboard(db) {
+  const roster = readSheet(db, SHEETS.students);
+  const accounts = readSheet(db, SHEETS.accounts);
+  const byId = new Map();
+  roster.forEach(function (student) {
+    const id = String(student.id || "").trim().toLowerCase();
+    if (id) byId.set(id, student);
+  });
+
+  const output = [];
+  const seen = new Set();
+  accounts.forEach(function (account) {
+    const id = String(account.studentId || "").trim();
+    if (!id) return;
+    const key = id.toLowerCase();
+    const student = Object.assign({}, byId.get(key) || {});
+    student.id = id;
+    // Prefer non-empty account profile fields; academic and billing columns
+    // continue to come from the Students sheet.
+    [
+      ["fullname", "name"], ["gradeLevel", "grade"], ["section", "section"],
+      ["email", "email"], ["contact", "contact"], ["guardian", "guardian"],
+      ["guardianContact", "guardianContact"], ["birthdate", "birthdate"],
+      ["sex", "sex"], ["address", "address"], ["lastSchool", "lastSchool"],
+    ].forEach(function (pair) {
+      if (account[pair[0]] !== undefined && String(account[pair[0]]).trim() !== "") {
+        student[pair[1]] = account[pair[0]];
+      }
+    });
+    if (!student.accountStatus && account.status) student.accountStatus = account.status;
+    if (!student.username) student.username = id;
+    output.push(studentForApi(student));
+    seen.add(key);
+  });
+
+  // Keep roster entries that have not been added to Accounts yet, but never
+  // return blank-ID rows that make the admin table show "-" for a student.
+  roster.forEach(function (student) {
+    const id = String(student.id || "").trim();
+    const key = id.toLowerCase();
+    if (!id || seen.has(key)) return;
+    output.push(studentForApi(student));
+    seen.add(key);
+  });
+  return output;
+}
+
+/**
  * Every student account, whatever its state.
  *
  * A credential-only row (an account the student created themselves, before the
@@ -3451,11 +3504,11 @@ async function handleApi(req, res, pathname) {
     const session = requireAuth(req, res);
     if (!session) return;
     const db = loadDb();
-    // The account bookkeeping columns are stripped: the dashboard has no use
-    // for the login state of every row, and a stored password must never reach
-    // a browser. The "Create account" button reads them per student instead.
+    // Accounts supplies each dashboard row's Student ID and account profile;
+    // the roster contributes academic and billing details. No password data is
+    // included in the student list response.
     return sendJson(res, 200, {
-      students: readSheet(db, SHEETS.students).map(studentForApi),
+      students: studentsForDashboard(db),
     });
   }
 
