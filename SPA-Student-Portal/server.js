@@ -722,6 +722,42 @@ function writeSheet(db, name, rows, columns) {
   if (!db.SheetNames.includes(name)) db.SheetNames.push(name);
 }
 
+function studentIdKey(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+/** Copy Excel-owned profile fields to matching account rows. */
+function syncAccountProfilesFromRoster(db) {
+  const students = readSheet(db, SHEETS.students);
+  const accounts = readSheet(db, SHEETS.accounts);
+  const byId = new Map();
+  students.forEach(function (student) {
+    const key = studentIdKey(student.id);
+    if (key) byId.set(key, student);
+  });
+
+  let changed = false;
+  accounts.forEach(function (account) {
+    const student = byId.get(studentIdKey(account.studentId));
+    if (!student) return;
+    [
+      ["name", "fullname"], ["email", "email"], ["grade", "gradeLevel"],
+      ["section", "section"], ["birthdate", "birthdate"], ["sex", "sex"],
+      ["address", "address"], ["contact", "contact"], ["guardian", "guardian"],
+      ["guardianContact", "guardianContact"], ["lastSchool", "lastSchool"],
+    ].forEach(function (pair) {
+      const value = student[pair[0]];
+      if (value === undefined || value === null || String(value).trim() === "") return;
+      if (String(account[pair[1]] || "") !== String(value)) {
+        account[pair[1]] = value;
+        changed = true;
+      }
+    });
+  });
+  if (changed) writeSheet(db, SHEETS.accounts, accounts, ACCOUNT_COLUMNS);
+  return changed;
+}
+
 /**
  * True when this process must NOT quietly create a new workbook.
  *
@@ -1090,6 +1126,9 @@ function migrateDb(db) {
   // every time the workbook is read — it always agrees with the payments.
   rebuildMonthlySheet(db);
   writeSheet(db, SHEETS.students, students, STUDENT_COLUMNS);
+  // Carry Excel's latest profile details into matching account records while
+  // keeping the account sheet's login state and credentials authoritative.
+  if (syncAccountProfilesFromRoster(db)) changed = true;
   return changed;
 }
 
@@ -1516,22 +1555,22 @@ const EDITABLE_PROFILE_FIELDS = [
 function studentProfileFor(db, account) {
   if (!account) return null;
   const student = readSheet(db, SHEETS.students).find(
-    (s) => String(s.id).trim().toLowerCase() === String(account.studentId).trim().toLowerCase()
+    (s) => studentIdKey(s.id) === studentIdKey(account.studentId)
   );
   return {
     studentId: account.studentId,
     fullname: student && student.name ? student.name : account.fullname,
-    email: account.email || "",
+    email: student && student.email ? student.email : account.email || "",
     gradeLevel: student && student.grade ? student.grade : account.gradeLevel || "",
     section: student && student.section ? student.section : account.section || "",
     status: student ? student.status : account.status,
-    birthdate: account.birthdate || "",
-    sex: account.sex || "",
-    address: account.address || "",
-    contact: account.contact || "",
-    guardian: account.guardian || "",
-    guardianContact: account.guardianContact || "",
-    lastSchool: account.lastSchool || "",
+    birthdate: student && student.birthdate ? student.birthdate : account.birthdate || "",
+    sex: student && student.sex ? student.sex : account.sex || "",
+    address: student && student.address ? student.address : account.address || "",
+    contact: student && student.contact ? student.contact : account.contact || "",
+    guardian: student && student.guardian ? student.guardian : account.guardian || "",
+    guardianContact: student && student.guardianContact ? student.guardianContact : account.guardianContact || "",
+    lastSchool: student && student.lastSchool ? student.lastSchool : account.lastSchool || "",
   };
 }
 
@@ -1638,12 +1677,38 @@ function createStudentFromAccount(db, account) {
 
 /** The student record a signed-in student is allowed to see: their own. */
 function studentRecordFor(db, studentId) {
-  const student = readSheet(db, SHEETS.students).find(
-    (s) => String(s.id) === String(studentId)
+  const wanted = studentIdKey(studentId);
+  let student = readSheet(db, SHEETS.students).find(
+    (s) => studentIdKey(s.id) === wanted
   );
+  const account = findAccount(db, studentId);
+  // Accounts is the durable identity record. If a roster row was removed or
+  // its ID was damaged in Excel, retain the student's portal identity from it.
+  if (!student) {
+    if (account) {
+      student = {
+        id: account.studentId,
+        name: account.fullname,
+        grade: account.gradeLevel,
+        section: account.section,
+        status: account.status,
+        totalFee: 0,
+        amountPaid: 0,
+        balance: 0,
+      };
+    }
+  }
   if (!student) return null;
+  if (account) {
+    student = Object.assign({}, student, {
+      id: student.id || account.studentId,
+      name: student.name || account.fullname,
+      grade: student.grade || account.gradeLevel,
+      section: student.section || account.section,
+    });
+  }
   const payments = readSheet(db, SHEETS.payments)
-    .filter((p) => String(p.studentId) === String(studentId))
+    .filter((p) => studentIdKey(p.studentId) === wanted)
     .map((p) => ({
       date: p.date,
       receiptNo: p.receiptNo,
