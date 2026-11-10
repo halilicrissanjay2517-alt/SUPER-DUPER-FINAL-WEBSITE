@@ -639,6 +639,10 @@ const SHEET_HEADER_ALIASES = {
     examperiod: ["period"],
   },
   [SHEETS.students]: {
+    // Excel roster files commonly label the canonical `id` column as
+    // "Student ID" or "Student No". Keep those rows visible to every reader
+    // that joins the roster to accounts and accepts student sign-ins.
+    id: ["studentid", "studentno", "studentnumber"],
     grade: ["gradelevel", "yearlevel"],
     guardian: ["parent", "parentname"],
     guardiancontact: ["parentcontact", "guardianno"],
