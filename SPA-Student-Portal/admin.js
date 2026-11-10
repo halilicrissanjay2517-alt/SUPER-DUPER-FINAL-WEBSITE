@@ -2367,13 +2367,33 @@
     printBtn.className = "btn btn-secondary";
     printBtn.textContent = "🖨 Print statement";
     printBtn.title = "Print every payment on record, month by month";
+    printBtn.disabled = true;
     printBtn.addEventListener("click", function () {
-      if (!accountPaymentData) return;
-      // The statement printer reads the shared detail state; point it at
-      // this student's fetched ledger before printing.
-      detailStudent = student;
-      detailPaymentData = accountPaymentData;
-      printDetailStatement();
+      var printTab = window.open("", "_blank");
+      if (!printTab) {
+        toast("Allow pop-ups to print the statement.", true);
+        return;
+      }
+      printTab.document.write("<!doctype html><title>Loading statement</title><p>Loading the latest student statement…</p>");
+      printTab.document.close();
+      printBtn.disabled = true;
+      Promise.all([
+        api("/api/students"),
+        api("/api/payments?studentId=" + encodeURIComponent(student.id)),
+      ]).then(function (results) {
+        var latest = (results[0].students || []).find(function (row) {
+          return String(row.id).toLowerCase() === String(student.id).toLowerCase();
+        });
+        if (!latest) throw new Error("This student is no longer in the school database.");
+        accountStudent = latest;
+        detailStudent = latest;
+        accountPaymentData = results[1];
+        detailPaymentData = results[1];
+        printDetailStatement(printTab);
+      }).catch(function (err) {
+        printTab.close();
+        toast(err.message || "Could not refresh the statement.", true);
+      }).then(function () { printBtn.disabled = false; });
     });
     var editBtn = document.createElement("button");
     editBtn.type = "button";
@@ -2392,6 +2412,7 @@
     api("/api/payments?studentId=" + encodeURIComponent(student.id))
       .then(function (data) {
         accountPaymentData = data;
+        printBtn.disabled = false;
         renderAccountMonths(data);
         renderAccountPayments(data);
       })
@@ -2815,9 +2836,19 @@
   }
 
   /** Prints the whole statement: identity block plus every payment, grouped. */
-  function printDetailStatement() {
+  function printDetailStatement(targetWindow) {
     if (!detailStudent || !detailPaymentData) return;
     var s = detailStudent;
+    var schoolMonths = SCHOOL_MONTHS_VIEW.slice();
+    var monthValues = s.monthlyPayments || {};
+    var hasMonthly = schoolMonths.some(function (month) {
+      return monthValues[month] !== undefined && monthValues[month] !== null && monthValues[month] !== "";
+    });
+    var monthlyDue = Number(s.monthlyDue) || 0;
+    var monthlyRows = hasMonthly ? schoolMonths.map(function (month) {
+      return "<tr><td>" + month + "</td><td class='amt'>" + peso(monthlyDue) +
+        "</td><td class='amt'>" + peso(monthValues[month]) + "</td></tr>";
+    }).join("") : "";
     var pay = (detailPaymentData.payments || []).slice().sort(function (a, b) {
       return String(a.date || "").localeCompare(String(b.date || ""));
     });
@@ -2837,6 +2868,8 @@
       "td,th{border:1px solid #999;padding:6px 9px;text-align:left;}" +
       "th{background:#eee;}.amt{text-align:right;white-space:nowrap;}" +
       ".ids{font-size:12px;color:#333;margin-top:8px;}" +
+      ".printed{font-size:11px;color:#555;margin-top:10px;}" +
+      "h3{font-size:14px;margin:20px 0 6px;}" +
       ".totals{margin-top:14px;width:50%;margin-left:auto;font-size:13px;border-collapse:collapse;}" +
       ".totals td{border:none;padding:3px 0;}" +
       "@media print{html,body{background:#fff!important;margin:0}th{background:#eee!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}" +
@@ -2847,6 +2880,13 @@
       "<div class='ids'>Student ID: " + escapeHtml(s.id || "—") + " · Grade " +
       escapeHtml(s.grade || "—") + (s.section ? " – " + escapeHtml(s.section) : "") +
       " · Status: " + escapeHtml(s.status || "—") + "</div>" +
+      "<div class='ids'>Payment due: " + escapeHtml(s.dueDate ? niceDate(s.dueDate) : "Not set") +
+      " · Last payment: " + escapeHtml(s.lastPaymentDate ? niceDate(s.lastPaymentDate) : "None") + "</div>" +
+      (hasMonthly
+        ? "<h3>Monthly payment plan</h3><table><thead><tr><th>Month</th><th>Monthly due</th><th>Recorded</th></tr></thead><tbody>" +
+          monthlyRows + "</tbody></table>"
+        : "<h3>Monthly payment plan</h3><p>No monthly plan is on file.</p>") +
+      "<h3>Payment history</h3>" +
       (pay.length
         ? "<table><thead><tr><th>#</th><th>Date</th><th>Receipt</th><th>Method</th><th>Amount</th></tr></thead><tbody>" +
           rows + "</tbody></table>"
@@ -2855,8 +2895,9 @@
       "<tr><td>Total assessment</td><td class='amt'>" + peso(s.totalFee) + "</td></tr>" +
       "<tr><td>Total paid</td><td class='amt'>" + peso(detailPaymentData.total) + "</td></tr>" +
       "<tr><td><strong>Balance</strong></td><td class='amt'><strong>" + peso(s.balance) + "</strong></td></tr>" +
-      "</table></div></body></html>";
-    var w = window.open("", "_blank");
+      "</table><p class='printed'>Printed from the live student database: " +
+      escapeHtml(new Date().toLocaleString("en-PH")) + "</p></div></body></html>";
+    var w = targetWindow || window.open("", "_blank");
     if (!w) { toast("Allow pop-ups to print the statement.", true); return; }
     w.document.write(doc);
     w.document.close();

@@ -475,8 +475,8 @@
   }
 
   /** Opens a print window with a document; shared by both printouts. */
-  function printWindow(doc, fallbackMessage) {
-    var w = window.open("", "_blank");
+  function printWindow(doc, fallbackMessage, targetWindow) {
+    var w = targetWindow || window.open("", "_blank");
     if (!w) {
       var note = $("#dashPaymentsCount");
       if (note) note.textContent = fallbackMessage;
@@ -539,9 +539,20 @@
   }
 
   /** Every payment on record, plus the fee totals — the statement of account. */
-  function printStatement() {
+  function printStatement(targetWindow) {
     if (!lastStudent) return;
     var s = lastStudent;
+    var schoolMonths = ["Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
+    var monthValues = s.monthlyPayments || {};
+    var hasMonthly = schoolMonths.some(function (month) {
+      return monthValues[month] !== undefined && monthValues[month] !== null && monthValues[month] !== "";
+    });
+    var monthlyDue = Number(s.monthlyDue) || 0;
+    var monthlyRows = hasMonthly ? schoolMonths.map(function (month) {
+      var amount = Number(monthValues[month]) || 0;
+      return "<tr><td>" + month + "</td><td class='amt'>" + peso(monthlyDue) +
+        "</td><td class='amt'>" + peso(amount) + "</td></tr>";
+    }).join("") : "";
     var pay = paymentsAll.slice().sort(function (a, b) {
       return String(a.date || "").localeCompare(String(b.date || ""));
     });
@@ -562,6 +573,8 @@
       "td,th{border:1px solid #999;padding:6px 9px;text-align:left;}" +
       "th{background:#eee;}.amt{text-align:right;white-space:nowrap;}" +
       ".ids{font-size:12px;color:#333;margin-top:8px;}" +
+      ".printed{font-size:11px;color:#555;margin-top:10px;}" +
+      "h3{font-size:14px;margin:20px 0 6px;}" +
       ".totals{margin-top:14px;width:50%;margin-left:auto;font-size:13px;border-collapse:collapse;}" +
       ".totals td{border:none;padding:3px 0;}" +
       "@media print{html,body{background:#fff!important;margin:0}th{background:#eee!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}" +
@@ -572,6 +585,13 @@
       "<div class='ids'>Student ID: " + escapeHtml(s.id || "—") + " · Grade " +
       escapeHtml(s.grade || "—") + (s.section ? " – " + escapeHtml(s.section) : "") +
       " · Status: " + escapeHtml(s.status || "—") + "</div>" +
+      "<div class='ids'>Payment due: " + escapeHtml(s.dueDate ? niceDate(s.dueDate) : "Not set") +
+      " · Last payment: " + escapeHtml(s.lastPaymentDate ? niceDate(s.lastPaymentDate) : "None") + "</div>" +
+      (hasMonthly
+        ? "<h3>Monthly payment plan</h3><table><thead><tr><th>Month</th><th>Monthly due</th><th>Recorded</th></tr></thead><tbody>" +
+          monthlyRows + "</tbody></table>"
+        : "<h3>Monthly payment plan</h3><p>No monthly plan is on file.</p>") +
+      "<h3>Payment history</h3>" +
       (pay.length
         ? "<table><thead><tr><th>#</th><th>Date</th><th>Receipt</th><th>Method</th><th>Note</th><th>Amount</th></tr></thead><tbody>" +
           rows + "</tbody></table>"
@@ -580,24 +600,38 @@
       "<tr><td>Total assessment</td><td class='amt'>" + peso(s.totalFee) + "</td></tr>" +
       "<tr><td>Total paid</td><td class='amt'>" + peso(s.amountPaid) + "</td></tr>" +
       "<tr><td><strong>Balance</strong></td><td class='amt'><strong>" + peso(s.balance) + "</strong></td></tr>" +
-      "</table></div></body></html>";
-    printWindow(doc, "Allow pop-ups to print the statement.");
+      "</table><p class='printed'>Printed from the live student database: " +
+      escapeHtml(new Date().toLocaleString("en-PH")) + "</p></div></body></html>";
+    printWindow(doc, "Allow pop-ups to print the statement.", targetWindow);
   }
 
   var printStatementBtn = $("#dashPrintStatement");
   if (printStatementBtn) {
     printStatementBtn.addEventListener("click", function () {
       if (!lastStudent) return;
-      if (paymentsAll.length === 0) {
-        printStatementBtn.setAttribute("disabled", "disabled");
-        printStatementBtn.textContent = "No payments to print";
-        setTimeout(function () {
-          printStatementBtn.removeAttribute("disabled");
-          printStatementBtn.textContent = "🖨 Print statement";
-        }, 2200);
+      var printTab = window.open("", "_blank");
+      if (!printTab) {
+        if ($("#dashPaymentsCount")) {
+          $("#dashPaymentsCount").textContent = "Allow pop-ups to print the statement.";
+        }
         return;
       }
-      printStatement();
+      printTab.document.write("<!doctype html><title>Loading statement</title><p>Loading the latest student statement…</p>");
+      printTab.document.close();
+      printStatementBtn.disabled = true;
+      studentApi("/api/student/me")
+        .then(function (data) {
+          if (!data.student) throw new Error("Could not load the latest student record.");
+          renderRecord(data.student);
+          printStatement(printTab);
+        })
+        .catch(function (err) {
+          printTab.close();
+          if ($("#dashPaymentsCount")) {
+            $("#dashPaymentsCount").textContent = err.message || "Could not refresh the statement.";
+          }
+        })
+        .then(function () { printStatementBtn.disabled = false; });
     });
   }
 
