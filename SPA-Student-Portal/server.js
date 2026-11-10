@@ -421,6 +421,29 @@ function applyExcelBalanceEdits(currentDb, incomingDb) {
     student.balanceAdjustment = toNumber(student.balance) - toNumber(base.balance);
   });
   writeSheet(incomingDb, SHEETS.students, students, STUDENT_COLUMNS);
+
+  // Preserve month allocations from the edited workbook, while retaining
+  // current values for unchanged cells (for example, an older local copy).
+  const uploadedMonthly = readSheet(incomingDb, SHEETS.monthly);
+  const currentMonthly = new Map();
+  if (currentDb) readSheet(currentDb, SHEETS.monthly).forEach(function (row) {
+    const key = studentIdKey(row.id);
+    if (key) currentMonthly.set(key, row);
+  });
+  if (incomingDb.Sheets[SHEETS.monthly]) {
+    uploadedMonthly.forEach(function (row) {
+      const old = currentMonthly.get(studentIdKey(row.id));
+      if (!old) return;
+      ["monthlyDue"].concat(SCHOOL_MONTHS).forEach(function (month) {
+        if (row[month] === undefined || toNumber(row[month]) === toNumber(old[month])) {
+          row[month] = toNumber(old[month]);
+        } else {
+          row[month] = toNumber(row[month]);
+        }
+      });
+    });
+    writeSheet(incomingDb, SHEETS.monthly, uploadedMonthly, SHEET_COLUMNS[SHEETS.monthly]);
+  }
 }
 
 /** Most recent payment date on record for a student, or empty when none. */
@@ -901,6 +924,9 @@ function saveDb(db) {
   // Keep the Accounts sheet's displayed profile and statement summary current
   // in the same workbook write as its Students and Payments source rows.
   syncAccountProfilesFromRoster(db);
+  // Refresh Monthly Payments labels and ledger totals before saving, while
+  // rebuildMonthlySheet preserves the editable Jun–Mar allocation cells.
+  rebuildMonthlySheet(db);
   // DB_DIR is a mounted volume on Render, so create it if the mount is late.
   if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
   // Excel on Windows holds the workbook open and briefly locks it around its
@@ -1069,18 +1095,22 @@ function createSeedDb() {
  *   totalPaid | balance | status
  *
  * `monthlyDue` is the total fee spread over ten months (June to March). The
- * month columns count the payments whose date falls in that month, so a
- * payment recorded on the website or an edit in Excel shows up here on the
- * next save. A workbook is read-only in the sense that this sheet is always
- * DERIVED — editing it directly is overwritten on the next save, by design,
- * because its numbers must agree with the Payments ledger.
+ * New student rows are seeded from dated payments; after that, the month
+ * columns are editable workbook values and are preserved on reads and saves.
+ * New official payments adjust their matching month column automatically.
  */
 function rebuildMonthlySheet(db) {
   const students = readSheet(db, SHEETS.students);
   const payments = readSheet(db, SHEETS.payments);
+  const previousById = new Map();
+  readSheet(db, SHEETS.monthly).forEach(function (row) {
+    const key = studentIdKey(row.id);
+    if (key) previousById.set(key, row);
+  });
   // Which school-year month a payment date belongs to: June 2024 and June
   // 2025 both count as "Jun", because the plan repeats every school year.
   const rows = students.map(function (student) {
+    const previous = previousById.get(studentIdKey(student.id));
     const row = {
       id: student.id,
       name: student.name,
@@ -1101,6 +1131,15 @@ function rebuildMonthlySheet(db) {
         row[SCHOOL_MONTHS[idx]] = (row[SCHOOL_MONTHS[idx]] || 0) + (Number(p.amount) || 0);
       }
     });
+    // Monthly Payments is the office's editable month-by-month allocation.
+    // Preserve existing month cells when the workbook is refreshed; only new
+    // students are initially populated from the dated Payments ledger.
+    if (previous) SCHOOL_MONTHS.forEach(function (m) {
+      if (Object.prototype.hasOwnProperty.call(previous, m)) row[m] = toNumber(previous[m]);
+    });
+    if (previous && Object.prototype.hasOwnProperty.call(previous, "monthlyDue")) {
+      row.monthlyDue = toNumber(previous.monthlyDue);
+    }
     row.totalPaid = Number(student.amountPaid) || 0;
     row.balance = Number(student.balance) || 0;
     row.status = student.status || "";
@@ -1111,6 +1150,39 @@ function rebuildMonthlySheet(db) {
     SCHOOL_MONTHS, ["totalPaid", "balance", "status"]
   );
   writeSheet(db, SHEETS.monthly, rows, columns);
+}
+
+function monthlyRecordFor(db, studentId) {
+  const key = studentIdKey(studentId);
+  const row = readSheet(db, SHEETS.monthly).find(function (entry) {
+    return studentIdKey(entry.id) === key;
+  });
+  if (!row) return null;
+  const months = {};
+  SCHOOL_MONTHS.forEach(function (month) { months[month] = toNumber(row[month]); });
+  return { monthlyDue: toNumber(row.monthlyDue), months };
+}
+
+function adjustMonthlyPayment(db, payment, delta) {
+  const day = toDate(payment.date);
+  if (!day) return;
+  const monthNumber = Number(day.slice(5, 7));
+  const monthIndex = monthNumber >= 6 ? monthNumber - 6 : monthNumber + 4;
+  if (monthIndex < 0 || monthIndex >= SCHOOL_MONTHS.length) return;
+  if (!db.Sheets[SHEETS.monthly]) rebuildMonthlySheet(db);
+  const rows = readSheet(db, SHEETS.monthly);
+  const row = rows.find(function (entry) {
+    return studentIdKey(entry.id) === studentIdKey(payment.studentId);
+  });
+  if (!row) {
+    rebuildMonthlySheet(db);
+    // A rebuild reads the just-updated ledger, so its new row already includes
+    // this payment and must not receive the delta twice.
+    return;
+  }
+  const month = SCHOOL_MONTHS[monthIndex];
+  row[month] = Math.max(0, toNumber(row[month]) + Number(delta || 0));
+  writeSheet(db, SHEETS.monthly, rows, SHEET_COLUMNS[SHEETS.monthly]);
 }
 
 /** Column widths for every sheet, so the workbook opens tidy in Excel. */
@@ -1238,8 +1310,7 @@ function migrateDb(db) {
       changed = true;
     }
   });
-  // The Monthly Payments sheet is derived from the ledger, so it is rebuilt
-  // every time the workbook is read — it always agrees with the payments.
+  // Refresh labels and totals while keeping the workbook's editable month cells.
   rebuildMonthlySheet(db);
   writeSheet(db, SHEETS.students, students, STUDENT_COLUMNS);
   // Carry Excel's latest profile details into matching account records while
@@ -1391,7 +1462,11 @@ function studentsForDashboard(db) {
     });
     if (!student.accountStatus && account.status) student.accountStatus = account.status;
     if (!student.username) student.username = id;
-    output.push(studentForApi(student));
+    const apiStudent = studentForApi(student);
+    const monthly = monthlyRecordFor(db, id);
+    apiStudent.monthlyDue = monthly ? monthly.monthlyDue : 0;
+    apiStudent.monthlyPayments = monthly ? monthly.months : {};
+    output.push(apiStudent);
     seen.add(key);
   });
 
@@ -1401,7 +1476,11 @@ function studentsForDashboard(db) {
     const id = String(student.id || "").trim();
     const key = id.toLowerCase();
     if (!id || seen.has(key)) return;
-    output.push(studentForApi(student));
+    const apiStudent = studentForApi(student);
+    const monthly = monthlyRecordFor(db, id);
+    apiStudent.monthlyDue = monthly ? monthly.monthlyDue : 0;
+    apiStudent.monthlyPayments = monthly ? monthly.months : {};
+    output.push(apiStudent);
     seen.add(key);
   });
   return output;
@@ -1833,6 +1912,7 @@ function studentRecordFor(db, studentId) {
     }
   }
   if (!student) return null;
+  const monthly = monthlyRecordFor(db, studentId);
   if (account) {
     student = Object.assign({}, student, {
       id: student.id || account.studentId,
@@ -1862,6 +1942,8 @@ function studentRecordFor(db, studentId) {
     balance: Number(student.balance) || 0,
     dueDate: student.dueDate || "",
     lastPaymentDate: student.lastPaymentDate || "",
+    monthlyDue: monthly ? monthly.monthlyDue : 0,
+    monthlyPayments: monthly ? monthly.months : {},
     payments,
   };
 }
@@ -2986,6 +3068,7 @@ async function handleApi(req, res, pathname) {
         examPeriod: guessExamPeriod(pick(row, ["date", "paymentdate", "datepaid"])),
       };
       payments.push(payment);
+      adjustMonthlyPayment(db, payment, amount);
       if (receipt) knownReceipts.add(key);
       paymentsAdded++;
     });
@@ -3204,6 +3287,7 @@ async function handleApi(req, res, pathname) {
         const payments = readSheet(db, SHEETS.payments);
         payments.push(payment);
         writeSheet(db, SHEETS.payments, payments, PAYMENT_COLUMNS);
+        adjustMonthlyPayment(db, payment, amount);
         syncStudentBilling(db, student);
         students[sIndex] = student;
         writeSheet(db, SHEETS.students, students, STUDENT_COLUMNS);
@@ -3307,6 +3391,7 @@ async function handleApi(req, res, pathname) {
     const payments = readSheet(db, SHEETS.payments);
     payments.push(payment);
     writeSheet(db, SHEETS.payments, payments, PAYMENT_COLUMNS);
+    adjustMonthlyPayment(db, payment, amount);
     syncStudentBilling(db, student);
     students[sIndex] = student;
     writeSheet(db, SHEETS.students, students, STUDENT_COLUMNS);
@@ -3986,6 +4071,7 @@ async function handleApi(req, res, pathname) {
     const payments = readSheet(db, SHEETS.payments);
     payments.push(payment);
     writeSheet(db, SHEETS.payments, payments, PAYMENT_COLUMNS);
+    adjustMonthlyPayment(db, payment, amount);
 
     // The payment is now part of the ledger, so recompute the student's fee,
     // paid total, remaining balance, last payment date and status from it.
@@ -4024,6 +4110,7 @@ async function handleApi(req, res, pathname) {
 
     const [removed] = payments.splice(pIndex, 1);
     writeSheet(db, SHEETS.payments, payments, PAYMENT_COLUMNS);
+    adjustMonthlyPayment(db, removed, -Number(removed.amount || 0));
 
     // The row is gone from the ledger, so the student's balance, paid total and
     // last payment date all fall back out of what remains.

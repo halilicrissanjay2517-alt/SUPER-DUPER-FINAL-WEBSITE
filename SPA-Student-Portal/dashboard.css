@@ -11,6 +11,24 @@
   flex-direction: column;
 }
 
+.dash-monthly-plan { margin-top: 18px; }
+.dash-monthly-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: 10px;
+}
+.dash-monthly-cell {
+  border: 1px solid var(--line, #dce5df);
+  border-radius: 12px;
+  background: var(--surface, #fff);
+  padding: 12px;
+  display: grid;
+  gap: 5px;
+}
+.dash-monthly-cell strong { color: var(--ink); }
+.dash-monthly-cell span, .dash-monthly-cell small { color: var(--muted, #64746a); }
+.dash-monthly-cell small { font-size: 12px; }
+
 /* ---------- Header ---------- */
 .dash-header {
   background: var(--green-900);

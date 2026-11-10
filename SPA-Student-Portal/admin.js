@@ -1790,7 +1790,15 @@
      no refresh and no button. */
   if (window.SpaLiveSync) {
     SpaLiveSync.watch(function (stamp) {
-      loadStudents();
+      loadStudents().then(function () {
+        var accountView = $("#viewStudentaccount");
+        if (accountStudent && accountView && !accountView.hidden) {
+          var latest = state.students.find(function (student) {
+            return String(student.id).toLowerCase() === String(accountStudent.id).toLowerCase();
+          });
+          if (latest) showStudentAccount(latest);
+        }
+      }).catch(function (err) { reportLoadFailure("students", err); });
       loadPayments();
       loadApprovals();
       loadLogs();
@@ -2364,48 +2372,31 @@
     var student = accountStudent || {};
     var pay = (data && data.payments) || [];
     var totalFee = Number(student.totalFee) || 0;
-    var monthlyDue = Math.round(totalFee / SCHOOL_MONTHS_VIEW.length);
+    var monthlyDue = student.monthlyDue === undefined || student.monthlyDue === null
+      ? Math.round(totalFee / SCHOOL_MONTHS_VIEW.length) : Number(student.monthlyDue) || 0;
 
     var paid = {};
     SCHOOL_MONTHS_VIEW.forEach(function (m) { paid[m] = 0; });
-    pay.forEach(function (p) {
+    var hasMonthly = student.monthlyPayments && typeof student.monthlyPayments === "object";
+    if (hasMonthly) SCHOOL_MONTHS_VIEW.forEach(function (m) {
+      paid[m] = Number(student.monthlyPayments[m]) || 0;
+    });
+    else pay.forEach(function (p) {
       var day = String(p.date || "");
       if (!/^\d{4}-\d{2}/.test(day)) return;
       var m = Number(day.slice(5, 7));
       var idx = m >= 6 ? m - 6 : m + 4;
-      if (idx >= 0 && idx < SCHOOL_MONTHS_VIEW.length) {
-        paid[SCHOOL_MONTHS_VIEW[idx]] += Number(p.amount) || 0;
-      }
+      if (idx >= 0 && idx < SCHOOL_MONTHS_VIEW.length) paid[SCHOOL_MONTHS_VIEW[idx]] += Number(p.amount) || 0;
     });
 
-    var sorted = pay.slice().sort(function (a, b) {
-      return String(a.date || "").localeCompare(String(b.date || ""));
-    });
-    var down = sorted[0] || null;
-    var downAmt = down ? Number(down.amount) || 0 : 0;
-
-    var credit = downAmt;
     var running = totalFee;
-    var downTagged = false;
     var html = "";
     SCHOOL_MONTHS_VIEW.forEach(function (m) {
-      var got = paid[m];
-      var applied = Math.min(credit, monthlyDue);
-      credit -= applied;
-      var own = Math.min(got, monthlyDue - applied);
-      if (own < 0) own = 0;
-      applied += own;
-      credit += Math.max(0, got - own); // surplus rolls to the next month
+      var applied = paid[m];
       var after = Math.max(0, running - applied);
       var state = monthlyDue > 0 && applied >= monthlyDue ? "paid" : applied > 0 ? "partial" : "unpaid";
-      var note = "";
-      if (downAmt > 0 && credit <= 0 && !downTagged && applied > 0) {
-        // Tag the month where the down payment finished being used up.
-        note = ' <span class="badge badge-blue">Down payment ' + peso(downAmt) + "</span>";
-        downTagged = true;
-      }
       html += "<tr class='month-row month-" + state + "'>" +
-        "<td><strong>" + m + "</strong>" + note + "</td>" +
+        "<td><strong>" + m + "</strong></td>" +
         '<td class="amount-cell">' + peso(monthlyDue) + "</td>" +
         '<td class="amount-cell">' + peso(applied) + "</td>" +
         '<td class="amount-cell">' + peso(after) + "</td>" +
@@ -2468,36 +2459,30 @@
     var down = sorted[0] || null;
 
     var totalFee = Number(student.totalFee) || 0;
-    var monthlyDue = Math.round(totalFee / SCHOOL_MONTHS_VIEW.length);
+    var monthlyDue = student.monthlyDue === undefined || student.monthlyDue === null
+      ? Math.round(totalFee / SCHOOL_MONTHS_VIEW.length) : Number(student.monthlyDue) || 0;
 
     // Sum what was paid into each school month. June–December are plan
     // months 1–7; Jan–March continue the same plan; summer is skipped,
     // matching the server's Monthly Payments sheet.
     var paid = {};
     SCHOOL_MONTHS_VIEW.forEach(function (m) { paid[m] = 0; });
-    pay.forEach(function (p) {
+    if (student.monthlyPayments && typeof student.monthlyPayments === "object") {
+      SCHOOL_MONTHS_VIEW.forEach(function (m) { paid[m] = Number(student.monthlyPayments[m]) || 0; });
+    } else pay.forEach(function (p) {
       var day = String(p.date || "");
       if (!/^\d{4}-\d{2}/.test(day)) return;
       var m = Number(day.slice(5, 7));
       var idx = m >= 6 ? m - 6 : m + 4;
-      if (idx >= 0 && idx < SCHOOL_MONTHS_VIEW.length) {
-        paid[SCHOOL_MONTHS_VIEW[idx]] += Number(p.amount) || 0;
-      }
+      if (idx >= 0 && idx < SCHOOL_MONTHS_VIEW.length) paid[SCHOOL_MONTHS_VIEW[idx]] += Number(p.amount) || 0;
     });
 
     var downAmt = down ? Number(down.amount) || 0 : 0;
-    // Down payment is charged against the first month(s): walk the plan
-    // crediting the down payment first, then judge each month by what
-    // remains owed.
-    var credit = downAmt;
-    var carried = 0; // surplus from previous months
+    // The workbook's month allocations are displayed directly so the admin
+    // and student views show the same values as Excel.
     var nextDue = null;
     var cells = SCHOOL_MONTHS_VIEW.map(function (m) {
-      var got = paid[m] + carried;
-      var covered = Math.min(credit, monthlyDue);
-      credit -= covered;
-      var applied = covered + Math.min(got, Math.max(0, monthlyDue - covered));
-      carried = Math.max(0, got - applied);
+      var applied = paid[m];
       var owed = monthlyDue - applied;
       var tone = owed <= 0 ? "paid" : applied > 0 ? "partial" : "unpaid";
       if (tone !== "paid" && !nextDue) nextDue = m;

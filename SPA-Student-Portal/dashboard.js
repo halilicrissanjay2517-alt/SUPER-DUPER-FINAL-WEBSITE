@@ -297,6 +297,7 @@
       balanceCard.classList.toggle("is-clear", balance <= 0);
       balanceCard.classList.toggle("is-owed", balance > 0);
     }
+    renderMonthlyPlan(s);
     if ($("#dashBalanceNote")) {
       $("#dashBalanceNote").textContent = balance <= 0 ? "Fully paid" : "Still to pay";
     }
@@ -335,6 +336,23 @@
     paintHistoryStats(s);
     paintOverview(s);
     paintPaymentRows();
+  }
+
+  function renderMonthlyPlan(student) {
+    var host = $("#dashMonthlyPayments");
+    if (!host) return;
+    var months = ["Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
+    var values = student.monthlyPayments || {};
+    var due = student.monthlyDue === undefined || student.monthlyDue === null
+      ? Math.round((Number(student.totalFee) || 0) / months.length) : Number(student.monthlyDue) || 0;
+    var html = "";
+    months.forEach(function (month) {
+      var paid = Number(values[month]) || 0;
+      var state = due > 0 && paid >= due ? "Paid" : paid > 0 ? "Partial" : "Unpaid";
+      html += '<div class="dash-monthly-cell"><strong>' + month + '</strong>' +
+        '<span>' + peso(paid) + ' recorded</span><small>' + state + ' · Due ' + peso(due) + '</small></div>';
+    });
+    host.innerHTML = html;
   }
 
   /* ---------- Receipt dialog ----------
