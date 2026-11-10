@@ -1441,11 +1441,10 @@
   /*  ------------------------------------------------ Open in Excel (live round trip)
      One button, three steps, no command line:
        1. Downloads the live student database (the same bytes the website uses).
-       2. Watches that file on disk. The moment Excel saves it, the edited
-          workbook is pushed back to the server — which swaps it in, backs up
-          the old one, and every open page reloads within seconds via the
-          /api/version stamp.
-       3. Keeps watching, so every later save updates the site too.
+       2. Watches that file on disk. Excel saves are sent to the server, and
+          server-side changes are copied back into the watched workbook when
+          there are no unsent local edits.
+       3. Keeps both copies current while the watch is active.
 
      The watch SURVIVES A REFRESH: the file handle and the last-seen stamp are
      kept in IndexedDB. On page load (or sign-in) the stored handle is picked
@@ -1550,7 +1549,44 @@
      mtime+size pair seen. Both are mirrored into IndexedDB so a refresh can
      pick them up. A single instance runs per page — startExcelWatch() is
      idempotent. */
-  var excelWatch = { handle: null, last: null, running: false };
+  var excelWatch = { handle: null, last: null, running: false, refreshing: false };
+
+  function refreshWatchedWorkbook() {
+    if (!excelWatch.running || !excelWatch.handle || excelWatch.refreshing) return;
+    if (typeof excelWatch.handle.createWritable !== "function") return;
+    excelWatch.refreshing = true;
+    var handle = excelWatch.handle;
+    handle.getFile().then(function (localFile) {
+      // Keep unsent local edits safe. The normal watcher will upload them first;
+      // the next server change can then refresh this workbook from the website.
+      if (excelWatch.last &&
+          (localFile.lastModified !== excelWatch.last.mtime || localFile.size !== excelWatch.last.size)) {
+        toast("Excel has local edits. They will sync before the workbook refreshes.");
+        return false;
+      }
+      return fetch(apiUrl("/api/database"), { credentials: "same-origin", cache: "no-store" })
+        .then(function (res) {
+          if (!res.ok) throw new Error("Could not download the latest Excel database.");
+          return res.blob();
+        })
+        .then(function (blob) {
+          return handle.createWritable().then(function (writer) {
+            return writer.write(blob).then(function () { return writer.close(); });
+          });
+        })
+        .then(function () { return handle.getFile(); })
+        .then(function (file) {
+          excelWatch.last = { mtime: file.lastModified, size: file.size };
+          return liveDbPut("last", excelWatch.last).then(function () { return true; });
+        });
+    }).then(function (updated) {
+      if (updated) toast("The local Excel database now includes the website's latest records.");
+    }).catch(function () {
+      toast("The website database is updated. Close Excel, then use Open Excel to refresh your local copy.", true);
+    }).then(function () {
+      excelWatch.refreshing = false;
+    });
+  }
 
   function startExcelWatch(handle, lastStamp, button) {
     if (!handle || handle.name !== LIVE_WORKBOOK_NAME) {
@@ -1795,6 +1831,7 @@
      no refresh and no button. */
   if (window.SpaLiveSync) {
     SpaLiveSync.watch(function (stamp) {
+      refreshWatchedWorkbook();
       loadStudents().then(function () {
         var accountView = $("#viewStudentaccount");
         if (accountStudent && accountView && !accountView.hidden) {

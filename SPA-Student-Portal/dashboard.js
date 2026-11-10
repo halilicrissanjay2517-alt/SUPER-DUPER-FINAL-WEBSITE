@@ -123,94 +123,8 @@
           : "Showing " + shown.length + " of " + rows.length + " matching payments";
     }
 
-    // Keep the overview band in step whenever the ledger is repainted.
-    if (lastStudent) {
-      paintHistoryStats(lastStudent);
-      paintOverview(lastStudent);
-    }
-  }
-
-  /** The three history KPIs: total paid, remaining, and the usual method. */
-  function paintHistoryStats(s) {
-    var payments = paymentsAll;
-    var total = payments.reduce(function (sum, p) { return sum + (Number(p.amount) || 0); }, 0);
-    var balance = Number(s.balance) || 0;
-
-    if ($("#dashHistoryTotal")) $("#dashHistoryTotal").textContent = peso(total);
-    if ($("#dashHistoryTotalNote")) {
-      $("#dashHistoryTotalNote").textContent = payments.length
-        ? "Across " + payments.length + (payments.length === 1 ? " payment" : " payments")
-        : "No payments yet";
-    }
-    if ($("#dashHistoryBalance")) $("#dashHistoryBalance").textContent = peso(balance);
-    var balEl = $("#dashHistoryBalance");
-    if (balEl) {
-      balEl.classList.toggle("is-owed", balance > 0);
-      balEl.classList.toggle("is-clear", balance <= 0);
-    }
-    if ($("#dashHistoryBalanceNote")) {
-      $("#dashHistoryBalanceNote").textContent = balance > 0 ? "Still to settle" : "Fully settled";
-    }
-
-    // Preferred method: the one used most often, then the one used most recently.
-    var counts = {};
-    payments.forEach(function (p) {
-      var label = shortenMethod(p.method);
-      if (label === "—") return;
-      counts[label] = (counts[label] || 0) + 1;
-    });
-    var best = null;
-    Object.keys(counts).forEach(function (label) {
-      if (!best || counts[label] > counts[best]) best = label;
-    });
-    if ($("#dashHistoryMethod")) $("#dashHistoryMethod").textContent = best || "—";
-    if ($("#dashHistoryMethodNote")) {
-      $("#dashHistoryMethodNote").textContent = best
-        ? "Used " + counts[best] + (counts[best] === 1 ? " time" : " times")
-        : "No method on file";
-    }
-
     var toolbar = $("#dashHistoryToolbar");
-    if (toolbar) toolbar.hidden = payments.length === 0;
-  }
-
-  /** The overview band: one progress bar plus four plain facts. */
-  function paintOverview(s) {
-    var payments = paymentsAll;
-    var fee = Number(s.totalFee) || 0;
-    var paid = Number(s.amountPaid) || 0;
-    var percent = fee > 0 ? Math.max(0, Math.min(100, Math.round((paid / fee) * 100))) : 0;
-
-    if ($("#dashPaidPercent")) $("#dashPaidPercent").textContent = percent + "%";
-    var bar = $("#dashPaidBar");
-    if (bar) bar.setAttribute("aria-valuenow", String(percent));
-    var fill = $("#dashPaidFill");
-    if (fill) {
-      fill.style.width = percent + "%";
-      fill.classList.toggle("is-clear", percent >= 100);
-    }
-    if ($("#dashPaidSummary")) {
-      $("#dashPaidSummary").textContent = fee > 0
-        ? peso(paid) + " of " + peso(fee) + " tuition"
-        : "No tuition assessment on file yet";
-    }
-
-    var amounts = payments.map(function (p) { return Number(p.amount) || 0; });
-    var average = amounts.length
-      ? Math.round(amounts.reduce(function (a, b) { return a + b; }, 0) / amounts.length)
-      : 0;
-    var largest = amounts.length ? Math.max.apply(null, amounts) : 0;
-
-    if ($("#dashKpiCount")) {
-      $("#dashKpiCount").textContent = String(amounts.length);
-    }
-    if ($("#dashKpiAverage")) $("#dashKpiAverage").textContent = peso(average);
-    if ($("#dashKpiLargest")) $("#dashKpiLargest").textContent = peso(largest);
-    if ($("#dashKpiLatest")) {
-      $("#dashKpiLatest").textContent = payments.length
-        ? niceDate(payments[0].date)
-        : "No payments yet";
-    }
+    if (toolbar) toolbar.hidden = paymentsAll.length === 0;
   }
 
   /**
@@ -225,9 +139,9 @@
     var days = Math.round(
       (Date.parse(day + "T00:00:00Z") - Date.parse(todayISO() + "T00:00:00Z")) / 86400000
     );
-    if (days < 0) return { text: "Overdue", note: "By " + Math.abs(days) + " days", overdue: true, soon: false };
+    if (days < 0) return { text: "Overdue", note: niceDate(day), overdue: true, soon: false };
     if (days === 0) return { text: "Due today", note: niceDate(day), overdue: false, soon: true };
-    if (days <= 14) return { text: "In " + days + (days === 1 ? " day" : " days"), note: niceDate(day), overdue: false, soon: true };
+    if (days <= 14) return { text: "Due soon", note: niceDate(day), overdue: false, soon: true };
     return { text: niceDate(day), note: "", overdue: false, soon: false };
   }
 
@@ -333,8 +247,6 @@
         ? "Every payment recorded for your account, newest first."
         : "Payments made at the Accounting office will appear here.";
     }
-    paintHistoryStats(s);
-    paintOverview(s);
     paintPaymentRows();
   }
 
@@ -343,8 +255,14 @@
     if (!host) return;
     var months = ["Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
     var values = student.monthlyPayments || {};
-    var due = student.monthlyDue === undefined || student.monthlyDue === null
-      ? Math.round((Number(student.totalFee) || 0) / months.length) : Number(student.monthlyDue) || 0;
+    var hasWorkbookValues = months.some(function (month) {
+      return values[month] !== undefined && values[month] !== null && values[month] !== "";
+    });
+    if (!hasWorkbookValues) {
+      host.innerHTML = '<p class="muted">No monthly payment data is on file.</p>';
+      return;
+    }
+    var due = Number(student.monthlyDue) || 0;
     var html = "";
     months.forEach(function (month) {
       var paid = Number(values[month]) || 0;

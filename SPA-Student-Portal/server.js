@@ -1313,6 +1313,10 @@ function migrateDb(db) {
   // Refresh labels and totals while keeping the workbook's editable month cells.
   rebuildMonthlySheet(db);
   writeSheet(db, SHEETS.students, students, STUDENT_COLUMNS);
+  // Accounts remains the durable identity list. Recreate any missing student
+  // rows from it during ordinary workbook loads, so an approved account cannot
+  // disappear from the roster if an earlier approval write was interrupted.
+  if (syncStudentAccountRows(db, readAccounts(db))) changed = true;
   // Carry Excel's latest profile details into matching account records while
   // keeping the account sheet's login state and credentials authoritative.
   if (syncAccountProfilesFromRoster(db)) changed = true;
@@ -1674,6 +1678,21 @@ function syncStudentAccountRows(db, accounts) {
       }
     });
     if (!row.username) { row.username = row.id; changed = true; }
+    const accountState = String(account.status || account.accountStatus || "").toLowerCase();
+    if (accountState === "active" && !/dropped|graduated/i.test(String(row.status))) {
+      if (String(row.status).toLowerCase() !== "enrolled") changed = true;
+      row.status = "Enrolled";
+    }
+    if (!Number(row.totalFee)) {
+      row.totalFee = feeForGrade(row.grade);
+      changed = true;
+    }
+    const billingBefore = [row.tuitionFee, row.miscFee, row.totalFee, row.amountPaid,
+      row.balance, row.balanceAdjustment, row.lastPaymentDate].map(String);
+    syncStudentBilling(db, row);
+    const billingAfter = [row.tuitionFee, row.miscFee, row.totalFee, row.amountPaid,
+      row.balance, row.balanceAdjustment, row.lastPaymentDate].map(String);
+    if (billingBefore.some(function (value, at) { return value !== billingAfter[at]; })) changed = true;
   });
   if (changed) writeSheet(db, SHEETS.students, students, STUDENT_COLUMNS);
 }
@@ -2846,8 +2865,10 @@ async function handleApi(req, res, pathname) {
   if (pathname === "/api/database" && req.method === "GET") {
     const session = requireAuth(req, res);
     if (!session) return;
-    const db = loadDb();
-    saveDb(db);
+    // loadDb applies any pending schema migration. A plain download must not
+    // rewrite an unchanged workbook, since that would look like an edit to the
+    // live watcher and trigger an unnecessary download/upload loop.
+    loadDb();
     const data = fs.readFileSync(DB_FILE);
     res.writeHead(200, {
       "Content-Type": MIME[".xlsx"],

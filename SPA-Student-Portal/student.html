@@ -102,7 +102,7 @@
             <section class="dash-cards" aria-label="Tuition summary">
                 <div class="account-card is-emphasis" id="dashBalanceCard">
                     <span class="account-card-label">Remaining balance</span>
-                    <strong class="account-card-value" id="dashBalance">â‚±0</strong>
+                    <strong class="account-card-value" id="dashBalance">—</strong>
                     <span class="dash-card-note" id="dashBalanceNote"></span>
                     <!-- Pay now / pay early: jumps straight to the payment form
                          in the history panel below, opened and focused. -->
@@ -113,12 +113,12 @@
                 </div>
                 <div class="account-card">
                     <span class="account-card-label">Paid so far</span>
-                    <strong class="account-card-value" id="dashPaid">â‚±0</strong>
+                    <strong class="account-card-value" id="dashPaid">—</strong>
                     <span class="dash-card-note" id="dashPaidNote"></span>
                 </div>
                 <div class="account-card">
                     <span class="account-card-label">Tuition fee</span>
-                    <strong class="account-card-value" id="dashTotalFee">â‚±0</strong>
+                    <strong class="account-card-value" id="dashTotalFee">—</strong>
                     <span class="dash-card-note">Total assessed</span>
                 </div>
                 <div class="account-card" id="dashDueCard">
@@ -126,40 +126,6 @@
                     <strong class="account-card-value" id="dashDue">—</strong>
                     <span class="dash-card-note" id="dashDueNote"></span>
                 </div>
-            </section>
-
-            <!-- How the tuition has been settled so far: one bar and three plain
-                 facts. Every figure is computed from the student's own payments. -->
-            <section class="dash-overview dash-panel" aria-label="Payment overview" id="dashOverview">
-                <div class="pay-progress-wrap">
-                    <div class="pay-progress-head">
-                        <span class="pay-progress-label">Tuition settled</span>
-                        <strong class="pay-progress-percent" id="dashPaidPercent">0%</strong>
-                    </div>
-                    <div class="pay-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100"
-                         aria-valuenow="0" id="dashPaidBar" aria-label="Share of tuition already paid">
-                        <span class="pay-progress-fill" id="dashPaidFill"></span>
-                    </div>
-                    <p class="pay-progress-foot" id="dashPaidSummary">—</p>
-                </div>
-                <dl class="dash-kpis">
-                    <div class="dash-kpi">
-                        <dt>Payments recorded</dt>
-                        <dd id="dashKpiCount">0</dd>
-                    </div>
-                    <div class="dash-kpi">
-                        <dt>Average payment</dt>
-                        <dd id="dashKpiAverage">&#8369;0</dd>
-                    </div>
-                    <div class="dash-kpi">
-                        <dt>Largest payment</dt>
-                        <dd id="dashKpiLargest">&#8369;0</dd>
-                    </div>
-                    <div class="dash-kpi">
-                        <dt>Latest payment</dt>
-                        <dd id="dashKpiLatest">—</dd>
-                    </div>
-                </dl>
             </section>
 
             <section class="dash-panel dash-monthly-plan" id="dashMonthlyPlan" aria-labelledby="dashMonthlyHeading">
@@ -204,11 +170,11 @@
                         <div class="field-row">
                             <label class="field">
                                 <span>Contact number</span>
-                                <input type="tel" name="contact" placeholder="0917-555-0101" autocomplete="tel">
+                                <input type="tel" name="contact" placeholder="Enter contact number" autocomplete="tel">
                             </label>
                             <label class="field">
                                 <span>Guardian's contact number</span>
-                                <input type="tel" name="guardianContact" placeholder="0917-555-0102">
+                                <input type="tel" name="guardianContact" placeholder="Enter guardian contact number">
                             </label>
                         </div>
                         <label class="field">
@@ -334,25 +300,6 @@
                     </button>
                 </header>
 
-                <!-- What the payments add up to, at a glance. -->
-                <div class="history-stats" id="dashHistoryStats">
-                    <div class="history-stat">
-                        <span class="history-stat-label">Total paid</span>
-                        <strong class="history-stat-value" id="dashHistoryTotal">&#8369;0</strong>
-                        <span class="history-stat-note" id="dashHistoryTotalNote">No payments yet</span>
-                    </div>
-                    <div class="history-stat">
-                        <span class="history-stat-label">Remaining</span>
-                        <strong class="history-stat-value" id="dashHistoryBalance">&#8369;0</strong>
-                        <span class="history-stat-note" id="dashHistoryBalanceNote">&nbsp;</span>
-                    </div>
-                    <div class="history-stat">
-                        <span class="history-stat-label">Preferred method</span>
-                        <strong class="history-stat-value history-stat-value--text" id="dashHistoryMethod">—</strong>
-                        <span class="history-stat-note" id="dashHistoryMethodNote">&nbsp;</span>
-                    </div>
-                </div>
-
                 <!-- Narrow a long list down without leaving the page. -->
                 <div class="history-toolbar" id="dashHistoryToolbar" hidden>
                     <div class="history-chips" role="group" aria-label="Filter payments by method">
@@ -394,7 +341,7 @@
                 </p>
 
                 <div class="history-foot">
-                    <span id="dashPaymentsCount">0 payments</span>
+                    <span id="dashPaymentsCount">Payment records</span>
                     <div class="history-foot-actions">
                         <button type="button" class="link-button" id="dashHistoryMore" hidden>Show all payments</button>
                     </div>
@@ -421,7 +368,7 @@
                     <path d="M15 25l6.5 6.5L34 18"></path>
                 </svg>
                 <p class="receipt-paid"><span aria-hidden="true">&#10003;</span> Recorded by the Accounting office</p>
-                <strong class="receipt-amount" id="receiptAmount">&#8369;0</strong>
+                <strong class="receipt-amount" id="receiptAmount">—</strong>
                 <dl class="receipt-details">
                     <div><dt>Receipt no.</dt><dd id="receiptNo">—</dd></div>
                     <div><dt>Date</dt><dd id="receiptDate">—</dd></div>
